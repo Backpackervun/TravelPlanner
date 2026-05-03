@@ -6,36 +6,34 @@ import { useEffect, useMemo, useState } from "react";
 // ============================================
 const rateCache = {};
 
-async function fetchRate(currencyCode) {
-if (!currencyCode) return null; 
- if (!currencyCode || currencyCode === "Indonesia") return 1;
+async function fetchRate(region) {
+  if (!region) return null;
+  if (region === "Indonesia") return 1;
 
-  // mapping region → currency
   const currencyMap = {
-    Japan: "JPY",
-    "South Korea": "KRW",
-    Singapore: "SGD",
-    Thailand: "THB",
-    Vietnam: "VND",
-    Malaysia: "MYR",
-    Philippines: "PHP",
-    USA: "USD",
-    UK: "GBP",
+    japan: "JPY",
+    "south korea": "KRW",
+    singapore: "SGD",
+    thailand: "THB",
+    vietnam: "VND",
+    malaysia: "MYR",
+    philippines: "PHP",
+    usa: "USD",
+    uk: "GBP",
   };
 
-  const code = currencyMap[currencyCode];
-
+  const code = currencyMap[region?.toLowerCase()];
   if (!code) return null;
 
-  // pakai cache biar cepat
   if (rateCache[code]) return rateCache[code];
 
   try {
     const res = await fetch(
-      `https://api.exchangerate.host/latest?base=${code}&symbols=IDR`
+      `https://api.exchangerate-api.com/v4/latest/${code}`
     );
 
     const data = await res.json();
+
     const rate = data?.rates?.IDR;
 
     if (rate) {
@@ -45,10 +43,11 @@ if (!currencyCode) return null;
 
     return null;
   } catch (err) {
-    console.error("Rate fetch error:", err);
+    console.error("Rate error:", err);
     return null;
   }
 }
+
 import { useRouter } from "next/navigation";
 
 import Header from "@/components/Header";
