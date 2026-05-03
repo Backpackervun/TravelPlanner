@@ -1,0 +1,852 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ================================================================
+   BASE — neutral page surface, navy ink
+   ================================================================ */
+
+:root {
+  color-scheme: light;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  background-color: #F8FAFC;
+  color: #111827;
+}
+
+/* Subtle dotted texture on the page background — reads as paper without
+   the warm tone. Light enough to feel like a refined dashboard surface. */
+.paper-bg {
+  background-image:
+    radial-gradient(rgba(11, 60, 93, 0.045) 1px, transparent 1px),
+    radial-gradient(rgba(11, 60, 93, 0.025) 1px, transparent 1px);
+  background-size: 22px 22px, 11px 11px;
+  background-position: 0 0, 11px 11px;
+}
+
+/* ================================================================
+   SPREADSHEET — borderless inputs that activate on focus
+   ================================================================ */
+
+.cell-input {
+  width: 100%;
+  height: 100%;
+  background-color: transparent;
+  padding: 0.5rem 0.625rem;
+  font-size: 0.8125rem;
+  line-height: 1.25rem;
+  color: #111827;
+  border: 1px solid transparent;
+  border-radius: 0.375rem;
+  outline: none;
+  transition: background-color 120ms ease, border-color 120ms ease,
+    box-shadow 120ms ease;
+}
+
+.cell-input::placeholder {
+  color: #9CA3AF;
+}
+
+.cell-input:hover:not(:focus):not(:disabled) {
+  background-color: rgba(255, 255, 255, 0.65);
+}
+
+.cell-input:focus {
+  background-color: #FFFFFF;
+  border-color: #4A90E2;
+  box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.18);
+}
+
+.cell-input:disabled {
+  cursor: not-allowed;
+  opacity: 1;
+}
+
+/* Number cells are tabular for clean column alignment */
+.cell-input.tabular {
+  font-variant-numeric: tabular-nums;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  letter-spacing: -0.01em;
+}
+
+/* ================================================================
+   TABLE — minimal ruled lines, sticky header
+   ================================================================ */
+
+.sheet-table {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: 100%;
+  font-size: 0.8125rem;
+}
+
+.sheet-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background-color: #EEF2F7;
+  color: #374151;
+  font-weight: 600;
+  font-size: 0.6875rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-align: left;
+  padding: 0.625rem 0.75rem;
+  border-bottom: 1px solid #E2E8F0;
+  white-space: nowrap;
+}
+
+.sheet-table tbody td {
+  border-bottom: 1px solid #EEF2F7;
+  padding: 0;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.sheet-table tbody tr {
+  transition: background-color 120ms ease;
+}
+
+.sheet-table tbody tr:hover {
+  background-color: rgba(11, 60, 93, 0.025);
+}
+
+/* The IDR cell can be auto-synced; keep visually distinct */
+.sheet-table td.computed {
+  background-color: rgba(74, 144, 226, 0.025);
+}
+
+/* Scrollbar polish for the table area */
+.thin-scrollbar::-webkit-scrollbar {
+  height: 10px;
+  width: 10px;
+}
+.thin-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.thin-scrollbar::-webkit-scrollbar-thumb {
+  background-color: #CBD5E1;
+  border-radius: 999px;
+  border: 2px solid #F8FAFC;
+}
+.thin-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: #94A3B8;
+}
+
+/* ================================================================
+   DAY DIVIDER — section header inserted between day groups
+   ================================================================ */
+
+.sheet-table tr.day-divider-row {
+  background: transparent !important;
+}
+.sheet-table tr.day-divider-row:hover {
+  background: transparent !important;
+}
+
+.sheet-table td.day-divider {
+  padding: 14px 12px 8px 12px !important;
+  border-bottom: 1px solid #E2E8F0 !important;
+  background: #EAF1F8;
+  border-left: 4px solid #0B3C5D;
+  white-space: normal;
+  vertical-align: middle;
+}
+
+.day-divider-primary {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #0B3C5D;
+  letter-spacing: -0.01em;
+  margin-right: 12px;
+}
+
+.day-divider-secondary {
+  font-size: 0.75rem;
+  color: #374151;
+  letter-spacing: 0.02em;
+  font-weight: 500;
+}
+
+/* The very first divider in the table — drop the top padding so it
+   tucks tight to the table header. */
+.sheet-table tbody tr.day-divider-row:first-child td.day-divider {
+  padding-top: 10px !important;
+}
+
+/* ================================================================
+   PRINT / SCREEN LAYOUT TOGGLE
+   The page renders TWO sibling layouts:
+     .screen-layout  — interactive dashboard (default visible)
+     .print-layout   — vertical document for PDF export (hidden by default,
+                       shown on screen when "Preview" mode is on, or
+                       always when printing)
+   ================================================================ */
+
+.print-layout,
+.print-only {
+  display: none !important;
+}
+
+/* When user toggles Preview mode on screen, show the print document */
+.preview-mode .print-layout {
+  display: block !important;
+}
+.preview-mode .screen-layout {
+  display: none !important;
+}
+
+/* ================================================================
+   DOCUMENT STYLES — apply BOTH on screen (in Preview mode)
+   and during printing. The visual rules below are scoped under
+   either:
+     .preview-mode .print-layout    (screen preview)
+     @media print                   (actual printing)
+   so the document looks identical in both contexts.
+
+   Each rule uses a doubled selector list to cover both cases.
+   The .preview-frame wrapper on screen gives the document a
+   subtle paper-card frame so users know it's a preview.
+   ================================================================ */
+
+/* Preview frame on screen — looks like an A4 page on a desk */
+.preview-mode .preview-frame {
+  max-width: 940px;
+  margin: 24px auto 64px;
+  padding: 36px 44px;
+  background: #ffffff;
+  border-radius: 8px;
+  box-shadow:
+    0 1px 3px rgba(11, 60, 93, 0.08),
+    0 16px 48px rgba(11, 60, 93, 0.12);
+  border: 1px solid #E2E8F0;
+}
+
+/* When we render the document anywhere, force these foundations.
+   On print these become global; on screen they're scoped. */
+.preview-mode .print-layout,
+.preview-mode .print-layout * {
+  text-shadow: none !important;
+}
+.preview-mode .print-layout {
+  color: #111827;
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-size: 10.5pt;
+  line-height: 1.55;
+  background: transparent;
+}
+
+/* ----- Print header (logo + totals) ----- */
+.preview-mode .print-header,
+@media print {
+  .print-header {
+    display: flex !important;
+  }
+}
+.preview-mode .print-header,
+.print-layout .print-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 0 0 14pt 0;
+  margin: 0 0 22pt 0;
+  border-bottom: 2pt solid #0B3C5D;
+}
+.preview-mode .ph-brand,
+.print-layout .ph-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4pt;
+}
+.preview-mode .ph-logo,
+.print-layout .ph-logo {
+  display: block;
+  height: auto;
+  width: 180px;
+  max-height: 36px;
+  object-fit: contain;
+}
+.preview-mode .ph-tagline,
+.print-layout .ph-tagline {
+  margin: 0;
+  font-size: 8pt;
+  color: #6B7280;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+.preview-mode .ph-totals,
+.print-layout .ph-totals {
+  display: flex;
+  flex-direction: column;
+  gap: 4pt;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.preview-mode .ph-total,
+.print-layout .ph-total {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+}
+.preview-mode .ph-total-label,
+.print-layout .ph-total-label {
+  font-size: 7pt;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #6B7280;
+  font-weight: 700;
+}
+.preview-mode .ph-total-label-accent,
+.print-layout .ph-total-label-accent {
+  color: #1D5C8C;
+}
+.preview-mode .ph-total-val,
+.print-layout .ph-total-val {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12pt;
+  font-weight: 600;
+  color: #111827;
+}
+.preview-mode .ph-total-val-accent,
+.print-layout .ph-total-val-accent {
+  color: #082D45;
+}
+
+/* ----- Document body ----- */
+.preview-mode .print-doc,
+.print-layout .print-doc {
+  display: block;
+  max-width: 100%;
+  color: #111827;
+}
+.preview-mode .pd-section,
+.print-layout .pd-section {
+  margin: 0 0 22pt 0;
+}
+.preview-mode .pd-h2,
+.print-layout .pd-h2 {
+  font-size: 16pt;
+  font-weight: 700;
+  color: #0B3C5D;
+  margin: 0 0 10pt 0;
+  padding: 0 0 4pt 0;
+  border-bottom: 0.6pt solid #0B3C5D;
+  page-break-after: avoid;
+  break-after: avoid;
+  letter-spacing: -0.01em;
+}
+.preview-mode .pd-h3,
+.print-layout .pd-h3 {
+  font-size: 12pt;
+  font-weight: 700;
+  color: #0B3C5D;
+  margin: 12pt 0 6pt 0;
+}
+
+/* "Prepared for client" panel */
+.preview-mode .pd-prepared,
+.print-layout .pd-prepared {
+  margin-bottom: 28pt;
+}
+.preview-mode .pd-eyebrow,
+.print-layout .pd-eyebrow {
+  margin: 0;
+  font-size: 8pt;
+  font-weight: 700;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: #0B3C5D;
+}
+.preview-mode .pd-client-name,
+.print-layout .pd-client-name {
+  font-size: 22pt;
+  font-weight: 700;
+  line-height: 1.1;
+  color: #111827;
+  margin: 4pt 0 12pt 0;
+  letter-spacing: -0.015em;
+  page-break-after: avoid;
+}
+.preview-mode .pd-client-meta,
+.print-layout .pd-client-meta {
+  margin: 0;
+  padding: 8pt 0 0 0;
+  border-top: 0.5pt solid #E2E8F0;
+  display: block;
+}
+.preview-mode .pd-meta-row,
+.print-layout .pd-meta-row {
+  display: grid;
+  grid-template-columns: 130px 1fr;
+  align-items: baseline;
+  margin-bottom: 4pt;
+}
+.preview-mode .pd-meta-row:last-child,
+.print-layout .pd-meta-row:last-child {
+  margin-bottom: 0;
+}
+.preview-mode .pd-meta-row dt,
+.print-layout .pd-meta-row dt {
+  font-size: 8pt;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #6B7280;
+}
+.preview-mode .pd-meta-row dd,
+.print-layout .pd-meta-row dd {
+  margin: 0;
+  font-size: 11pt;
+  font-weight: 600;
+  color: #111827;
+}
+
+/* Day block */
+.preview-mode .day-block,
+.print-layout .day-block {
+  page-break-inside: auto;
+  break-inside: auto;
+  margin-bottom: 22pt;
+}
+.preview-mode .day-block-header,
+.print-layout .day-block-header {
+  display: flex;
+  align-items: center;
+  gap: 12pt;
+  padding: 8pt 12pt;
+  background: #EAF1F8 !important;
+  border-left: 4pt solid #0B3C5D;
+  margin-bottom: 10pt;
+  page-break-after: avoid;
+  break-after: avoid;
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+.preview-mode .day-block-marker,
+.print-layout .day-block-marker {
+  width: 26pt;
+  height: 26pt;
+  border-radius: 999pt;
+  background: #0B3C5D !important;
+  color: #ffffff !important;
+  font-size: 13pt;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.preview-mode .day-block-heading,
+.print-layout .day-block-heading {
+  flex: 1;
+  min-width: 0;
+}
+.preview-mode .day-block-title,
+.print-layout .day-block-title {
+  margin: 0;
+  font-size: 14pt;
+  font-weight: 700;
+  color: #0B3C5D;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+}
+.preview-mode .day-block-meta,
+.print-layout .day-block-meta {
+  margin: 1pt 0 0 0;
+  font-size: 9pt;
+  color: #374151;
+  letter-spacing: 0.02em;
+  font-weight: 500;
+}
+
+/* Stops list */
+.preview-mode .stop-list,
+.print-layout .stop-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.preview-mode .stop,
+.print-layout .stop {
+  display: grid;
+  grid-template-columns: 60pt 1fr 90pt;
+  gap: 10pt;
+  padding: 8pt 0;
+  border-bottom: 0.4pt solid #E5EAF1;
+  page-break-inside: avoid !important;
+  break-inside: avoid !important;
+}
+.preview-mode .stop:last-child,
+.print-layout .stop:last-child {
+  border-bottom: none;
+}
+.preview-mode .stop-rail,
+.print-layout .stop-rail {
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  gap: 6pt;
+  padding-top: 1pt;
+}
+.preview-mode .stop-time,
+.print-layout .stop-time {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 9pt;
+  font-weight: 600;
+  color: #111827;
+  white-space: nowrap;
+}
+.preview-mode .stop-dot,
+.print-layout .stop-dot {
+  display: none;
+}
+.preview-mode .stop-body,
+.print-layout .stop-body {
+  min-width: 0;
+}
+.preview-mode .stop-headline,
+.print-layout .stop-headline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6pt;
+  margin-bottom: 2pt;
+}
+.preview-mode .stop-cat,
+.print-layout .stop-cat {
+  display: inline-block;
+  font-size: 7.5pt;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 1pt 6pt;
+  border-radius: 3pt;
+  border: 0.6pt solid;
+}
+.preview-mode .stop-title,
+.print-layout .stop-title {
+  margin: 0;
+  font-size: 11pt;
+  font-weight: 700;
+  color: #111827;
+  line-height: 1.25;
+}
+.preview-mode .stop-route,
+.print-layout .stop-route {
+  margin: 2pt 0 0 0;
+  font-size: 9pt;
+  color: #374151;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 5pt;
+}
+.preview-mode .stop-transport,
+.print-layout .stop-transport {
+  font-weight: 700;
+  color: #0B3C5D;
+}
+.preview-mode .stop-sep,
+.print-layout .stop-sep {
+  color: #9CA3AF;
+}
+.preview-mode .stop-from-to,
+.print-layout .stop-from-to {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5pt;
+  flex-wrap: wrap;
+}
+.preview-mode .stop-arrow,
+.print-layout .stop-arrow {
+  color: #9CA3AF;
+}
+.preview-mode .stop-notes,
+.print-layout .stop-notes {
+  margin: 4pt 0 0 0;
+  font-size: 9pt;
+  font-style: italic;
+  color: #374151;
+  line-height: 1.45;
+  font-weight: 400;
+}
+.preview-mode .stop-transport-icon,
+.print-layout .stop-transport-icon {
+  font-size: 10pt;
+  margin-right: 1pt;
+}
+.preview-mode .stop-links,
+.print-layout .stop-links {
+  margin: 5pt 0 0 0;
+  font-size: 8pt;
+  display: flex;
+  gap: 12pt;
+  flex-wrap: wrap;
+}
+.preview-mode .stop-links a,
+.print-layout .stop-links a {
+  color: #0B3C5D !important;
+  text-decoration: none;
+  font-weight: 600;
+}
+.preview-mode .stop-links a:hover {
+  text-decoration: underline;
+}
+
+/* Right column: budget */
+.preview-mode .stop-budget,
+.print-layout .stop-budget {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.preview-mode .stop-budget-local,
+.print-layout .stop-budget-local {
+  display: block;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 10pt;
+  font-weight: 700;
+  color: #111827;
+  line-height: 1.2;
+}
+.preview-mode .stop-budget-idr,
+.print-layout .stop-budget-idr {
+  display: block;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 8.5pt;
+  color: #082D45;
+  line-height: 1.2;
+}
+.preview-mode .stop-budget-free,
+.print-layout .stop-budget-free {
+  font-size: 8.5pt;
+  color: #9CA3AF;
+  font-style: italic;
+}
+
+/* Trip summary */
+.preview-mode .pd-summary,
+.print-layout .pd-summary {
+  page-break-inside: avoid;
+  break-inside: avoid;
+  margin-top: 28pt;
+}
+.preview-mode .pd-summary-totals,
+.print-layout .pd-summary-totals {
+  border: 0.6pt solid #E2E8F0;
+  border-radius: 4pt;
+  padding: 8pt 14pt;
+  margin: 0;
+}
+.preview-mode .pd-summary-row,
+.print-layout .pd-summary-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 4pt 0;
+  font-size: 10pt;
+  border-bottom: 0.4pt solid #E5EAF1;
+}
+.preview-mode .pd-summary-row:last-child,
+.print-layout .pd-summary-row:last-child {
+  border-bottom: none;
+}
+.preview-mode .pd-summary-label,
+.print-layout .pd-summary-label {
+  color: #374151;
+  font-weight: 500;
+}
+.preview-mode .pd-summary-value,
+.print-layout .pd-summary-value {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-weight: 700;
+  color: #111827;
+  font-variant-numeric: tabular-nums;
+}
+.preview-mode .pd-summary-row-strong .pd-summary-label,
+.print-layout .pd-summary-row-strong .pd-summary-label {
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 8pt;
+  letter-spacing: 0.16em;
+  color: #111827;
+}
+.preview-mode .pd-summary-row-strong .pd-summary-value,
+.print-layout .pd-summary-row-strong .pd-summary-value {
+  font-size: 12pt;
+}
+.preview-mode .pd-summary-row-accent .pd-summary-label,
+.print-layout .pd-summary-row-accent .pd-summary-label {
+  color: #1D5C8C;
+}
+.preview-mode .pd-summary-row-accent .pd-summary-value,
+.print-layout .pd-summary-row-accent .pd-summary-value {
+  color: #082D45;
+}
+
+/* Category breakdown bars */
+.preview-mode .pd-category-block,
+.print-layout .pd-category-block {
+  margin-top: 14pt;
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+.preview-mode .pd-category-list,
+.print-layout .pd-category-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.preview-mode .pd-category-row,
+.print-layout .pd-category-row {
+  display: grid;
+  grid-template-columns: 12pt 80pt 1fr 28pt 70pt;
+  align-items: center;
+  gap: 8pt;
+  padding: 4pt 0;
+  font-size: 9.5pt;
+}
+.preview-mode .pd-category-swatch,
+.print-layout .pd-category-swatch {
+  width: 8pt;
+  height: 8pt;
+  border-radius: 2pt;
+  display: inline-block;
+}
+.preview-mode .pd-category-name,
+.print-layout .pd-category-name {
+  color: #111827;
+  font-weight: 500;
+}
+.preview-mode .pd-category-bar-track,
+.print-layout .pd-category-bar-track {
+  height: 4pt;
+  background: #EEF2F7;
+  border-radius: 2pt;
+  overflow: hidden;
+  display: block;
+}
+.preview-mode .pd-category-bar-fill,
+.print-layout .pd-category-bar-fill {
+  display: block;
+  height: 100%;
+}
+.preview-mode .pd-category-pct,
+.print-layout .pd-category-pct {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 8.5pt;
+  color: #6B7280;
+  text-align: right;
+}
+.preview-mode .pd-category-amount,
+.print-layout .pd-category-amount {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 9pt;
+  text-align: right;
+  color: #111827;
+  font-weight: 600;
+}
+
+/* Footer + empty state */
+.preview-mode .pd-footer,
+.print-layout .pd-footer {
+  margin-top: 22pt;
+  padding-top: 8pt;
+  border-top: 0.5pt solid #E2E8F0;
+  text-align: center;
+  font-size: 7.5pt;
+  color: #6B7280;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 500;
+}
+.preview-mode .pd-empty,
+.print-layout .pd-empty {
+  padding: 14pt;
+  border: 0.5pt dashed #E2E8F0;
+  border-radius: 4pt;
+  text-align: center;
+  color: #6B7280;
+  font-size: 10pt;
+}
+
+/* ================================================================
+   PRINT-ONLY OVERRIDES
+   Geometry, visibility, color-exact reproduction.
+   The visual styling above already applies to .print-layout in
+   any context — these rules just turn it on for actual printing.
+   ================================================================ */
+
+@media print {
+  @page {
+    size: A4;
+    margin: 18mm 16mm;
+  }
+
+  html {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Swap layouts — print always shows the document */
+  .screen-layout,
+  .no-print {
+    display: none !important;
+  }
+  .print-layout {
+    display: block !important;
+  }
+  .print-only {
+    display: block !important;
+  }
+
+  /* Strip the on-screen "preview frame" effects when printing */
+  .preview-frame {
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+
+  html,
+  body {
+    background: #ffffff !important;
+    color: #111827 !important;
+    font-family: var(--font-sans), system-ui, sans-serif;
+    font-size: 10.5pt;
+    line-height: 1.5;
+  }
+  .paper-bg {
+    background: #ffffff !important;
+    background-image: none !important;
+  }
+
+  /* Strip every shadow/glow site-wide */
+  *,
+  *::before,
+  *::after {
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  /* Anchor links: visible but not underlined */
+  .print-doc a,
+  .print-header a {
+    color: #0B3C5D !important;
+    text-decoration: none !important;
+    word-break: break-word;
+  }
+}
