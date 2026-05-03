@@ -180,7 +180,7 @@ function RegionCard({ region, active, onClick }) {
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={`group relative flex items-center gap-3 rounded-lg border bg-white p-3 text-left transition ${
+      className={`group relative flex items-center gap-3 rounded-lg border bg-white p-3 text-left min-h-[72px] transition ${
         active
           ? "border-navy-500 ring-2 ring-navy-200 shadow-[0_4px_12px_rgba(11,60,93,0.12)]"
           : "border-paper-line hover:border-navy-200 hover:bg-navy-50/50 hover:shadow-soft"
@@ -189,14 +189,16 @@ function RegionCard({ region, active, onClick }) {
       <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-md bg-paper-dim text-2xl leading-none">
         {region.flag}
       </span>
+
       <span className="min-w-0 flex-1">
-        <span className="block text-sm font-semibold text-ink">{region.id}</span>
-        {region.subtitle && (
-          <span className="block truncate text-[11px] text-ink-muted">
-            {region.subtitle}
-          </span>
-        )}
-      </span>
+        <span className="block text-sm font-semibold text-ink">
+          {region.id}
+        </span>
+       {region.subtitle && (
+  <span className="block text-[11px] text-ink-muted leading-tight line-clamp-2">
+    {region.subtitle}
+  </span>
+)}
       {active && (
         <svg
           viewBox="0 0 24 24"
