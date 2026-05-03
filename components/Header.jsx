@@ -45,7 +45,7 @@ export default function Header({
           </div>
 
           {/* RIGHT */}
-          <div className="flex flex-wrap items-center gap-2.5">
+          <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
 
             {/* REGION */}
             {onRegionChange && (
@@ -98,24 +98,30 @@ export default function Header({
               </div>
             )}
 
-            {/* SETTINGS DROPDOWN */}
-            <div className="relative">
+            {/* SETTINGS */}
+            <div className="relative w-full sm:w-auto">
               <button
                 onClick={() => setOpen(!open)}
-                className="inline-flex items-center gap-2 rounded-lg border border-paper-line bg-white px-3 py-2 text-xs font-semibold shadow-soft hover:bg-gray-50"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-lg bg-navy-500 px-4 py-2 text-xs font-semibold text-white shadow hover:bg-navy-600"
               >
                 ⚙ Settings
               </button>
 
               {open && (
-                <div className="absolute right-0 mt-2 w-44 rounded-lg border border-paper-line bg-white shadow-lg z-50">
+                <div className="
+                  absolute left-0 right-0 mt-2 
+                  sm:left-auto sm:right-0 sm:w-52
+                  w-full 
+                  rounded-lg border border-paper-line 
+                  bg-white shadow-xl z-50
+                ">
 
                   <button
                     onClick={() => {
                       onModeChange?.("preview");
                       setOpen(false);
                     }}
-                    className="block w-full px-4 py-2 text-left text-xs hover:bg-gray-50"
+                    className="block w-full px-4 py-3 text-left text-sm hover:bg-gray-50"
                   >
                     Preview
                   </button>
@@ -125,7 +131,7 @@ export default function Header({
                       onPrint();
                       setOpen(false);
                     }}
-                    className="block w-full px-4 py-2 text-left text-xs hover:bg-gray-50"
+                    className="block w-full px-4 py-3 text-left text-sm hover:bg-gray-50"
                   >
                     Export PDF
                   </button>
@@ -135,7 +141,7 @@ export default function Header({
                       onHelp();
                       setOpen(false);
                     }}
-                    className="block w-full px-4 py-2 text-left text-xs hover:bg-gray-50"
+                    className="block w-full px-4 py-3 text-left text-sm hover:bg-gray-50"
                   >
                     Help
                   </button>
@@ -145,7 +151,7 @@ export default function Header({
                       onReset();
                       setOpen(false);
                     }}
-                    className="block w-full px-4 py-2 text-left text-xs hover:bg-gray-50"
+                    className="block w-full px-4 py-3 text-left text-sm hover:bg-gray-50"
                   >
                     Reset
                   </button>
@@ -153,11 +159,15 @@ export default function Header({
                   <div className="border-t my-1"></div>
 
                   <button
-                    onClick={handleLogout}
-                    className="block w-full px-4 py-2 text-left text-xs text-red-500 hover:bg-red-50"
+                    onClick={() => {
+                      handleLogout();
+                      setOpen(false);
+                    }}
+                    className="block w-full px-4 py-3 text-left text-sm text-red-500 hover:bg-red-50"
                   >
                     Logout
                   </button>
+
                 </div>
               )}
             </div>
