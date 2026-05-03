@@ -1,107 +1,118 @@
-"use client";
+{!showSetup && (
+  <>
+    {/* ✅ HEADER SELALU ADA */}
+    <Header
+      rate={rate}
+      onRateChange={handleRateChange}
+      onReset={handleReset}
+      onPrint={handlePrint}
+      onHelp={handleHelp}
+      onLogout={handleLogout}
+      totalLocal={totalLocal}
+      totalIDR={totalIDR}
+      mode={mode}
+      onModeChange={setMode}
+      region={region}
+      onRegionChange={handleRegionChange}
+    />
 
-import { formatCurrency, formatIDR, getCurrency } from "@/lib/utils";
-import RegionSelector from "./RegionSelector";
+    {/* ✅ EDIT MODE */}
+    {mode === "edit" && (
+      <div className="screen-layout">
+        <main className="mx-auto max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+          {hydrated ? (
+            <TripInfoPanel tripInfo={tripInfo} onChange={setTripInfo} />
+          ) : (
+            <TripInfoSkeleton />
+          )}
 
-export default function Header({
-  rate,
-  onRateChange,
-  onReset,
-  onPrint,
-  onHelp,
-  totalLocal,
-  totalIDR,
-  mode,
-  onModeChange,
-  region,
-  onRegionChange,
-}) {
-  const currency = getCurrency(region);
-  const isIDRRegion = currency.code === "IDR";
-
-  return (
-    <header className="border-b border-gray-200 bg-white z-30">
-      <div className="mx-auto max-w-[1600px] px-4">
-
-        <div className="flex items-center justify-between py-2">
-
-          {/* LOGO */}
-          <div className="flex items-center gap-2">
-            <img src="/logo.png" className="h-6" />
-            <span className="hidden sm:block text-xs text-gray-400">
-              Travel Planner
-            </span>
-          </div>
-
-          {/* MOBILE */}
-          <div className="flex sm:hidden items-center gap-2">
-            <RegionSelector
-              variant="pill"
-              value={region}
-              onChange={onRegionChange}
-            />
-
-            <button
-              onClick={onPrint}
-              className="px-2 py-1 text-xs bg-blue-600 text-white rounded"
-            >
-              PDF
-            </button>
-          </div>
-
-          {/* DESKTOP */}
-          <div className="hidden sm:flex items-center gap-2 overflow-x-auto">
-
-            <RegionSelector
-              variant="pill"
-              value={region}
-              onChange={onRegionChange}
-            />
-
-            <div className="flex items-center gap-3 border px-3 py-1 rounded">
-              <div>
-                <div className="text-[10px] text-gray-400">
-                  {currency.code}
-                </div>
-                <div className="text-sm font-semibold">
-                  {formatCurrency(totalLocal, currency)}
-                </div>
-              </div>
-
-              {!isIDRRegion && (
-                <div>
-                  <div className="text-[10px] text-blue-400">IDR</div>
-                  <div className="text-sm font-semibold text-blue-600">
-                    {formatIDR(totalIDR)}
-                  </div>
-                </div>
+          <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px] xl:grid-cols-[minmax(0,1fr)_360px]">
+            <div className="min-w-0">
+              {hydrated ? (
+                <ItineraryTable
+                  rows={rows}
+                  dayMap={dayMap}
+                  region={region}
+                  onUpdate={updateRow}
+                  onAdd={addRow}
+                  onDelete={deleteRow}
+                  onInsertAbove={(id) => insertRowAt(id, "above")}
+                  onInsertBelow={(id) => insertRowAt(id, "below")}
+                />
+              ) : (
+                <TableSkeleton />
               )}
             </div>
 
-            {!isIDRRegion && (
-              <input
-                type="number"
-                value={rate}
-                onChange={(e) => onRateChange(Number(e.target.value))}
-                className="w-20 px-2 py-1 border rounded text-sm"
-              />
-            )}
+            <div className="min-w-0">
+              {hydrated ? (
+                <ChartsPanel
+                  rows={rows}
+                  rate={rate}
+                  totalLocal={totalLocal}
+                  totalIDR={totalIDR}
+                />
+              ) : (
+                <PanelSkeleton />
+              )}
+            </div>
+          </div>
 
-            <button onClick={onPrint} className="px-3 py-1 text-sm bg-blue-600 text-white rounded">
-              Export
+          <footer className="mt-10 border-t border-paper-line pt-5 pb-2 text-center text-[11px] text-ink-muted">
+            Backpackervun Travel Planner · No accounts, no tracking · Your trip is saved in your browser ·{" "}
+            <button
+              type="button"
+              onClick={() => {
+                setHelpTab("contact");
+                setHelpOpen(true);
+              }}
+              className="font-medium text-navy-500 underline-offset-2 hover:underline"
+            >
+              Contact us
             </button>
+          </footer>
+        </main>
+      </div>
+    )}
 
-            <button onClick={onHelp} className="px-3 py-1 text-sm text-gray-500">
-              Help
+    {/* ✅ PREVIEW MODE */}
+    {mode === "preview" && (
+      <div className="print-layout">
+        <div className="no-print relative z-30 border-b border-paper-line bg-white/95 backdrop-blur-md">
+          <div className="mx-auto flex max-w-[900px] items-center justify-between px-6 py-3">
+            <span className="text-xs text-gray-500">
+              Preview Mode
+            </span>
+
+            <button
+              onClick={() => setMode("edit")}
+              className="px-3 py-1 text-sm border rounded"
+            >
+              Back
             </button>
-
-            <button onClick={onReset} className="px-3 py-1 text-sm text-gray-500">
-              Reset
-            </button>
-
           </div>
         </div>
+
+        <div className="preview-frame">
+          <PrintHeader
+            totalLocal={totalLocal}
+            totalIDR={totalIDR}
+            region={region}
+          />
+
+          {hydrated && (
+            <PrintLayout
+              tripInfo={tripInfo}
+              rows={rows}
+              dayMap={dayMap}
+              region={region}
+              rate={rate}
+              totalLocal={totalLocal}
+              totalIDR={totalIDR}
+            />
+          )}
+        </div>
       </div>
-    </header>
-  );
-}
+    )}
+  </>
+)}
