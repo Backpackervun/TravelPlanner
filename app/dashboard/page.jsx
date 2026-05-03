@@ -418,7 +418,7 @@ onLogout={handleLogout}
         <div className="print-layout">
           {/* Preview-mode-only "Back to edit" bar */}
           {inPreview && (
-            <div className="no-print sticky top-0 z-30 border-b border-paper-line bg-white/95 backdrop-blur-md">
+           <div className="no-print relative z-30 border-b border-paper-line bg-white/95 backdrop-blur-md">
               <div className="mx-auto flex max-w-[900px] items-center justify-between px-6 py-3">
                 <div className="flex items-center gap-3">
                   <span className="rounded-full bg-navy-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-navy-500">
