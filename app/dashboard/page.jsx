@@ -1,6 +1,54 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+// ============================================
+// Currency Rate Engine (AUTO REALTIME)
+// ============================================
+const rateCache = {};
+
+async function fetchRate(currencyCode) {
+if (!currencyCode) return null; 
+ if (!currencyCode || currencyCode === "Indonesia") return 1;
+
+  // mapping region → currency
+  const currencyMap = {
+    Japan: "JPY",
+    "South Korea": "KRW",
+    Singapore: "SGD",
+    Thailand: "THB",
+    Vietnam: "VND",
+    Malaysia: "MYR",
+    Philippines: "PHP",
+    USA: "USD",
+    UK: "GBP",
+  };
+
+  const code = currencyMap[currencyCode];
+
+  if (!code) return null;
+
+  // pakai cache biar cepat
+  if (rateCache[code]) return rateCache[code];
+
+  try {
+    const res = await fetch(
+      `https://api.exchangerate.host/latest?base=${code}&symbols=IDR`
+    );
+
+    const data = await res.json();
+    const rate = data?.rates?.IDR;
+
+    if (rate) {
+      rateCache[code] = rate;
+      return rate;
+    }
+
+    return null;
+  } catch (err) {
+    console.error("Rate fetch error:", err);
+    return null;
+  }
+}
 import { useRouter } from "next/navigation";
 
 import Header from "@/components/Header";
@@ -110,6 +158,21 @@ const handleLogout = () => {
   const [tripInfo, setTripInfo] = useState(INITIAL_TRIP_INFO);
   const [rate, setRate] = useState(DEFAULT_RATE);
   const [region, setRegion] = useState(null);
+// AUTO UPDATE RATE SAAT REGION BERUBAH
+useEffect(() => {
+  if (!hydrated || !region) return;
+
+  async function updateRate() {
+    const newRate = await fetchRate(region);
+
+    if (newRate && !isNaN(newRate)) {
+      setRate(Number(newRate.toFixed(2)));
+      setRows((prev) => prev.map((r) => syncIDR(r, newRate)));
+    }
+  }
+
+  updateRate();
+}, [region, hydrated]);
   const [setupComplete, setSetupComplete] = useState(false);
 
   // Help modal state (which tab to open initially)
