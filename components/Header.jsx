@@ -4,6 +4,7 @@ import { formatCurrency, formatIDR, getCurrency } from "@/lib/utils";
 import RegionSelector from "./RegionSelector";
 
 export default function Header({
+onLogout,
   rate,
   onRateChange,
   onReset,
@@ -125,6 +126,14 @@ export default function Header({
                 />
               </div>
             )}
+{/* Logout */}
+<button
+  type="button"
+  onClick={onLogout}
+  className="no-print inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-white px-3 py-2 text-xs font-medium text-red-500 shadow-soft transition hover:bg-red-50"
+>
+  Logout
+</button>
 
             {/* Export to PDF — primary brand action (navy) */}
             <button
@@ -147,7 +156,6 @@ export default function Header({
               onClick={onHelp}
               className="no-print inline-flex items-center gap-1.5 rounded-lg border border-paper-line bg-white px-3 py-2 text-xs font-medium text-ink-soft shadow-soft transition hover:border-navy-200 hover:text-navy-500"
               title="How to use & contact"
-            >
               <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="10" />
                 <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
