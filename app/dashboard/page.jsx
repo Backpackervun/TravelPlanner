@@ -338,23 +338,24 @@ const handleLogout = () => {
       {!showSetup && (
         <div className="screen-layout">
           <Header
-            rate={rate}
+  rate={rate}
+  onRateChange={handleRateChange}
+  onReset={handleReset}
+  onPrint={handlePrint}
+  onHelp={handleHelp}
+  totalLocal={totalLocal}
+  totalIDR={totalIDR}
+  mode={mode}
+  onModeChange={setMode}
+  region={region}
+  onRegionChange={handleRegionChange}
+/>
+
 <div style={{ padding: "10px" }}>
   <button onClick={handleLogout}>
     Logout
   </button>
 </div>
-            onRateChange={handleRateChange}
-            onReset={handleReset}
-            onPrint={handlePrint}
-            onHelp={handleHelp}
-            totalLocal={totalLocal}
-            totalIDR={totalIDR}
-            mode={mode}
-            onModeChange={setMode}
-            region={region}
-            onRegionChange={handleRegionChange}
-          />
 
           <main className="mx-auto max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
             {hydrated ? (
