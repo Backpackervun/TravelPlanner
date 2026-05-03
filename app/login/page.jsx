@@ -15,6 +15,7 @@ const router = useRouter(); //
     try {
       await signInWithEmailAndPassword(auth, email, password);
       alert("Login berhasil!");
+document.cookie = "token=true; path=/";
 router.push("/dashboard");//
     } catch (error) {
       alert(error.message);

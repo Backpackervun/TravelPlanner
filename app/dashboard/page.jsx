@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import Header from "@/components/Header";
 import HelpModal from "@/components/HelpModal";
@@ -96,6 +97,12 @@ function buildDayMap(rows) {
 // ============================================
 
 export default function Page() {
+const router = useRouter();
+
+const handleLogout = () => {
+  document.cookie = "token=; Max-Age=0; path=/";
+  router.push("/login");
+};
   const [hydrated, setHydrated] = useState(false);
   const [mode, setMode] = useState("edit"); // "edit" | "preview"
 
@@ -332,6 +339,11 @@ export default function Page() {
         <div className="screen-layout">
           <Header
             rate={rate}
+<div style={{ padding: "10px" }}>
+  <button onClick={handleLogout}>
+    Logout
+  </button>
+</div>
             onRateChange={handleRateChange}
             onReset={handleReset}
             onPrint={handlePrint}
