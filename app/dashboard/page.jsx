@@ -10,19 +10,33 @@ async function fetchRate(region) {
   if (!region) return null;
   if (region === "Indonesia") return 1;
 
-  const currencyMap = {
-    japan: "JPY",
-    "south korea": "KRW",
-    singapore: "SGD",
-    thailand: "THB",
-    vietnam: "VND",
-    malaysia: "MYR",
-    philippines: "PHP",
-    usa: "USD",
-    uk: "GBP",
-  };
+ const currencyMap = {
+  japan: "JPY",
+  "south korea": "KRW",
+  korea: "KRW",
+  singapore: "SGD",
+  thailand: "THB",
+  vietnam: "VND",
+  malaysia: "MYR",
+  philippines: "PHP",
 
-  const code = currencyMap[region?.toLowerCase()];
+  usa: "USD",
+  "united states": "USD",
+  america: "USD",
+
+  uk: "GBP",
+  "united kingdom": "GBP",
+  england: "GBP",
+
+  europe: "EUR",
+  euro: "EUR",
+
+  australia: "AUD",
+  aus: "AUD",
+};
+
+  const key = region?.toLowerCase().trim();
+const code = currencyMap[key];
   if (!code) return null;
 
   if (rateCache[code]) return rateCache[code];
