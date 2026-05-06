@@ -4,6 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import Header         from "@/components/Header";
+import CTACard  from "@/components/CTACard";
+import Footer   from "@/components/Footer";
 import HelpModal      from "@/components/HelpModal";
 import PrintHeader    from "@/components/PrintHeader";
 import PrintLayout    from "@/components/PrintLayout";
@@ -318,15 +320,18 @@ export default function DashboardPage() {
                   onInsertBelow={id => insertAt(id, "below")}
                 />
               </div>
-              <div className="min-w-0">
-                <ChartsPanel rows={rows} rate={rate} totalLocal={totalLocal} totalIDR={totalIDR} />
-              </div>
+              <div className="min-w-0 space-y-4">
+                 <ChartsPanel rows={rows} rate={rate} totalLocal={totalLocal} totalIDR={totalIDR} />
+  <CTACard
+    tripInfo={tripInfo}
+    totalLocal={totalLocal}
+    currency={getCurrency(region)}
+    totalIDR={totalIDR}
+  />
+</div>
             </div>
 
-            <footer className="mt-10 border-t border-paper-line pb-2 pt-5 text-center text-[11px] text-ink-muted">
-              Backpackervun Travel Planner ·{" "}
-              <button onClick={() => { setHelpTab("contact"); setHelpOpen(true); }} className="font-medium text-navy-500 hover:underline underline-offset-2">Contact</button>
-            </footer>
+          <Footer className="mt-10" />
           </main>
         </div>
       )}
