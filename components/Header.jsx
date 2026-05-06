@@ -13,27 +13,27 @@ export default function Header({
   onHelp,
   onSave,
   onLoadOpen,
-  saveStatus,        // "idle" | "saving" | "saved" | "error"
+  saveStatus,         // "idle" | "saving" | "saved" | "error"
+  hasUnsavedChanges,  // boolean — show dot when true
   totalLocal,
   totalIDR,
   mode,
   onModeChange,
   region,
   onRegionChange,
+  rateSource,         // "live" | "fallback" | "manual"
 }) {
-  const { logout } = useAuth();
+  const { logout }  = useAuth();
   const currency    = getCurrency(region);
   const isIDRRegion = currency.code === "IDR";
   const [open, setOpen] = useState(false);
-
-  // Close dropdown when clicking outside
   const close = () => setOpen(false);
 
   const saveLabel = {
     idle:   "Save",
     saving: "Saving…",
     saved:  "Saved ✓",
-    error:  "Save failed",
+    error:  "Retry",
   }[saveStatus ?? "idle"];
 
   return (
@@ -41,32 +41,24 @@ export default function Header({
       <div className="mx-auto max-w-[1600px] px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between sm:py-5">
 
-          {/* LEFT — brand */}
+          {/* LEFT */}
           <div className="flex items-center">
-            <img
-              src="/logo.png"
-              alt="Backpackervun"
-              className="h-7 w-auto sm:h-8"
-            />
+            <img src="/logo.png" alt="Backpackervun" className="h-7 w-auto sm:h-8" />
             <span className="ml-3 hidden border-l border-paper-line pl-3 text-[10px] font-semibold uppercase tracking-[0.22em] text-ink-muted sm:inline-block">
               Travel Planner
             </span>
           </div>
 
-          {/* RIGHT — controls */}
-          <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
+          {/* RIGHT */}
+          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
 
             {/* Region pill */}
             {onRegionChange && (
-              <RegionSelector
-                variant="pill"
-                value={region}
-                onChange={onRegionChange}
-              />
+              <RegionSelector variant="pill" value={region} onChange={onRegionChange} />
             )}
 
             {/* Totals */}
-            <div className="flex items-center gap-4 rounded-lg border border-paper-line bg-white px-4 py-2 shadow-soft">
+            <div className="flex items-center gap-3 rounded-lg border border-paper-line bg-white px-4 py-2 shadow-soft">
               <div>
                 <div className="text-[10px] text-ink-muted">Total · {currency.code}</div>
                 <div className="font-mono text-sm font-semibold tabular-nums text-ink">
@@ -86,7 +78,7 @@ export default function Header({
               )}
             </div>
 
-            {/* Rate */}
+            {/* Rate input with live-rate badge */}
             {!isIDRRegion && (
               <div className="flex items-center gap-2 rounded-lg border border-paper-line bg-white px-3 py-2 shadow-soft">
                 <span className="text-[10px] text-ink-muted">1 {currency.code} =</span>
@@ -94,35 +86,52 @@ export default function Header({
                   type="number"
                   value={rate}
                   onChange={(e) => onRateChange(Number(e.target.value))}
-                  className="w-16 text-right font-mono text-sm font-semibold text-ink outline-none bg-transparent"
+                  className="w-14 text-right font-mono text-sm font-semibold text-ink outline-none bg-transparent"
                   aria-label={`${currency.code} to IDR rate`}
                 />
                 <span className="text-[10px] text-ink-muted">IDR</span>
+                {rateSource === "live" && (
+                  <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[9px] font-semibold text-emerald-700" title="Live rate from open.er-api.com">
+                    LIVE
+                  </span>
+                )}
+                {rateSource === "fallback" && (
+                  <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-semibold text-amber-700" title="Approximate rate (offline fallback)">
+                    ~
+                  </span>
+                )}
               </div>
             )}
 
-            {/* Quick Save button — visible separately for prominence */}
-            <button
-              onClick={onSave}
-              disabled={saveStatus === "saving"}
-              className={`no-print inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold transition ${
-                saveStatus === "saved"
-                  ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                  : saveStatus === "error"
-                  ? "border-red-200 bg-red-50 text-red-600"
-                  : "border-paper-line bg-white text-ink-soft shadow-soft hover:border-navy-200 hover:text-navy-500"
-              } disabled:opacity-60`}
-              title="Save trip to cloud"
-            >
-              <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
-                <polyline points="17 21 17 13 7 13 7 21" />
-                <polyline points="7 3 7 8 15 8" />
-              </svg>
-              {saveLabel}
-            </button>
+            {/* Save button with unsaved dot */}
+            <div className="relative">
+              <button
+                onClick={onSave}
+                disabled={saveStatus === "saving"}
+                className={`no-print inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold transition disabled:opacity-60 ${
+                  saveStatus === "saved"  ? "border-emerald-200 bg-emerald-50 text-emerald-700" :
+                  saveStatus === "error"  ? "border-red-200 bg-red-50 text-red-600" :
+                  "border-paper-line bg-white text-ink-soft shadow-soft hover:border-navy-200 hover:text-navy-500"
+                }`}
+                title="Save trip to cloud"
+              >
+                <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+                  <polyline points="17 21 17 13 7 13 7 21" />
+                  <polyline points="7 3 7 8 15 8" />
+                </svg>
+                {saveLabel}
+              </button>
+              {/* Unsaved changes dot */}
+              {hasUnsavedChanges && saveStatus === "idle" && (
+                <span
+                  className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-amber-400 ring-2 ring-white"
+                  title="You have unsaved changes"
+                />
+              )}
+            </div>
 
-            {/* Settings dropdown */}
+            {/* Settings menu */}
             <div className="relative">
               <button
                 onClick={() => setOpen((v) => !v)}
@@ -141,43 +150,20 @@ export default function Header({
                 <>
                   <div className="fixed inset-0 z-40" onClick={close} />
                   <div className="absolute right-0 top-full z-50 mt-2 w-48 overflow-hidden rounded-xl border border-paper-line bg-white shadow-card">
-                    <DropdownItem
-                      icon="👁"
-                      label="Preview"
-                      onClick={() => { onModeChange?.("preview"); close(); }}
-                    />
-                    <DropdownItem
-                      icon="🖨"
-                      label="Export PDF"
-                      onClick={() => { onPrint(); close(); }}
-                    />
-                    <DropdownItem
-                      icon="📂"
-                      label="Load trip"
-                      onClick={() => { onLoadOpen(); close(); }}
-                    />
-                    <DropdownItem
-                      icon="❓"
-                      label="Help"
-                      onClick={() => { onHelp(); close(); }}
-                    />
-                    <DropdownItem
-                      icon="↺"
-                      label="Reset"
-                      onClick={() => { onReset(); close(); }}
-                    />
+                    {mode === "preview"
+                      ? <DropdownItem icon="✏️" label="Back to Edit" onClick={() => { onModeChange("edit"); close(); }} />
+                      : <DropdownItem icon="👁" label="Preview" onClick={() => { onModeChange("preview"); close(); }} />
+                    }
+                    <DropdownItem icon="🖨" label="Export PDF" onClick={() => { onPrint(); close(); }} />
+                    <DropdownItem icon="📂" label="Load trip" onClick={() => { onLoadOpen(); close(); }} />
+                    <DropdownItem icon="❓" label="Help" onClick={() => { onHelp(); close(); }} />
+                    <DropdownItem icon="↺" label="Reset" onClick={() => { onReset(); close(); }} />
                     <div className="my-1 border-t border-paper-line" />
-                    <DropdownItem
-                      icon="→"
-                      label="Logout"
-                      danger
-                      onClick={() => { logout(); close(); }}
-                    />
+                    <DropdownItem icon="→" label="Logout" danger onClick={() => { logout(); close(); }} />
                   </div>
                 </>
               )}
             </div>
-
           </div>
         </div>
       </div>
