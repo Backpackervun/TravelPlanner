@@ -13,54 +13,45 @@ import TripInfoPanel  from "@/components/TripInfoPanel";
 import ItineraryTable from "@/components/ItineraryTable";
 import ChartsPanel    from "@/components/ChartsPanel";
 
-import { useAuth }        from "@/context/AuthProvider";
-import { saveProject }    from "@/lib/firestore";
+import { useAuth }           from "@/context/AuthProvider";
+import { saveProject }       from "@/lib/firestore";
 import { loadRates, getRate } from "@/lib/exchangeRates";
-import { INITIAL_ROWS, INITIAL_TRIP_INFO } from "@/lib/sample-data";
 import { DEFAULT_RATE, generateId, getCurrency } from "@/lib/utils";
 
-const STORAGE_KEY = "backpackervun-travel-planner:v6";
+const STORAGE_KEY = "backpackervun-v3";
+
+// ── Blank initial state (no fake data) ───────────────────────────────────────
+
+const BLANK_TRIP = { clientName: "", duration: "", destinations: "", travelDates: "", startDate: "", endDate: "" };
 
 // ── Row helpers ───────────────────────────────────────────────────────────────
 
 function syncIDR(row, rate) {
-  return {
-    ...row,
-    budgetIDR: Math.round((Number(row.budgetLocal) || 0) * (Number(rate) || 0)),
-  };
+  return { ...row, budgetIDR: Math.round((Number(row.budgetLocal) || 0) * (Number(rate) || 0)) };
 }
 
 function normalizeRow(row, rate) {
-  let next = { ...row };
-  if (next.budgetJPY !== undefined && next.budgetLocal === undefined) {
-    next.budgetLocal = next.budgetJPY;
-  }
-  delete next.budgetJPY;
-  delete next.durationMin; delete next.durationMax;
-  delete next.costMin;     delete next.costMax;
-  if (typeof next.budgetIDR !== "number") next = syncIDR(next, rate);
-  return next;
+  let r = { ...row };
+  // Migrate old budgetJPY field
+  if (r.budgetJPY !== undefined && r.budgetLocal === undefined) r.budgetLocal = r.budgetJPY;
+  delete r.budgetJPY; delete r.durationMin; delete r.durationMax; delete r.costMin; delete r.costMax;
+  if (typeof r.budgetIDR !== "number") r = syncIDR(r, rate);
+  return r;
 }
 
-function makeBlankRow(siblingRow) {
+function blankRow(sibling) {
   return {
-    id: generateId(),
-    date: siblingRow?.date ?? "",
-    time: "",
-    city: siblingRow?.city ?? "",
-    destination: "", from: "", to: "",
-    transport: "", notes: "", category: "",
+    id: generateId(), date: sibling?.date ?? "", time: "", city: sibling?.city ?? "",
+    destination: "", from: "", to: "", transport: "", notes: "", category: "",
     budgetLocal: 0, budgetIDR: 0,
   };
 }
 
 function buildDayMap(rows) {
-  const dates = Array.from(
-    new Set(rows.map((r) => (r.date || "").trim()).filter(Boolean))
-  ).sort();
-  const map = {};
-  dates.forEach((d, i) => { map[d] = i + 1; });
-  return map;
+  const dates = [...new Set(rows.map(r => (r.date || "").trim()).filter(Boolean))].sort();
+  const m = {};
+  dates.forEach((d, i) => { m[d] = i + 1; });
+  return m;
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
@@ -74,117 +65,110 @@ export default function DashboardPage() {
     if (!authLoading && !user) router.replace("/login");
   }, [authLoading, user, router]);
 
-  // App state
-  const [hydrated, setHydrated]             = useState(false);
-  const [mode, setMode]                     = useState("edit");
-  const [rows, setRows]                     = useState(INITIAL_ROWS);
-  const [tripInfo, setTripInfo]             = useState(INITIAL_TRIP_INFO);
-  const [rate, setRate]                     = useState(DEFAULT_RATE);
-  const [rateSource, setRateSource]         = useState("manual"); // "live" | "fallback" | "manual"
-  const [region, setRegion]                 = useState(null);
-  const [setupComplete, setSetupComplete]   = useState(false);
-  const [projectId, setProjectId]           = useState(null);
-  const [saveStatus, setSaveStatus]         = useState("idle");
-  const [hasUnsavedChanges, setUnsaved]     = useState(false);
-  const [helpOpen, setHelpOpen]             = useState(false);
-  const [helpTab, setHelpTab]               = useState("how");
-  const [projectsOpen, setProjectsOpen]     = useState(false);
+  // Core state
+  const [hydrated, setHydrated]           = useState(false);
+  const [mode, setMode]                   = useState("edit");
+  const [rows, setRows]                   = useState([]);
+  const [tripInfo, setTripInfo]           = useState(BLANK_TRIP);
+  const [rate, setRate]                   = useState(DEFAULT_RATE);
+  const [rateSource, setRateSource]       = useState("manual");
+  const [region, setRegion]               = useState(null);
+  const [setupComplete, setSetup]         = useState(false);
+  const [projectId, setProjectId]         = useState(null);
 
-  // ── Load rates on mount (once) ─────────────────────────────────────────────
-  const ratesLoaded = useRef(false);
+  // Save status
+  const [saveStatus, setSaveStatus]       = useState("idle");
+  const [hasUnsaved, setHasUnsaved]       = useState(false);
 
-  const applyLiveRate = useCallback(async (regionId) => {
+  // Modals
+  const [helpOpen, setHelpOpen]           = useState(false);
+  const [helpTab, setHelpTab]             = useState("how");
+  const [projectsOpen, setProjectsOpen]   = useState(false);
+
+  const ratesFetched = useRef(false);
+  const initialLoad  = useRef(true);
+
+  // ── Live rate fetching ─────────────────────────────────────────────────────
+
+  const fetchLiveRate = useCallback(async (regionId) => {
     if (!regionId) return;
     const currency = getCurrency(regionId);
-    if (currency.code === "IDR") return; // no conversion needed
-
+    if (currency.code === "IDR") { setRate(1); setRateSource("live"); return; }
     try {
-      const rates = await loadRates();
-      const liveRate = Math.round(rates[currency.code] ?? 0);
-      if (liveRate > 0) {
-        setRate(liveRate);
+      const rates    = await loadRates();
+      const liveRate = rates[currency.code];
+      if (liveRate && liveRate > 0) {
+        const r = Math.round(liveRate);
+        setRate(r);
         setRateSource("live");
-        // Re-sync all row IDR values
-        setRows((prev) => prev.map((r) => syncIDR(r, liveRate)));
+        setRows(prev => prev.map(row => syncIDR(row, r)));
       } else {
-        // Rate not in live data — use fallback
-        const fallback = getRate(currency.code);
-        setRate(fallback);
+        const fb = getRate(currency.code);
+        setRate(fb);
         setRateSource("fallback");
-        setRows((prev) => prev.map((r) => syncIDR(r, fallback)));
+        setRows(prev => prev.map(row => syncIDR(row, fb)));
       }
     } catch {
-      // API unavailable, use built-in fallback
-      const fallback = getRate(currency.code);
-      setRate(fallback);
+      const fb = getRate(getCurrency(regionId).code);
+      setRate(fb);
       setRateSource("fallback");
-      setRows((prev) => prev.map((r) => syncIDR(r, fallback)));
+      setRows(prev => prev.map(row => syncIDR(row, fb)));
     }
   }, []);
 
-  // ── Load from localStorage ─────────────────────────────────────────────────
+  // ── Load from localStorage on mount ───────────────────────────────────────
+
   useEffect(() => {
     try {
       const raw = window.localStorage.getItem(STORAGE_KEY);
       if (raw) {
-        const parsed = JSON.parse(raw);
-        const nextRate = typeof parsed.rate === "number" && parsed.rate > 0
-          ? parsed.rate : DEFAULT_RATE;
-
-        if (Array.isArray(parsed.rows)) {
-          setRows(parsed.rows.map((r) => normalizeRow(r, nextRate)));
+        const p = JSON.parse(raw);
+        const r = typeof p.rate === "number" && p.rate > 0 ? p.rate : DEFAULT_RATE;
+        if (Array.isArray(p.rows))   setRows(p.rows.map(row => normalizeRow(row, r)));
+        if (p.tripInfo)              setTripInfo({ ...BLANK_TRIP, ...p.tripInfo });
+        if (typeof p.region === "string") {
+          const reg = p.region === "Korea" ? "South Korea" : p.region;
+          setRegion(reg);
         }
-        if (parsed.tripInfo) {
-          setTripInfo({ ...INITIAL_TRIP_INFO, ...parsed.tripInfo });
-        }
-        if (typeof parsed.region === "string") {
-          const r = parsed.region === "Korea" ? "South Korea" : parsed.region;
-          setRegion(r);
-        }
-        if (typeof parsed.setupComplete === "boolean") {
-          setSetupComplete(parsed.setupComplete);
-        } else if (parsed.region) {
-          setSetupComplete(true);
-        }
-        if (parsed.projectId) setProjectId(parsed.projectId);
-
-        // Use saved rate initially; live rate will overwrite on fetch
-        setRate(nextRate);
-        setRateSource("manual");
+        if (typeof p.setupComplete === "boolean") setSetup(p.setupComplete);
+        else if (p.region) setSetup(true);
+        if (p.projectId)             setProjectId(p.projectId);
+        setRate(r);
       }
     } catch { /* ignore */ }
     setHydrated(true);
   }, []);
 
-  // Once hydrated + region known, fetch live rates
+  // Fetch live rate once after region is known
   useEffect(() => {
-    if (!hydrated || !region || ratesLoaded.current) return;
-    ratesLoaded.current = true;
-    applyLiveRate(region);
-  }, [hydrated, region, applyLiveRate]);
+    if (!hydrated || !region || ratesFetched.current) return;
+    ratesFetched.current = true;
+    fetchLiveRate(region);
+  }, [hydrated, region, fetchLiveRate]);
 
   // ── Persist to localStorage ────────────────────────────────────────────────
+  // Note: we persist frequently to localStorage (fast, local), but
+  // Firestore only writes on explicit Save button click.
+
   useEffect(() => {
     if (!hydrated) return;
     try {
-      window.localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify({ rows, rate, tripInfo, region, setupComplete, projectId })
-      );
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        rows, rate, tripInfo, region, setupComplete, projectId,
+      }));
     } catch { /* quota */ }
   }, [rows, rate, tripInfo, region, setupComplete, projectId, hydrated]);
 
   // ── Track unsaved changes ──────────────────────────────────────────────────
-  // We mark as "unsaved" whenever rows / tripInfo / rate / region change.
-  // We clear it when a save succeeds.
-  const isFirstRender = useRef(true);
+
   useEffect(() => {
     if (!hydrated) return;
-    if (isFirstRender.current) { isFirstRender.current = false; return; }
-    setUnsaved(true);
-  }, [rows, tripInfo, rate, region]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (initialLoad.current) { initialLoad.current = false; return; }
+    setHasUnsaved(true);
+  }, [rows, tripInfo, rate, region]); // eslint-disable-line
 
-  // ── Derived ────────────────────────────────────────────────────────────────
+  // ── Derived values ─────────────────────────────────────────────────────────
+
   const totalLocal = useMemo(
     () => rows.reduce((s, r) => s + (Number(r.budgetLocal) || 0), 0),
     [rows]
@@ -198,119 +182,101 @@ export default function DashboardPage() {
   // ── Mutations ──────────────────────────────────────────────────────────────
 
   const updateRow = (id, field, value) => {
-    setRows((prev) =>
-      prev.map((r) => {
-        if (r.id !== id) return r;
-        const next = { ...r, [field]: value };
-        const rn = Number(rate) || 1;
-        if (field === "budgetLocal") next.budgetIDR   = Math.round((Number(value) || 0) * rn);
-        if (field === "budgetIDR")   next.budgetLocal = Math.round((Number(value) || 0) / rn);
-        if ((field === "from" || field === "to") && !next.category) {
-          if ((next.from || "").trim() && (next.to || "").trim()) next.category = "Transport";
-        }
-        return next;
-      })
-    );
-  };
-
-  const handleRateChange = (newRate) => {
-    const safe = Number(newRate) || 0;
-    setRate(safe);
-    setRateSource("manual");
-    setRows((prev) => prev.map((r) => syncIDR(r, safe)));
-  };
-
-  const addRow    = () => setRows((prev) => [...prev, makeBlankRow(prev[prev.length - 1])]);
-  const deleteRow = (id) => setRows((prev) => prev.filter((r) => r.id !== id));
-
-  const insertRowAt = (refId, position) => {
-    setRows((prev) => {
-      const idx = prev.findIndex((r) => r.id === refId);
-      if (idx === -1) return prev;
-      const newRow = makeBlankRow(prev[idx]);
-      const next = [...prev];
-      next.splice(position === "above" ? idx : idx + 1, 0, newRow);
+    setRows(prev => prev.map(r => {
+      if (r.id !== id) return r;
+      const next = { ...r, [field]: value };
+      const rn = Number(rate) || 1;
+      if (field === "budgetLocal") next.budgetIDR   = Math.round((Number(value) || 0) * rn);
+      if (field === "budgetIDR")   next.budgetLocal = Math.round((Number(value) || 0) / rn);
+      if ((field === "from" || field === "to") && !next.category) {
+        if ((next.from || "").trim() && (next.to || "").trim()) next.category = "Transport";
+      }
       return next;
+    }));
+  };
+
+  const handleRateChange = (v) => {
+    const n = Number(v) || 0;
+    setRate(n);
+    setRateSource("manual");
+    setRows(prev => prev.map(r => syncIDR(r, n)));
+  };
+
+  const addRow    = () => setRows(prev => [...prev, blankRow(prev[prev.length - 1])]);
+  const deleteRow = (id) => setRows(prev => prev.filter(r => r.id !== id));
+  const insertAt  = (refId, pos) => {
+    setRows(prev => {
+      const i = prev.findIndex(r => r.id === refId);
+      if (i === -1) return prev;
+      const n = [...prev];
+      n.splice(pos === "above" ? i : i + 1, 0, blankRow(prev[i]));
+      return n;
     });
   };
 
   const handleReset = () => {
     if (!window.confirm("Clear everything and start over?")) return;
-    setRows([]);
-    setTripInfo(INITIAL_TRIP_INFO);
-    setRate(DEFAULT_RATE);
-    setRateSource("manual");
-    setRegion(null);
-    setSetupComplete(false);
-    setProjectId(null);
-    setMode("edit");
-    setUnsaved(false);
-    ratesLoaded.current = false;
+    setRows([]); setTripInfo(BLANK_TRIP); setRate(DEFAULT_RATE);
+    setRateSource("manual"); setRegion(null); setSetup(false);
+    setProjectId(null); setMode("edit"); setHasUnsaved(false);
+    ratesFetched.current = false; initialLoad.current = true;
   };
 
-  const handlePrint = () => window.print();
-  const handleHelp  = () => { setHelpTab("how"); setHelpOpen(true); };
-
-  const handleRegionChange = (nextRegion) => {
-    setRegion(nextRegion);
-    ratesLoaded.current = false; // re-fetch for new region
-    if (nextRegion === "Indonesia") {
-      setRate(1);
-      setRateSource("live");
-      setRows((prev) => prev.map((r) => syncIDR(r, 1)));
+  const handleRegionChange = (r) => {
+    setRegion(r);
+    ratesFetched.current = false;
+    if (r === "Indonesia") {
+      setRate(1); setRateSource("live");
+      setRows(prev => prev.map(row => syncIDR(row, 1)));
     } else {
-      // Fetch live rate for the new region
-      applyLiveRate(nextRegion);
+      fetchLiveRate(r);
     }
   };
 
-  // ── Manual Save (NO auto-save) ─────────────────────────────────────────────
+  // ── Manual Save only — NO auto-save ───────────────────────────────────────
+
   const handleSave = async () => {
     if (!user) return;
     setSaveStatus("saving");
     try {
-      const newId = await saveProject(user.uid, projectId, {
-        tripInfo, rows, region, rate,
-      });
-      if (!projectId) setProjectId(newId);
+      const id = await saveProject(user.uid, projectId, { tripInfo, rows, region, rate });
+      if (!projectId) setProjectId(id);
       setSaveStatus("saved");
-      setUnsaved(false);
+      setHasUnsaved(false);
       setTimeout(() => setSaveStatus("idle"), 2500);
-    } catch {
+    } catch (e) {
+      console.error("[save]", e);
       setSaveStatus("error");
       setTimeout(() => setSaveStatus("idle"), 3000);
     }
   };
 
-  const handleLoadProject = (project) => {
-    const loadedRate = project.rate ?? DEFAULT_RATE;
-    setRows((project.rows ?? []).map((r) => normalizeRow(r, loadedRate)));
-    setTripInfo({ ...INITIAL_TRIP_INFO, ...(project.tripInfo ?? {}) });
-    setRate(loadedRate);
-    setRateSource("manual");
-    setRegion(project.region ?? null);
-    setProjectId(project.id);
-    setSetupComplete(true);
-    setMode("edit");
-    setUnsaved(false);
-    ratesLoaded.current = false;
-    // Fetch live rate for the loaded project's region
-    if (project.region) applyLiveRate(project.region);
+  const handleLoadProject = (p) => {
+    const lr = p.rate ?? DEFAULT_RATE;
+    setRows((p.rows ?? []).map(r => normalizeRow(r, lr)));
+    setTripInfo({ ...BLANK_TRIP, ...(p.tripInfo ?? {}) });
+    setRate(lr); setRateSource("manual");
+    setRegion(p.region ?? null);
+    setProjectId(p.id); setSetup(true); setMode("edit");
+    setHasUnsaved(false); ratesFetched.current = false; initialLoad.current = true;
+    if (p.region) fetchLiveRate(p.region);
   };
 
   const inPreview = mode === "preview";
   const showSetup = hydrated && !setupComplete;
 
-  // Loading screen while auth resolves
+  // Loading
   if (authLoading || !hydrated) {
     return (
       <div className="min-h-screen paper-bg flex items-center justify-center">
-        <p className="text-sm text-ink-muted">Loading…</p>
+        <div className="text-center">
+          <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-navy-500 border-t-transparent" />
+          <p className="mt-3 text-sm text-ink-muted">Loading…</p>
+        </div>
       </div>
     );
   }
 
-  // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className={`paper-bg min-h-screen ${inPreview ? "preview-mode" : ""}`}>
 
@@ -318,15 +284,16 @@ export default function DashboardPage() {
       {showSetup && (
         <div className="screen-layout">
           <header className="border-b border-paper-line bg-white/85 backdrop-blur-md">
-            <div className="mx-auto flex max-w-[1600px] items-center justify-between gap-3 px-4 py-4 sm:px-6 lg:px-8">
-              <div className="flex items-center">
+            <div className="mx-auto flex max-w-[1600px] items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
+              <div className="flex items-center gap-3">
                 <img src="/logo.png" alt="Backpackervun" className="h-7 w-auto sm:h-8" />
-                <span className="ml-3 hidden border-l border-paper-line pl-3 text-[10px] font-semibold uppercase tracking-[0.22em] text-ink-muted sm:inline-block">
+                <span className="hidden border-l border-paper-line pl-3 text-[10px] font-semibold uppercase tracking-[0.22em] text-ink-muted sm:inline-block">
                   Travel Planner
                 </span>
               </div>
-              <button onClick={handleHelp} className="inline-flex items-center gap-1.5 rounded-lg border border-paper-line bg-white px-3 py-2 text-xs font-medium text-ink-soft shadow-soft hover:border-navy-200 hover:text-navy-500">
-                Help
+              <button onClick={() => { setHelpTab("how"); setHelpOpen(true); }}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-paper-line bg-white px-3 py-2 text-xs font-medium text-ink-soft hover:border-navy-200 hover:text-navy-500">
+                ❓ Help
               </button>
             </div>
           </header>
@@ -335,7 +302,7 @@ export default function DashboardPage() {
             region={region}
             onTripInfoChange={setTripInfo}
             onRegionChange={handleRegionChange}
-            onStart={() => setSetupComplete(true)}
+            onStart={() => { setSetup(true); initialLoad.current = true; }}
           />
         </div>
       )}
@@ -344,21 +311,14 @@ export default function DashboardPage() {
       {!showSetup && (
         <div className="screen-layout">
           <Header
-            rate={rate}
-            onRateChange={handleRateChange}
-            onReset={handleReset}
-            onPrint={handlePrint}
-            onHelp={handleHelp}
-            onSave={handleSave}
-            onLoadOpen={() => setProjectsOpen(true)}
-            saveStatus={saveStatus}
-            hasUnsavedChanges={hasUnsavedChanges}
-            totalLocal={totalLocal}
-            totalIDR={totalIDR}
-            mode={mode}
-            onModeChange={setMode}
-            region={region}
-            onRegionChange={handleRegionChange}
+            rate={rate}              onRateChange={handleRateChange}
+            onReset={handleReset}    onPrint={() => window.print()}
+            onHelp={() => { setHelpTab("how"); setHelpOpen(true); }}
+            onSave={handleSave}      onLoadOpen={() => setProjectsOpen(true)}
+            saveStatus={saveStatus}  hasUnsavedChanges={hasUnsaved}
+            totalLocal={totalLocal}  totalIDR={totalIDR}
+            mode={mode}              onModeChange={setMode}
+            region={region}          onRegionChange={handleRegionChange}
             rateSource={rateSource}
           />
 
@@ -368,14 +328,10 @@ export default function DashboardPage() {
             <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px] xl:grid-cols-[minmax(0,1fr)_360px]">
               <div className="min-w-0">
                 <ItineraryTable
-                  rows={rows}
-                  dayMap={dayMap}
-                  region={region}
-                  onUpdate={updateRow}
-                  onAdd={addRow}
-                  onDelete={deleteRow}
-                  onInsertAbove={(id) => insertRowAt(id, "above")}
-                  onInsertBelow={(id) => insertRowAt(id, "below")}
+                  rows={rows} dayMap={dayMap} region={region}
+                  onUpdate={updateRow} onAdd={addRow} onDelete={deleteRow}
+                  onInsertAbove={id => insertAt(id, "above")}
+                  onInsertBelow={id => insertAt(id, "below")}
                 />
               </div>
               <div className="min-w-0">
@@ -383,11 +339,9 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            <footer className="mt-10 border-t border-paper-line pt-5 pb-2 text-center text-[11px] text-ink-muted">
+            <footer className="mt-10 border-t border-paper-line pb-2 pt-5 text-center text-[11px] text-ink-muted">
               Backpackervun Travel Planner ·{" "}
-              <button onClick={() => { setHelpTab("contact"); setHelpOpen(true); }} className="font-medium text-navy-500 hover:underline underline-offset-2">
-                Contact
-              </button>
+              <button onClick={() => { setHelpTab("contact"); setHelpOpen(true); }} className="font-medium text-navy-500 hover:underline underline-offset-2">Contact</button>
             </footer>
           </main>
         </div>
@@ -403,14 +357,10 @@ export default function DashboardPage() {
                   <span className="rounded-full bg-navy-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-navy-500">Preview</span>
                   <p className="text-xs text-ink-soft">This is what the PDF will look like.</p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <button onClick={() => setMode("edit")} className="rounded-lg border border-paper-line bg-white px-3 py-1.5 text-xs font-semibold text-ink-soft shadow-soft hover:border-navy-200 hover:text-navy-500">
-                    ← Back to edit
-                  </button>
-                  <button onClick={handlePrint} className="inline-flex items-center gap-1.5 rounded-lg bg-navy-500 px-3 py-1.5 text-xs font-semibold text-white shadow-[0_2px_8px_rgba(11,60,93,0.28)] hover:bg-navy-600">
-                    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M6 9V2h12v7" /><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><path d="M6 14h12v8H6z" />
-                    </svg>
+                <div className="flex gap-2">
+                  <button onClick={() => setMode("edit")} className="rounded-lg border border-paper-line bg-white px-3 py-1.5 text-xs font-semibold text-ink-soft shadow-soft hover:border-navy-200 hover:text-navy-500">← Back</button>
+                  <button onClick={() => window.print()} className="inline-flex items-center gap-1.5 rounded-lg bg-navy-500 px-3 py-1.5 text-xs font-semibold text-white shadow hover:bg-navy-600">
+                    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v8H6z"/></svg>
                     Export PDF
                   </button>
                 </div>
@@ -424,7 +374,7 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* ── MODALS ─── */}
+      {/* Modals */}
       <HelpModal open={helpOpen} initialTab={helpTab} onClose={() => setHelpOpen(false)} />
       <ProjectsModal open={projectsOpen} userId={user?.uid} onClose={() => setProjectsOpen(false)} onLoad={handleLoadProject} />
     </div>
