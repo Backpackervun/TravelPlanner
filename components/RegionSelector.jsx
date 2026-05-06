@@ -1,22 +1,8 @@
 "use client";
 
 import { useState } from "react";
-
 import { CORE_REGIONS, EXTRA_REGIONS, getRegion } from "@/lib/utils";
 
-/**
- * RegionSelector — two display modes:
- *
- *   1. variant="grid"   — full card grid, used when no region is selected.
- *      Shows core regions prominently with an expandable "More" tray for
- *      extras (Australia, Indonesia, Malaysia, Vietnam).
- *
- *   2. variant="pill"   — compact single button showing the current region,
- *      opens a popover with the same grid for changing.
- *
- * Selecting a region calls onChange(regionId) and (in pill mode) closes
- * the popover.
- */
 export default function RegionSelector({ value, onChange, variant = "grid" }) {
   if (variant === "pill") {
     return <PillSelector value={value} onChange={onChange} />;
@@ -24,9 +10,7 @@ export default function RegionSelector({ value, onChange, variant = "grid" }) {
   return <GridSelector value={value} onChange={onChange} />;
 }
 
-// ============================================================
-// Pill selector — compact inline control
-// ============================================================
+// ── Pill selector ────────────────────────────────────────────────────────────
 
 function PillSelector({ value, onChange }) {
   const [open, setOpen] = useState(false);
@@ -42,13 +26,13 @@ function PillSelector({ value, onChange }) {
         aria-expanded={open}
       >
         <span className="text-base leading-none">{region?.flag ?? "🌏"}</span>
-        <span className="text-[11px] uppercase tracking-[0.16em] text-ink-muted">
+        <span className="hidden text-[11px] uppercase tracking-[0.16em] text-ink-muted sm:inline">
           Region
         </span>
         <span className="text-ink">{region?.id ?? "Choose"}</span>
         <svg
           viewBox="0 0 24 24"
-          className={`h-3 w-3 transition ${open ? "rotate-180" : ""}`}
+          className={`h-3 w-3 flex-shrink-0 transition ${open ? "rotate-180" : ""}`}
           fill="none"
           stroke="currentColor"
           strokeWidth="2.4"
@@ -61,13 +45,31 @@ function PillSelector({ value, onChange }) {
 
       {open && (
         <>
-          {/* Backdrop — click to close */}
+          {/* Full-screen backdrop — closes the popover */}
           <div
             className="fixed inset-0 z-40"
             onClick={() => setOpen(false)}
             aria-hidden="true"
           />
-          <div className="absolute right-0 top-full z-50 mt-2 w-[min(94vw,560px)] animate-fade-in rounded-xl border border-paper-line bg-white p-4 shadow-card">
+
+          {/*
+            Popover — MOBILE FIX:
+            • `fixed` on mobile so it can't overflow its positioned ancestor
+            • Full-width minus 16px gutter on mobile (left-4 right-4)
+            • Reverts to absolute right-aligned on sm+
+            • max-h + overflow-y-auto so long lists scroll instead of overflow
+          */}
+          <div
+            className="
+              fixed left-4 right-4 z-50 mt-2 
+              sm:absolute sm:left-auto sm:right-0 sm:w-[min(560px,90vw)]
+              top-auto
+              max-h-[70vh] overflow-y-auto
+              rounded-xl border border-paper-line bg-white p-4 shadow-card
+              animate-fade-in
+            "
+            style={{ top: "var(--popover-top, auto)" }}
+          >
             <GridSelector
               value={value}
               onChange={(id) => {
@@ -83,9 +85,7 @@ function PillSelector({ value, onChange }) {
   );
 }
 
-// ============================================================
-// Grid selector — the canonical card grid
-// ============================================================
+// ── Grid selector ────────────────────────────────────────────────────────────
 
 function GridSelector({ value, onChange, compact = false }) {
   const [showExtras, setShowExtras] = useState(false);
@@ -101,16 +101,16 @@ function GridSelector({ value, onChange, compact = false }) {
             Where are you planning a trip?
           </h2>
           <p className="mt-1 text-sm text-ink-muted">
-            Pick a region — it tweaks the transport options to match.
+            Pick a region — it tweaks the transport options and currency.
           </p>
         </div>
       )}
 
       <div
-        className={`grid gap-2.5 ${
+        className={`grid gap-2 ${
           compact
             ? "grid-cols-2 sm:grid-cols-3"
-            : "grid-cols-2 sm:grid-cols-3 lg:grid-cols-5"
+            : "grid-cols-2 sm:grid-cols-3 lg:grid-cols-3"
         }`}
       >
         {CORE_REGIONS.map((r) => (
@@ -142,19 +142,13 @@ function GridSelector({ value, onChange, compact = false }) {
             <path d="M9 6l6 6-6 6" />
           </svg>
           {showExtras ? "Hide" : "More regions"}
-          <span className="text-[10px] font-medium text-ink-muted">
-            ({EXTRA_REGIONS.length})
-          </span>
+          <span className="text-[10px] text-ink-muted">({EXTRA_REGIONS.length})</span>
         </button>
 
         {showExtras && (
-          <div
-            className={`mt-2.5 grid animate-fade-in gap-2.5 ${
-              compact
-                ? "grid-cols-2 sm:grid-cols-4"
-                : "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4"
-            }`}
-          >
+          <div className={`mt-2.5 grid gap-2 animate-fade-in ${
+            compact ? "grid-cols-2 sm:grid-cols-3" : "grid-cols-2 sm:grid-cols-3"
+          }`}>
             {EXTRA_REGIONS.map((r) => (
               <RegionCard
                 key={r.id}
@@ -170,9 +164,7 @@ function GridSelector({ value, onChange, compact = false }) {
   );
 }
 
-// ============================================================
-// Single region card
-// ============================================================
+// ── Region card ──────────────────────────────────────────────────────────────
 
 function RegionCard({ region, active, onClick }) {
   return (
@@ -180,19 +172,19 @@ function RegionCard({ region, active, onClick }) {
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={`group relative flex items-center gap-3 rounded-lg border bg-white p-3 text-left transition ${
+      className={`group relative flex items-center gap-2 rounded-lg border bg-white p-2.5 text-left transition sm:gap-3 sm:p-3 ${
         active
           ? "border-navy-500 ring-2 ring-navy-200 shadow-[0_4px_12px_rgba(11,60,93,0.12)]"
           : "border-paper-line hover:border-navy-200 hover:bg-navy-50/50 hover:shadow-soft"
       }`}
     >
-      <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-md bg-paper-dim text-2xl leading-none">
+      <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md bg-paper-dim text-xl leading-none sm:h-9 sm:w-9 sm:text-2xl">
         {region.flag}
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block text-sm font-semibold text-ink">{region.id}</span>
+        <span className="block truncate text-xs font-semibold text-ink sm:text-sm">{region.id}</span>
         {region.subtitle && (
-          <span className="block truncate text-[11px] text-ink-muted">
+          <span className="hidden truncate text-[10px] text-ink-muted sm:block">
             {region.subtitle}
           </span>
         )}
@@ -200,7 +192,7 @@ function RegionCard({ region, active, onClick }) {
       {active && (
         <svg
           viewBox="0 0 24 24"
-          className="h-4 w-4 flex-shrink-0 text-navy-500"
+          className="h-3.5 w-3.5 flex-shrink-0 text-navy-500"
           fill="none"
           stroke="currentColor"
           strokeWidth="2.6"
