@@ -1,0 +1,39 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── User profiles: each user reads/writes only their own ──────────────
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      // Admins can read all users
+      allow read: if request.auth != null && isAdmin(request.auth.uid);
+      // Admins can update plan fields
+      allow update: if request.auth != null && isAdmin(request.auth.uid);
+    }
+
+    // ── Trips: owner can CRUD; admins can read ────────────────────────────
+    match /trips/{tripId} {
+      allow read, write: if request.auth != null &&
+        (resource == null || resource.data.userId == request.auth.uid);
+      allow read: if request.auth != null && isAdmin(request.auth.uid);
+    }
+
+    // ── Redeem codes: any authenticated user can read (to validate) ───────
+    // Only admins can create/modify codes
+    match /redeemCodes/{codeId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && isAdmin(request.auth.uid);
+      // Allow authenticated user to mark a code as used (redeem flow)
+      allow update: if request.auth != null &&
+        request.resource.data.used == true &&
+        request.resource.data.usedBy == request.auth.uid &&
+        resource.data.used == false;
+    }
+
+    // ── Helper: check admin role ──────────────────────────────────────────
+    function isAdmin(uid) {
+      return exists(/databases/$(database)/documents/users/$(uid)) &&
+        get(/databases/$(database)/documents/users/$(uid)).data.role == "admin";
+    }
+  }
+}

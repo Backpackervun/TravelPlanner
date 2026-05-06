@@ -4,37 +4,49 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { getUserProfile } from "@/lib/firestore";
+import { resolveActivePlan } from "@/lib/plans";
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [user, setUser]               = useState(null);
-  const [userProfile, setUserProfile] = useState(null); // { name, email, phone }
+  const [userProfile, setUserProfile] = useState(null);
+  const [activePlan, setActivePlan]   = useState("FREE");
   const [loading, setLoading]         = useState(true);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        // Sync cookie for middleware
         document.cookie = "token=true; path=/; SameSite=Lax";
         setUser(firebaseUser);
-        // Fetch Firestore profile for name/phone
         try {
           const profile = await getUserProfile(firebaseUser.uid);
           setUserProfile(profile ?? { name: firebaseUser.displayName ?? "", email: firebaseUser.email ?? "" });
+          setActivePlan(resolveActivePlan(profile));
         } catch {
-          // If Firestore is unreachable, fall back to auth displayName
           setUserProfile({ name: firebaseUser.displayName ?? "", email: firebaseUser.email ?? "" });
+          setActivePlan("FREE");
         }
       } else {
         document.cookie = "token=; Max-Age=0; path=/";
         setUser(null);
         setUserProfile(null);
+        setActivePlan("FREE");
       }
       setLoading(false);
     });
     return unsub;
   }, []);
+
+  /** Refresh plan after redeem or external upgrade */
+  const refreshPlan = async () => {
+    if (!user) return;
+    try {
+      const profile = await getUserProfile(user.uid);
+      setUserProfile(profile);
+      setActivePlan(resolveActivePlan(profile));
+    } catch { /* ignore */ }
+  };
 
   const logout = async () => {
     await signOut(auth);
@@ -43,7 +55,7 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, userProfile, loading, logout }}>
+    <AuthContext.Provider value={{ user, userProfile, activePlan, loading, logout, refreshPlan }}>
       {children}
     </AuthContext.Provider>
   );
