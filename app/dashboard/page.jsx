@@ -13,16 +13,17 @@ import TripInfoPanel  from "@/components/TripInfoPanel";
 import ItineraryTable from "@/components/ItineraryTable";
 import ChartsPanel    from "@/components/ChartsPanel";
 
-import { useAuth }           from "@/context/AuthProvider";
-import { saveProject }       from "@/lib/firestore";
-import { loadRates, getRate } from "@/lib/exchangeRates";
+import { useAuth }                     from "@/context/AuthProvider";
+import { saveProject }                 from "@/lib/firestore";
+import { fetchRateToIDR, invalidateRate } from "@/lib/exchangeRates";
 import { DEFAULT_RATE, generateId, getCurrency } from "@/lib/utils";
 
-const STORAGE_KEY = "backpackervun-v3";
+const STORAGE_KEY = "backpackervun-v4";
 
-// ── Blank initial state (no fake data) ───────────────────────────────────────
-
-const BLANK_TRIP = { clientName: "", duration: "", destinations: "", travelDates: "", startDate: "", endDate: "" };
+const BLANK_TRIP = {
+  clientName: "", duration: "", destinations: "",
+  travelDates: "", startDate: "", endDate: "",
+};
 
 // ── Row helpers ───────────────────────────────────────────────────────────────
 
@@ -31,11 +32,10 @@ function syncIDR(row, rate) {
 }
 
 function normalizeRow(row, rate) {
-  let r = { ...row };
-  // Migrate old budgetJPY field
+  const r = { ...row };
   if (r.budgetJPY !== undefined && r.budgetLocal === undefined) r.budgetLocal = r.budgetJPY;
   delete r.budgetJPY; delete r.durationMin; delete r.durationMax; delete r.costMin; delete r.costMax;
-  if (typeof r.budgetIDR !== "number") r = syncIDR(r, rate);
+  if (typeof r.budgetIDR !== "number") return syncIDR(r, rate);
   return r;
 }
 
@@ -65,58 +65,48 @@ export default function DashboardPage() {
     if (!authLoading && !user) router.replace("/login");
   }, [authLoading, user, router]);
 
-  // Core state
-  const [hydrated, setHydrated]           = useState(false);
-  const [mode, setMode]                   = useState("edit");
-  const [rows, setRows]                   = useState([]);
-  const [tripInfo, setTripInfo]           = useState(BLANK_TRIP);
-  const [rate, setRate]                   = useState(DEFAULT_RATE);
-  const [rateSource, setRateSource]       = useState("manual");
-  const [region, setRegion]               = useState(null);
-  const [setupComplete, setSetup]         = useState(false);
-  const [projectId, setProjectId]         = useState(null);
+  const [hydrated, setHydrated]         = useState(false);
+  const [mode, setMode]                 = useState("edit");
+  const [rows, setRows]                 = useState([]);
+  const [tripInfo, setTripInfo]         = useState(BLANK_TRIP);
+  const [rate, setRate]                 = useState(DEFAULT_RATE);
+  const [rateSource, setRateSource]     = useState("manual"); // "live" | "error" | "manual"
+  const [rateUpdatedAt, setRateUpdatedAt] = useState(null);
+  const [region, setRegion]             = useState(null);
+  const [setupComplete, setSetup]       = useState(false);
+  const [projectId, setProjectId]       = useState(null);
+  const [saveStatus, setSaveStatus]     = useState("idle");
+  const [hasUnsaved, setHasUnsaved]     = useState(false);
+  const [helpOpen, setHelpOpen]         = useState(false);
+  const [helpTab, setHelpTab]           = useState("how");
+  const [projectsOpen, setProjectsOpen] = useState(false);
 
-  // Save status
-  const [saveStatus, setSaveStatus]       = useState("idle");
-  const [hasUnsaved, setHasUnsaved]       = useState(false);
+  const ratesFetched  = useRef(false);
+  const initialChange = useRef(true);
 
-  // Modals
-  const [helpOpen, setHelpOpen]           = useState(false);
-  const [helpTab, setHelpTab]             = useState("how");
-  const [projectsOpen, setProjectsOpen]   = useState(false);
-
-  const ratesFetched = useRef(false);
-  const initialLoad  = useRef(true);
-
-  // ── Live rate fetching ─────────────────────────────────────────────────────
-
-  const fetchLiveRate = useCallback(async (regionId) => {
+  // ── CORRECT live rate fetch: fetch with source currency as base ────────────
+  const applyLiveRate = useCallback(async (regionId) => {
     if (!regionId) return;
     const currency = getCurrency(regionId);
-    if (currency.code === "IDR") { setRate(1); setRateSource("live"); return; }
+    if (currency.code === "IDR") {
+      setRate(1); setRateSource("live"); setRateUpdatedAt(new Date().toISOString());
+      setRows(prev => prev.map(r => syncIDR(r, 1)));
+      return;
+    }
     try {
-      const rates    = await loadRates();
-      const liveRate = rates[currency.code];
-      if (liveRate && liveRate > 0) {
-        const r = Math.round(liveRate);
-        setRate(r);
-        setRateSource("live");
-        setRows(prev => prev.map(row => syncIDR(row, r)));
-      } else {
-        const fb = getRate(currency.code);
-        setRate(fb);
-        setRateSource("fallback");
-        setRows(prev => prev.map(row => syncIDR(row, fb)));
-      }
-    } catch {
-      const fb = getRate(getCurrency(regionId).code);
-      setRate(fb);
-      setRateSource("fallback");
-      setRows(prev => prev.map(row => syncIDR(row, fb)));
+      const { rate: liveRate, updatedAt } = await fetchRateToIDR(currency.code);
+      setRate(liveRate);
+      setRateSource("live");
+      setRateUpdatedAt(updatedAt);
+      setRows(prev => prev.map(r => syncIDR(r, liveRate)));
+    } catch (err) {
+      console.warn("[rates] fetch failed:", err.message);
+      setRateSource("error");
+      // Don't overwrite the current rate — keep last known value
     }
   }, []);
 
-  // ── Load from localStorage on mount ───────────────────────────────────────
+  // ── localStorage load ─────────────────────────────────────────────────────
 
   useEffect(() => {
     try {
@@ -127,11 +117,10 @@ export default function DashboardPage() {
         if (Array.isArray(p.rows))   setRows(p.rows.map(row => normalizeRow(row, r)));
         if (p.tripInfo)              setTripInfo({ ...BLANK_TRIP, ...p.tripInfo });
         if (typeof p.region === "string") {
-          const reg = p.region === "Korea" ? "South Korea" : p.region;
-          setRegion(reg);
+          setRegion(p.region === "Korea" ? "South Korea" : p.region);
         }
         if (typeof p.setupComplete === "boolean") setSetup(p.setupComplete);
-        else if (p.region) setSetup(true);
+        else if (p.region)           setSetup(true);
         if (p.projectId)             setProjectId(p.projectId);
         setRate(r);
       }
@@ -139,43 +128,39 @@ export default function DashboardPage() {
     setHydrated(true);
   }, []);
 
-  // Fetch live rate once after region is known
+  // Fetch live rate after first hydration
   useEffect(() => {
     if (!hydrated || !region || ratesFetched.current) return;
     ratesFetched.current = true;
-    fetchLiveRate(region);
-  }, [hydrated, region, fetchLiveRate]);
+    applyLiveRate(region);
+  }, [hydrated, region, applyLiveRate]);
 
-  // ── Persist to localStorage ────────────────────────────────────────────────
-  // Note: we persist frequently to localStorage (fast, local), but
-  // Firestore only writes on explicit Save button click.
+  // ── localStorage save (instant, no Firestore) ─────────────────────────────
 
   useEffect(() => {
     if (!hydrated) return;
     try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify({
-        rows, rate, tripInfo, region, setupComplete, projectId,
-      }));
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(
+        { rows, rate, tripInfo, region, setupComplete, projectId }
+      ));
     } catch { /* quota */ }
   }, [rows, rate, tripInfo, region, setupComplete, projectId, hydrated]);
 
-  // ── Track unsaved changes ──────────────────────────────────────────────────
+  // ── Unsaved changes tracker ────────────────────────────────────────────────
 
   useEffect(() => {
     if (!hydrated) return;
-    if (initialLoad.current) { initialLoad.current = false; return; }
+    if (initialChange.current) { initialChange.current = false; return; }
     setHasUnsaved(true);
   }, [rows, tripInfo, rate, region]); // eslint-disable-line
 
-  // ── Derived values ─────────────────────────────────────────────────────────
+  // ── Derived ────────────────────────────────────────────────────────────────
 
   const totalLocal = useMemo(
-    () => rows.reduce((s, r) => s + (Number(r.budgetLocal) || 0), 0),
-    [rows]
+    () => rows.reduce((s, r) => s + (Number(r.budgetLocal) || 0), 0), [rows]
   );
   const totalIDR = useMemo(
-    () => Math.round(totalLocal * (Number(rate) || 0)),
-    [totalLocal, rate]
+    () => Math.round(totalLocal * (Number(rate) || 0)), [totalLocal, rate]
   );
   const dayMap = useMemo(() => buildDayMap(rows), [rows]);
 
@@ -185,7 +170,7 @@ export default function DashboardPage() {
     setRows(prev => prev.map(r => {
       if (r.id !== id) return r;
       const next = { ...r, [field]: value };
-      const rn = Number(rate) || 1;
+      const rn   = Number(rate) || 1;
       if (field === "budgetLocal") next.budgetIDR   = Math.round((Number(value) || 0) * rn);
       if (field === "budgetIDR")   next.budgetLocal = Math.round((Number(value) || 0) / rn);
       if ((field === "from" || field === "to") && !next.category) {
@@ -197,8 +182,7 @@ export default function DashboardPage() {
 
   const handleRateChange = (v) => {
     const n = Number(v) || 0;
-    setRate(n);
-    setRateSource("manual");
+    setRate(n); setRateSource("manual");
     setRows(prev => prev.map(r => syncIDR(r, n)));
   };
 
@@ -219,21 +203,23 @@ export default function DashboardPage() {
     setRows([]); setTripInfo(BLANK_TRIP); setRate(DEFAULT_RATE);
     setRateSource("manual"); setRegion(null); setSetup(false);
     setProjectId(null); setMode("edit"); setHasUnsaved(false);
-    ratesFetched.current = false; initialLoad.current = true;
+    ratesFetched.current = false; initialChange.current = true;
   };
 
   const handleRegionChange = (r) => {
     setRegion(r);
+    invalidateRate(getCurrency(r).code); // force re-fetch for new region
     ratesFetched.current = false;
     if (r === "Indonesia") {
       setRate(1); setRateSource("live");
+      setRateUpdatedAt(new Date().toISOString());
       setRows(prev => prev.map(row => syncIDR(row, 1)));
     } else {
-      fetchLiveRate(r);
+      applyLiveRate(r);
     }
   };
 
-  // ── Manual Save only — NO auto-save ───────────────────────────────────────
+  // ── MANUAL SAVE ONLY — NO AUTO-SAVE ───────────────────────────────────────
 
   const handleSave = async () => {
     if (!user) return;
@@ -256,16 +242,15 @@ export default function DashboardPage() {
     setRows((p.rows ?? []).map(r => normalizeRow(r, lr)));
     setTripInfo({ ...BLANK_TRIP, ...(p.tripInfo ?? {}) });
     setRate(lr); setRateSource("manual");
-    setRegion(p.region ?? null);
-    setProjectId(p.id); setSetup(true); setMode("edit");
-    setHasUnsaved(false); ratesFetched.current = false; initialLoad.current = true;
-    if (p.region) fetchLiveRate(p.region);
+    setRegion(p.region ?? null); setProjectId(p.id);
+    setSetup(true); setMode("edit"); setHasUnsaved(false);
+    ratesFetched.current = false; initialChange.current = true;
+    if (p.region) { invalidateRate(getCurrency(p.region).code); applyLiveRate(p.region); }
   };
 
   const inPreview = mode === "preview";
   const showSetup = hydrated && !setupComplete;
 
-  // Loading
   if (authLoading || !hydrated) {
     return (
       <div className="min-h-screen paper-bg flex items-center justify-center">
@@ -287,7 +272,7 @@ export default function DashboardPage() {
             <div className="mx-auto flex max-w-[1600px] items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
               <div className="flex items-center gap-3">
                 <img src="/logo.png" alt="Backpackervun" className="h-7 w-auto sm:h-8" />
-                <span className="hidden border-l border-paper-line pl-3 text-[10px] font-semibold uppercase tracking-[0.22em] text-ink-muted sm:inline-block">
+                <span className="hidden border-l border-paper-line pl-3 text-[10px] font-semibold uppercase tracking-[0.22em] text-ink-muted sm:block">
                   Travel Planner
                 </span>
               </div>
@@ -298,11 +283,10 @@ export default function DashboardPage() {
             </div>
           </header>
           <SetupScreen
-            tripInfo={tripInfo}
-            region={region}
+            tripInfo={tripInfo} region={region}
             onTripInfoChange={setTripInfo}
             onRegionChange={handleRegionChange}
-            onStart={() => { setSetup(true); initialLoad.current = true; }}
+            onStart={() => { setSetup(true); initialChange.current = true; }}
           />
         </div>
       )}
@@ -319,7 +303,7 @@ export default function DashboardPage() {
             totalLocal={totalLocal}  totalIDR={totalIDR}
             mode={mode}              onModeChange={setMode}
             region={region}          onRegionChange={handleRegionChange}
-            rateSource={rateSource}
+            rateSource={rateSource}  rateUpdatedAt={rateUpdatedAt}
           />
 
           <main className="mx-auto max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
@@ -360,7 +344,9 @@ export default function DashboardPage() {
                 <div className="flex gap-2">
                   <button onClick={() => setMode("edit")} className="rounded-lg border border-paper-line bg-white px-3 py-1.5 text-xs font-semibold text-ink-soft shadow-soft hover:border-navy-200 hover:text-navy-500">← Back</button>
                   <button onClick={() => window.print()} className="inline-flex items-center gap-1.5 rounded-lg bg-navy-500 px-3 py-1.5 text-xs font-semibold text-white shadow hover:bg-navy-600">
-                    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v8H6z"/></svg>
+                    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v8H6z"/>
+                    </svg>
                     Export PDF
                   </button>
                 </div>
@@ -374,7 +360,6 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Modals */}
       <HelpModal open={helpOpen} initialTab={helpTab} onClose={() => setHelpOpen(false)} />
       <ProjectsModal open={projectsOpen} userId={user?.uid} onClose={() => setProjectsOpen(false)} onLoad={handleLoadProject} />
     </div>

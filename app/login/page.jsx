@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "@/lib/firebase";
@@ -18,16 +19,14 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      // Cookie is set by AuthProvider via onAuthStateChanged;
-      // but we set it here too for immediate middleware access.
       document.cookie = "token=true; path=/; SameSite=Lax";
       router.push("/dashboard");
     } catch (err) {
       const msgs = {
-        "auth/user-not-found":  "No account found with this email.",
-        "auth/wrong-password":  "Incorrect password.",
-        "auth/invalid-email":   "Please enter a valid email address.",
-        "auth/too-many-requests": "Too many attempts. Try again later.",
+        "auth/user-not-found":     "No account found with this email.",
+        "auth/wrong-password":     "Incorrect password.",
+        "auth/invalid-email":      "Please enter a valid email address.",
+        "auth/too-many-requests":  "Too many attempts. Try again later.",
         "auth/invalid-credential": "Email or password is incorrect.",
       };
       setError(msgs[err.code] ?? "Login failed. Check your credentials.");
@@ -38,14 +37,9 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen paper-bg flex flex-col items-center justify-center px-4">
-
       {/* Brand */}
       <div className="mb-8 text-center">
-        <img
-          src="/logo.png"
-          alt="Backpackervun"
-          className="mx-auto h-9 w-auto"
-        />
+        <img src="/logo.png" alt="Backpackervun" className="mx-auto h-9 w-auto" />
         <p className="mt-3 text-[11px] font-semibold uppercase tracking-[0.22em] text-ink-muted">
           Travel Planner
         </p>
@@ -59,7 +53,6 @@ export default function LoginPage() {
         </p>
 
         <form onSubmit={handleLogin} className="mt-6 space-y-4" noValidate>
-
           <div>
             <label className="block text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-muted mb-1.5">
               Email
@@ -103,13 +96,17 @@ export default function LoginPage() {
           >
             {loading ? "Signing in…" : "Sign in"}
           </button>
-
         </form>
+
+        <p className="mt-5 text-center text-xs text-ink-muted">
+          Don't have an account?{" "}
+          <Link href="/signup" className="font-semibold text-navy-500 hover:underline underline-offset-2">
+            Create account
+          </Link>
+        </p>
       </div>
 
-      <p className="mt-6 text-xs text-ink-muted">
-        Backpackervun Travel Planner · Internal tool
-      </p>
+      <p className="mt-6 text-xs text-ink-muted">Backpackervun Travel Planner</p>
     </div>
   );
 }
