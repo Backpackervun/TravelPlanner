@@ -3,33 +3,32 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import Header         from "@/components/Header";
-import HelpModal      from "@/components/HelpModal";
-import PreviewModal   from "@/components/PreviewModal";
-import PrintHeader    from "@/components/PrintHeader";
-import PrintLayout    from "@/components/PrintLayout";
-import ProjectsModal  from "@/components/ProjectsModal";
-import SetupScreen    from "@/components/SetupScreen";
-import TripInfoPanel  from "@/components/TripInfoPanel";
+import Header        from "@/components/Header";
+import HelpModal     from "@/components/HelpModal";
+import PreviewModal  from "@/components/PreviewModal";   // THE ONLY preview system
+import ProjectsModal from "@/components/ProjectsModal";
+import SetupScreen   from "@/components/SetupScreen";
+import TripInfoPanel from "@/components/TripInfoPanel";
 import ItineraryTable from "@/components/ItineraryTable";
-import ChartsPanel    from "@/components/ChartsPanel";
+import ChartsPanel   from "@/components/ChartsPanel";
 import { CTACard, CTAFab } from "@/components/CTACard";
-import Footer         from "@/components/Footer";
-import RedeemModal    from "@/components/RedeemModal";
-import UpgradeModal   from "@/components/UpgradeModal";
+import Footer        from "@/components/Footer";
+import RedeemModal   from "@/components/RedeemModal";
+import UpgradeModal  from "@/components/UpgradeModal";
 
-import { useAuth }                       from "@/context/AuthProvider";
-import { useT }                          from "@/context/TranslationContext";
-import { usePlan }                       from "@/hooks/usePlan";
-import { saveProject, countUserTrips }   from "@/lib/firestore";
-import { fetchRateToIDR, invalidateRate } from "@/lib/exchangeRates";
+import { useAuth }                          from "@/context/AuthProvider";
+import { useT }                             from "@/context/TranslationContext";
+import { usePlan }                          from "@/hooks/usePlan";
+import { saveProject, countUserTrips }      from "@/lib/firestore";
+import { fetchRateToIDR, invalidateRate }   from "@/lib/exchangeRates";
 import { DEFAULT_RATE, generateId, getCurrency } from "@/lib/utils";
 
 const STORAGE_KEY = "backpackervun-v7";
 const BLANK_TRIP  = { clientName:"", duration:"", destinations:"", travelDates:"", startDate:"", endDate:"" };
 
-// ── Row helpers ───────────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
+/** Re-compute IDR from local (local is source of truth) */
 function syncIDR(row, rate) {
   return { ...row, budgetIDR: Math.round((Number(row.budgetLocal) || 0) * (Number(rate) || 0)) };
 }
@@ -61,24 +60,25 @@ function buildDayMap(rows) {
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { user, loading: authLoading, refreshPlan } = useAuth();
+  const { user, loading: authLoading, logout, refreshPlan } = useAuth();
   const { plan, canSave, canExportPDF, checkTrip, isLocked } = usePlan();
   const { t } = useT();
 
-  const [hydrated, setHydrated]       = useState(false);
-  const [previewOpen, setPreviewOpen] = useState(false);
-  const [rows, setRows]               = useState([]);
-  const [tripInfo, setTripInfo]       = useState(BLANK_TRIP);
-  const [rate, setRate]               = useState(DEFAULT_RATE);
-  const [rateSource, setRateSource]   = useState("manual");
-  const [rateUpdatedAt, setRateUA]    = useState(null);
-  const [region, setRegion]           = useState(null);
-  const [setupComplete, setSetup]     = useState(false);
-  const [projectId, setProjectId]     = useState(null);
-  const [saveStatus, setSaveStatus]   = useState("idle");
-  const [hasUnsaved, setHasUnsaved]   = useState(false);
-  const [helpOpen, setHelpOpen]       = useState(false);
-  const [helpTab, setHelpTab]         = useState("how");
+  // Core state — no "mode" string, preview is its own boolean
+  const [hydrated, setHydrated]         = useState(false);
+  const [previewOpen, setPreviewOpen]   = useState(false);
+  const [rows, setRows]                 = useState([]);
+  const [tripInfo, setTripInfo]         = useState(BLANK_TRIP);
+  const [rate, setRate]                 = useState(DEFAULT_RATE);
+  const [rateSource, setRateSource]     = useState("manual");
+  const [rateUpdatedAt, setRateUA]      = useState(null);
+  const [region, setRegion]             = useState(null);
+  const [setupComplete, setSetup]       = useState(false);
+  const [projectId, setProjectId]       = useState(null);
+  const [saveStatus, setSaveStatus]     = useState("idle");
+  const [hasUnsaved, setHasUnsaved]     = useState(false);
+  const [helpOpen, setHelpOpen]         = useState(false);
+  const [helpTab, setHelpTab]           = useState("how");
   const [projectsOpen, setProjectsOpen] = useState(false);
   const [redeemOpen, setRedeemOpen]     = useState(false);
   const [upgradeOpen, setUpgradeOpen]   = useState(false);
@@ -104,20 +104,18 @@ export default function DashboardPage() {
       const { rate: lr, updatedAt } = await fetchRateToIDR(currency.code);
       setRate(lr); setRateSource("live"); setRateUA(updatedAt);
       setRows(prev => prev.map(r => syncIDR(r, lr)));
-    } catch {
-      setRateSource("error");
-    }
+    } catch { setRateSource("error"); }
   }, []);
 
-  // localStorage load
+  // Load localStorage
   useEffect(() => {
     try {
       const raw = window.localStorage.getItem(STORAGE_KEY);
       if (raw) {
         const p = JSON.parse(raw);
         const r = typeof p.rate === "number" && p.rate > 0 ? p.rate : DEFAULT_RATE;
-        if (Array.isArray(p.rows)) setRows(p.rows.map(row => normalizeRow(row, r)));
-        if (p.tripInfo) setTripInfo({ ...BLANK_TRIP, ...p.tripInfo });
+        if (Array.isArray(p.rows))   setRows(p.rows.map(row => normalizeRow(row, r)));
+        if (p.tripInfo)              setTripInfo({ ...BLANK_TRIP, ...p.tripInfo });
         if (typeof p.region === "string") setRegion(p.region === "Korea" ? "South Korea" : p.region);
         if (typeof p.setupComplete === "boolean") setSetup(p.setupComplete);
         else if (p.region) setSetup(true);
@@ -134,39 +132,44 @@ export default function DashboardPage() {
     applyLiveRate(region);
   }, [hydrated, region, applyLiveRate]);
 
-  // Persist to localStorage only (no Firestore auto-save)
+  // Save to localStorage (instant, offline)
   useEffect(() => {
     if (!hydrated) return;
-    try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(
-        { rows, rate, tripInfo, region, setupComplete, projectId }
-      ));
-    } catch { /* quota */ }
+    try { window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ rows, rate, tripInfo, region, setupComplete, projectId })); }
+    catch { /* quota */ }
   }, [rows, rate, tripInfo, region, setupComplete, projectId, hydrated]);
 
-  // Unsaved tracker
+  // Track unsaved
   useEffect(() => {
     if (!hydrated) return;
     if (initialChange.current) { initialChange.current = false; return; }
     setHasUnsaved(true);
   }, [rows, tripInfo, rate, region]); // eslint-disable-line
 
-  const totalLocal = useMemo(() => rows.reduce((s,r) => s + (Number(r.budgetLocal)||0), 0), [rows]);
-  const totalIDR   = useMemo(() => Math.round(totalLocal * (Number(rate)||0)), [totalLocal, rate]);
+  const totalLocal = useMemo(() => rows.reduce((s, r) => s + (Number(r.budgetLocal) || 0), 0), [rows]);
+  const totalIDR   = useMemo(() => Math.round(totalLocal * (Number(rate) || 0)), [totalLocal, rate]);
   const dayMap     = useMemo(() => buildDayMap(rows), [rows]);
   const currency   = useMemo(() => getCurrency(region), [region]);
 
-  // ── DIRECTIONAL currency sync (no recursive overwrite) ────────────────────
+  // ── DIRECTIONAL currency: edited field is NEVER mutated ──────────────────
   const updateRow = (id, field, value) => {
     setRows(prev => prev.map(r => {
       if (r.id !== id) return r;
       const next = { ...r, [field]: value };
       const rn   = Number(rate) || 1;
-      // Only calculate the OTHER field — never touch the one the user just typed
-      if (field === "budgetLocal") next.budgetIDR   = Math.round((Number(value)||0) * rn);
-      if (field === "budgetIDR")   next.budgetLocal = Math.round((Number(value)||0) / rn);
+
+      // ONLY update the other field — never touch the one the user typed
+      if (field === "budgetLocal") {
+        next.budgetIDR = Math.round((Number(value) || 0) * rn);
+        // budgetLocal stays exactly as user typed
+      } else if (field === "budgetIDR") {
+        next.budgetLocal = Math.round((Number(value) || 0) / rn);
+        // budgetIDR stays exactly as user typed
+      }
+
+      // Auto-suggest Transport category
       if ((field === "from" || field === "to") && !next.category) {
-        if ((next.from||"").trim() && (next.to||"").trim()) next.category = "Transport";
+        if ((next.from || "").trim() && (next.to || "").trim()) next.category = "Transport";
       }
       return next;
     }));
@@ -175,6 +178,7 @@ export default function DashboardPage() {
   const handleRateChange = (v) => {
     const n = Number(v) || 0;
     setRate(n); setRateSource("manual");
+    // When rate changes externally, recalc IDR from local
     setRows(prev => prev.map(r => syncIDR(r, n)));
   };
 
@@ -209,13 +213,10 @@ export default function DashboardPage() {
     }
   };
 
-  // ── Plan-gated save ────────────────────────────────────────────────────────
+  // Plan-gated save
   const handleSave = async () => {
     if (!user) return;
-    if (!canSave) {
-      setUpgradeReason(t("lockedBody"));
-      setUpgradeOpen(true); return;
-    }
+    if (!canSave) { setUpgradeReason(t("lockedBody")); setUpgradeOpen(true); return; }
     try {
       const count = projectId ? 0 : await countUserTrips(user.uid);
       const { allowed, reason } = checkTrip(count);
@@ -247,23 +248,12 @@ export default function DashboardPage() {
   };
 
   const handlePreview = () => {
-    if (isLocked) {
-      setUpgradeReason(t("lockedBody")); setUpgradeOpen(true); return;
-    }
+    if (isLocked) { setUpgradeReason(t("lockedBody")); setUpgradeOpen(true); return; }
     setPreviewOpen(true);
   };
 
-  const handlePrint = () => {
-    // Trigger browser print — the PreviewModal is rendered outside normal layout
-    // so @media print will capture it cleanly
-    window.print();
-  };
-
   const handleExportPDF = () => {
-    if (!canExportPDF) {
-      setUpgradeReason("PDF export requires a Lite or Pro plan.");
-      setUpgradeOpen(true); return;
-    }
+    if (!canExportPDF) { setUpgradeReason("PDF export requires a Lite or Pro plan."); setUpgradeOpen(true); return; }
     window.print();
   };
 
@@ -283,7 +273,7 @@ export default function DashboardPage() {
   return (
     <div className="paper-bg min-h-screen flex flex-col">
 
-      {/* ── SETUP ── */}
+      {/* ── SETUP SCREEN ── */}
       {showSetup && (
         <>
           <header className="border-b border-paper-line bg-white/85 backdrop-blur-md">
@@ -294,28 +284,40 @@ export default function DashboardPage() {
                   {t("travelPlanner")}
                 </span>
               </div>
-              <button
-                onClick={() => { setHelpTab("how"); setHelpOpen(true); }}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-paper-line bg-white px-3 py-2 text-xs font-medium text-ink-soft hover:border-navy-200"
-              >
-                ❓ {t("help")}
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => { setHelpTab("how"); setHelpOpen(true); }}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-paper-line bg-white px-3 py-2 text-xs font-medium text-ink-soft hover:border-navy-200"
+                >
+                  ❓ {t("help")}
+                </button>
+                {/* LOGOUT on setup page */}
+                <button
+                  onClick={logout}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-red-500 px-3 py-2 text-xs font-semibold text-white transition hover:bg-red-600 active:scale-95"
+                >
+                  <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                    <polyline points="16 17 21 12 16 7"/>
+                    <line x1="21" y1="12" x2="9" y2="12"/>
+                  </svg>
+                  <span className="hidden sm:inline">{t("logout")}</span>
+                </button>
+              </div>
             </div>
           </header>
 
           <div className="flex-1">
             {isLocked && (
               <div className="mx-auto max-w-3xl px-4 pt-8">
-                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 flex items-start gap-3">
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 flex items-start gap-3">
                   <span className="text-xl flex-shrink-0">🔒</span>
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-amber-900 text-sm">Access Required</p>
-                    <p className="mt-1 text-xs text-amber-800">{t("lockedBody")}</p>
+                    <p className="font-semibold text-amber-900 text-sm">{t("lockedTitle")}</p>
+                    <p className="mt-0.5 text-xs text-amber-800">{t("lockedBody")}</p>
                   </div>
-                  <button
-                    onClick={() => setRedeemOpen(true)}
-                    className="flex-shrink-0 rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-600"
-                  >
+                  <button onClick={() => setRedeemOpen(true)}
+                    className="flex-shrink-0 rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-600">
                     {t("enterCode")}
                   </button>
                 </div>
@@ -339,12 +341,11 @@ export default function DashboardPage() {
         <>
           <Header
             rate={rate}              onRateChange={handleRateChange}
-            onReset={handleReset}    onPrint={handleExportPDF}
+            onReset={handleReset}    onPreview={handlePreview}
             onHelp={() => { setHelpTab("how"); setHelpOpen(true); }}
             onSave={handleSave}      onLoadOpen={() => setProjectsOpen(true)}
             saveStatus={saveStatus}  hasUnsavedChanges={hasUnsaved}
             totalLocal={totalLocal}  totalIDR={totalIDR}
-            onModeChange={(m) => { if (m === "preview") handlePreview(); }}
             region={region}          onRegionChange={handleRegionChange}
             rateSource={rateSource}  rateUpdatedAt={rateUpdatedAt}
             onRedeemOpen={() => setRedeemOpen(true)}
@@ -352,17 +353,16 @@ export default function DashboardPage() {
           />
 
           {/*
-            SIDEBAR LAYOUT FIX:
-            - flex-1 ensures footer stays pinned at bottom
-            - grid uses items-start so sidebar doesn't stretch
-            - sidebar uses self-start + sticky
-            - NO overflow-hidden anywhere in the chain
+            SIDEBAR LAYOUT:
+            - flex-1 so footer is pinned
+            - grid with items-start so sidebar doesn't stretch
+            - sidebar: self-start + sticky (no overflow-hidden anywhere)
           */}
           <main className="flex-1 mx-auto w-full max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
             <TripInfoPanel tripInfo={tripInfo} onChange={setTripInfo} />
 
             <div className="mt-8 grid gap-6 items-start lg:grid-cols-[minmax(0,1fr)_320px] xl:grid-cols-[minmax(0,1fr)_360px]">
-              {/* Left — itinerary table */}
+              {/* Left: itinerary */}
               <div className="min-w-0">
                 {isLocked ? (
                   <div className="rounded-2xl border border-paper-line bg-white p-10 text-center shadow-soft">
@@ -370,17 +370,12 @@ export default function DashboardPage() {
                     <h3 className="mt-4 text-lg font-semibold text-ink">{t("lockedTitle")}</h3>
                     <p className="mt-2 text-sm text-ink-muted max-w-sm mx-auto">{t("lockedBody")}</p>
                     <div className="mt-5 flex flex-col sm:flex-row gap-2 justify-center">
-                      <button
-                        onClick={() => setRedeemOpen(true)}
-                        className="rounded-xl bg-navy-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-navy-600"
-                      >
+                      <button onClick={() => setRedeemOpen(true)}
+                        className="rounded-xl bg-navy-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-navy-600">
                         🎟️ {t("redeemCode")}
                       </button>
-                      <a
-                        href="https://wa.me/6281298053826"
-                        target="_blank" rel="noopener noreferrer"
-                        className="rounded-xl border border-paper-line px-5 py-2.5 text-sm font-semibold text-ink-soft hover:bg-paper-dim"
-                      >
+                      <a href="https://wa.me/6281298053826" target="_blank" rel="noopener noreferrer"
+                        className="rounded-xl border border-paper-line px-5 py-2.5 text-sm font-semibold text-ink-soft hover:bg-paper-dim">
                         {t("chatWA")}
                       </a>
                     </div>
@@ -395,10 +390,10 @@ export default function DashboardPage() {
                 )}
               </div>
 
-              {/* Right sidebar — sticky + self-start, no overflow-hidden */}
-              <aside className="min-w-0 space-y-4 lg:self-start lg:sticky lg:top-[72px]">
+              {/* Right: sticky sidebar — self-start prevents stretch */}
+              <aside className="min-w-0 flex flex-col gap-4 lg:self-start lg:sticky lg:top-[64px]">
                 <ChartsPanel rows={rows} rate={rate} totalLocal={totalLocal} totalIDR={totalIDR} />
-                {/* CTA card: visible on desktop, hidden on mobile (FAB used instead) */}
+                {/* CTA card: desktop only — FAB handles mobile */}
                 <div className="hidden md:block">
                   <CTACard tripInfo={tripInfo} totalLocal={totalLocal} currency={currency} totalIDR={totalIDR} />
                 </div>
@@ -406,7 +401,7 @@ export default function DashboardPage() {
             </div>
           </main>
 
-          {/* Mobile FAB — shown only on mobile */}
+          {/* Mobile FAB */}
           <div className="md:hidden">
             <CTAFab tripInfo={tripInfo} totalLocal={totalLocal} currency={currency} totalIDR={totalIDR} />
           </div>
@@ -415,11 +410,10 @@ export default function DashboardPage() {
         </>
       )}
 
-      {/* ── PREVIEW MODAL (fullscreen overlay — NOT inline) ── */}
+      {/* ── PREVIEW MODAL (fullscreen, THE ONLY preview system) ── */}
       <PreviewModal
         open={previewOpen}
         onClose={() => setPreviewOpen(false)}
-        onPrint={handlePrint}
         tripInfo={tripInfo}
         rows={rows}
         dayMap={dayMap}
@@ -428,14 +422,10 @@ export default function DashboardPage() {
         totalLocal={totalLocal}
         totalIDR={totalIDR}
         canExportPDF={canExportPDF}
-        onUpgradeNeeded={(reason) => {
-          setPreviewOpen(false);
-          setUpgradeReason(reason);
-          setUpgradeOpen(true);
-        }}
+        onUpgradeNeeded={(reason) => { setPreviewOpen(false); setUpgradeReason(reason); setUpgradeOpen(true); }}
       />
 
-      {/* ── MODALS ── */}
+      {/* Modals */}
       <HelpModal     open={helpOpen}     initialTab={helpTab}  onClose={() => setHelpOpen(false)} />
       <ProjectsModal open={projectsOpen} userId={user?.uid}    onClose={() => setProjectsOpen(false)} onLoad={handleLoadProject} />
       <RedeemModal   open={redeemOpen}   onClose={() => setRedeemOpen(false)} onSuccess={() => refreshPlan()} />
