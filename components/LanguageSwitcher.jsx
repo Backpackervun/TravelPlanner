@@ -1,15 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { SUPPORTED_LANGS } from "@/hooks/useLanguage";
+import { useT, LANGS } from "@/context/TranslationContext";
 
-/**
- * LanguageSwitcher — compact flag+code button with popover list.
- * Receives `lang` and `setLang` from parent (via useLanguage hook).
- */
-export default function LanguageSwitcher({ lang, setLang }) {
+export default function LanguageSwitcher() {
+  const { lang, setLang, t } = useT();
   const [open, setOpen] = useState(false);
-  const current = SUPPORTED_LANGS.find((l) => l.code === lang) ?? SUPPORTED_LANGS[0];
+  const current = LANGS.find((l) => l.code === lang) ?? LANGS[0];
 
   return (
     <div className="relative">
@@ -17,11 +14,15 @@ export default function LanguageSwitcher({ lang, setLang }) {
         type="button"
         onClick={() => setOpen((v) => !v)}
         className="inline-flex items-center gap-1.5 rounded-lg border border-paper-line bg-white px-2.5 py-2 text-xs font-semibold text-ink-soft shadow-soft transition hover:border-navy-200 hover:text-navy-500"
-        aria-label="Switch language"
+        aria-label={t("language")}
       >
         <span className="text-base leading-none">{current.flag}</span>
-        <span className="hidden sm:inline uppercase tracking-[0.1em] text-[11px]">{current.code}</span>
-        <svg viewBox="0 0 24 24" className={`h-3 w-3 transition ${open ? "rotate-180" : ""}`} fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+        <span className="hidden sm:inline uppercase tracking-[0.1em] text-[11px]">{current.code.toUpperCase()}</span>
+        <svg
+          viewBox="0 0 24 24"
+          className={`h-3 w-3 transition ${open ? "rotate-180" : ""}`}
+          fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"
+        >
           <path d="M6 9l6 6 6-6"/>
         </svg>
       </button>
@@ -30,7 +31,7 @@ export default function LanguageSwitcher({ lang, setLang }) {
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
           <div className="absolute right-0 top-full z-50 mt-2 w-44 overflow-hidden rounded-xl border border-paper-line bg-white shadow-card">
-            {SUPPORTED_LANGS.map((l) => (
+            {LANGS.map((l) => (
               <button
                 key={l.code}
                 type="button"

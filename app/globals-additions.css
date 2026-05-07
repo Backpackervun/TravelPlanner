@@ -1,0 +1,43 @@
+/*
+  Add these lines to the END of your existing app/globals.css
+  They handle the PreviewModal print behaviour.
+  The rest of your existing CSS is unchanged.
+*/
+
+/* ====================================================================
+   PREVIEW MODAL PRINT BEHAVIOUR
+   When the user clicks Print from the PreviewModal, we want the
+   A4 paper content (inside .preview-modal-paper) to print cleanly.
+   ==================================================================== */
+
+@media print {
+  /* Hide everything except the preview paper */
+  body > * {
+    display: none !important;
+  }
+
+  /* Show the preview modal content */
+  .preview-modal-paper {
+    display: block !important;
+    position: fixed !important;
+    inset: 0 !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+  }
+
+  /* Existing print rules still apply inside the paper */
+  .no-print {
+    display: none !important;
+  }
+}
+
+/* ====================================================================
+   MOBILE FAB — prevent FAB from overlapping footer
+   ==================================================================== */
+@media (max-width: 767px) {
+  /* Give footer bottom padding so FAB doesn't cover it */
+  footer.site-footer {
+    padding-bottom: calc(80px + env(safe-area-inset-bottom, 16px));
+  }
+}

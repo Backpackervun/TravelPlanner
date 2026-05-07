@@ -1,5 +1,6 @@
 import { Montserrat } from "next/font/google";
 import { AuthProvider } from "@/context/AuthProvider";
+import { TranslationProvider } from "@/context/TranslationContext";
 import "./globals.css";
 
 const montserrat = Montserrat({
@@ -19,10 +20,15 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en" className={montserrat.variable}>
       <body className="font-sans bg-paper text-ink antialiased">
-        {/* AuthProvider keeps Firebase auth state available to all pages */}
-        <AuthProvider>
-          {children}
-        </AuthProvider>
+        {/*
+          TranslationProvider must wrap AuthProvider because some auth
+          components (login/signup) also need translations.
+        */}
+        <TranslationProvider>
+          <AuthProvider>
+            {children}
+          </AuthProvider>
+        </TranslationProvider>
       </body>
     </html>
   );
