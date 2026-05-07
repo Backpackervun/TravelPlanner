@@ -27,6 +27,9 @@ const zh = {
   logout: "退出登录",
   logoutConfirm: "确定要退出账户吗？",
 
+  loginSubtitle: "输入您的账户信息以访问旅行规划器。",
+  signupSubtitle: "填写您的信息以开始使用。",
+
   email: "邮箱",
   emailPlaceholder: "you@email.com",
 
@@ -48,7 +51,6 @@ const zh = {
 
   forgotPassword: "忘记密码？",
   sendResetEmail: "发送重置链接",
-
   resetEmailSent: "重置链接已发送！请查收邮箱。",
   resendEmail: "重新发送邮件",
 
@@ -91,9 +93,9 @@ const zh = {
   preview: "预览",
   exportPDF: "导出PDF",
   backToEdit: "返回编辑",
-
   loadTrip: "加载行程",
   reset: "重置",
+
   resetConfirm: "清除所有内容并重新开始？",
 
   language: "语言",
@@ -108,8 +110,8 @@ const zh = {
   inputCurrency: "输入货币",
   localCurrency: "当地货币",
 
-  useLocalCurrency: "使用当地货币",
-  useIDR: "使用IDR",
+  useLocalCurrency: "编辑当地货币",
+  useIDR: "编辑IDR",
   useRegionalCurrency: "使用地区货币",
 
   currencySwitcher: "货币",
@@ -198,6 +200,7 @@ const zh = {
 
   bothCurrenciesEditable: "{local}和IDR均可编辑。",
   idrOnly: "预算以IDR计算。",
+  budgetDisabledHint: "此字段自动计算。",
 
   catHotel: "酒店",
   catFood: "餐饮",
@@ -229,19 +232,21 @@ const zh = {
 
   redeemCode: "输入兑换码",
   redeemApply: "兑换",
-
   redeemPlaceholder: "例：BE-3DAYSTRIAL",
 
   redeemChecking: "验证中…",
   redeemSuccess: "套餐已成功激活！",
 
   redeemError: "无效或已过期的兑换码。",
+
   redeemNeedCode: "需要兑换码？通过WhatsApp联系我们",
 
   lockedTitle: "解锁计划助手",
+
   lockedBody: "请输入兑换码或升级套餐以开始创建行程。",
 
   enterCode: "输入兑换码",
+
   startPlanningBtn: "开始规划 →",
 
   planFeatLite1: "最多3个行程",
@@ -287,25 +292,29 @@ const zh = {
   deleteTripConfirm: "删除此行程？此操作无法撤销。",
 
   loadingTrips: "加载行程中…",
+
   couldNotLoad: "无法加载行程，请检查网络连接。",
 
   previewTitle: "预览",
 
-  previewHint: "在打印对话框中选择“保存为PDF”可获得最佳效果。",
+  previewHint: "在打印对话框中选择「保存为PDF」可获得最佳效果。",
 
   previewLabel: "预览",
 
   preparedForClient: "为客户准备",
 
   itinerary: "行程",
+
   tripSummary: "旅行总结",
 
   noItinerary: "暂无行程条目。",
 
   totalStops: "总地点数",
+
   totalDays: "总天数",
 
   conversionRate: "汇率",
+
   byCategory: "按类别",
 
   pdfFooter: "通过Backpackervun规划 · backpackervun.com",

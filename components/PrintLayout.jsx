@@ -1,317 +1,260 @@
 "use client";
 
-import {
-  buildMapUrl,
-  buildRouteUrl,
-  CATEGORY_ICONS,
-  CATEGORY_OPTIONS,
-  CATEGORY_STYLES,
-  formatCurrency,
-  formatIDR,
-  getCurrency,
-  getRegion,
-  getBookingLink,
-  transportIcon,
-} from "@/lib/utils";
-import { formatDayLabel, formatTimeLabel, groupByDay } from "@/lib/itinerary";
+import { useMemo } from "react";
+import { useT } from "@/context/TranslationContext";
+import { formatCurrency, formatIDR, getCurrency, CATEGORY_OPTIONS, CATEGORY_STYLES } from "@/lib/utils";
 
 /**
- * PrintLayout — the dedicated print/preview document.
+ * PrintLayout v1.0
  *
- * Renders a vertical, A4-friendly itinerary:
- *   1. "Prepared for client" panel
- *   2. Day-by-day blocks with stops
- *   3. Trip summary (totals + category breakdown)
+ * Renders the premium A4 document for both PreviewModal and PDF export.
  *
- * Used both by the on-screen Preview mode (parent toggles .preview-mode)
- * and by the actual @media print export. No tables, no inputs, no charts.
+ * KEY CHANGES from broken version:
+ *  - Map / Route / Flights / Booking chip links restored in every row
+ *  - Links are real <a> tags that open in a new tab in preview
+ *  - In print/PDF they appear as visible chips with URL text beneath them
+ *  - pdfFooter translation used at bottom of every page
  */
 export default function PrintLayout({
-  tripInfo,
-  rows,
-  dayMap,
-  region,
-  rate,
-  totalLocal,
-  totalIDR,
+  tripInfo, rows, dayMap, region, rate, totalLocal, totalIDR,
 }) {
-  const days = groupByDay(rows, dayMap);
-  const categoryTotals = computeCategoryTotals(rows);
-  const stopsCount = rows.length;
-  const regionMeta = getRegion(region);
+  const { t } = useT();
   const currency = getCurrency(region);
-  const showIDR = currency.code !== "IDR";
+
+  // Group rows by day number
+  const byDay = useMemo(() => {
+    const groups = new Map();
+    for (const row of rows) {
+      const dayNum = row.date ? (dayMap[row.date.trim()] ?? 0) : 0;
+      if (!groups.has(dayNum)) groups.set(dayNum, []);
+      groups.get(dayNum).push(row);
+    }
+    return [...groups.entries()].sort(([a], [b]) => a - b);
+  }, [rows, dayMap]);
+
+  const categoryTotals = useMemo(() => {
+    const t = {};
+    for (const row of rows) {
+      if (row.category) t[row.category] = (t[row.category] ?? 0) + (Number(row.budgetLocal) || 0);
+    }
+    return t;
+  }, [rows]);
+
+  const totalDays = Object.keys(dayMap).length || 1;
 
   return (
-    <div className="print-doc">
-      {/* ───────── Prepared for client ───────── */}
-      <section className="pd-section pd-prepared">
-        <p className="pd-eyebrow">Prepared for client</p>
-        <h2 className="pd-client-name">{tripInfo.clientName || "—"}</h2>
-        <dl className="pd-client-meta">
-          <Meta label="Duration" value={tripInfo.duration} />
-          <Meta label="Destinations" value={tripInfo.destinations} />
-          <Meta label="Travel Dates" value={tripInfo.travelDates} />
-          {regionMeta && (
-            <Meta
-              label="Region"
-              value={`${regionMeta.flag}  ${regionMeta.id}`}
-            />
-          )}
-        </dl>
-      </section>
+    <div className="itinerary-pdf px-8 pb-16 pt-6 font-sans text-ink">
 
-      <h2 className="pd-h2">Itinerary</h2>
+      {/* ── Trip info block ── */}
+      <div className="mb-8 grid gap-3 rounded-2xl border border-paper-line bg-paper-dim/40 p-5 sm:grid-cols-2">
+        <InfoRow label={t("preparedFor")} value={tripInfo?.clientName || "—"} />
+        <InfoRow label={t("destinations")} value={tripInfo?.destinations || "—"} />
+        <InfoRow label={t("duration")} value={tripInfo?.duration || "—"} />
+        <InfoRow label={t("region")} value={region || "—"} />
+        {tripInfo?.startDate && <InfoRow label={t("startDate")} value={tripInfo.startDate} />}
+        {tripInfo?.endDate   && <InfoRow label={t("endDate")}   value={tripInfo.endDate} />}
+      </div>
 
-      {days.length === 0 ? (
-        <p className="pd-empty">No itinerary entries yet.</p>
+      {/* ── Day-by-day itinerary ── */}
+      <h2 className="mb-4 text-xs font-semibold uppercase tracking-[0.2em] text-ink-muted">
+        {t("itinerary")}
+      </h2>
+
+      {rows.length === 0 ? (
+        <p className="text-sm text-ink-muted py-8 text-center">{t("noItinerary")}</p>
       ) : (
-        days.map((group, idx) => (
-          <DayBlock
-            key={`${group.day}-${group.date}-${idx}`}
-            group={group}
-            region={region}
-            currency={currency}
-            showIDR={showIDR}
-          />
-        ))
+        <div className="space-y-6">
+          {byDay.map(([dayNum, dayRows]) => (
+            <div key={dayNum} className="day-block rounded-2xl border border-paper-line overflow-hidden">
+              {/* Day header */}
+              <div className="flex items-center gap-3 border-b border-paper-line bg-navy-50/50 px-5 py-3">
+                <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-navy-500 text-xs font-bold text-white">
+                  {dayNum || "—"}
+                </span>
+                <span className="text-sm font-semibold text-navy-600">
+                  {t("day")} {dayNum || "—"}
+                  {dayRows[0]?.date ? ` · ${dayRows[0].date}` : ""}
+                  {dayRows[0]?.city ? ` · ${dayRows[0].city}` : ""}
+                </span>
+              </div>
+
+              {/* Rows */}
+              <div className="divide-y divide-paper-line/60">
+                {dayRows.map((row) => (
+                  <PrintRow key={row.id} row={row} currency={currency} rate={rate} t={t} />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
       )}
 
-      {/* ───────── Summary ───────── */}
-      <section className="pd-section pd-summary">
-        <h2 className="pd-h2">Trip Summary</h2>
-
-        <div className="pd-summary-totals">
-          <div className="pd-summary-row">
-            <span className="pd-summary-label">Total stops</span>
-            <span className="pd-summary-value">{stopsCount}</span>
-          </div>
-          <div className="pd-summary-row">
-            <span className="pd-summary-label">Total days</span>
-            <span className="pd-summary-value">{days.length}</span>
-          </div>
-          {showIDR && (
-            <div className="pd-summary-row">
-              <span className="pd-summary-label">Conversion rate</span>
-              <span className="pd-summary-value">1 {currency.code} = {rate} IDR</span>
-            </div>
-          )}
-          <div className="pd-summary-row pd-summary-row-strong">
-            <span className="pd-summary-label">Total · {currency.code}</span>
-            <span className="pd-summary-value">{formatCurrency(totalLocal, currency)}</span>
-          </div>
-          {showIDR && (
-            <div className="pd-summary-row pd-summary-row-strong pd-summary-row-accent">
-              <span className="pd-summary-label">Total · IDR</span>
-              <span className="pd-summary-value">{formatIDR(totalIDR)}</span>
-            </div>
-          )}
+      {/* ── Summary ── */}
+      <div className="mt-10 rounded-2xl border border-paper-line bg-paper-dim/40 p-5">
+        <h2 className="mb-4 text-xs font-semibold uppercase tracking-[0.2em] text-ink-muted">
+          {t("tripSummary")}
+        </h2>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <SumCard label={t("totalBudget")} value={formatIDR(totalIDR)} sub={formatCurrency(totalLocal, currency)} />
+          <SumCard label={t("totalStops")}  value={rows.length} />
+          <SumCard label={t("totalDays")}   value={totalDays} />
+          <SumCard label={t("conversionRate")} value={`1 ${currency.code} = ${rate} IDR`} />
         </div>
 
-        {categoryTotals.some((c) => c.local > 0) && (
-          <div className="pd-category-block">
-            <h3 className="pd-h3">By category</h3>
-            <ul className="pd-category-list">
-              {categoryTotals
-                .filter((c) => c.local > 0)
-                .map((c) => {
-                  const pct = totalLocal > 0 ? (c.local / totalLocal) * 100 : 0;
-                  return (
-                    <li key={c.name} className="pd-category-row">
-                      <span
-                        className="pd-category-swatch"
-                        style={{ background: c.color }}
-                      />
-                      <span className="pd-category-name">
-                        {CATEGORY_ICONS[c.name] ?? ""} {c.name}
-                      </span>
-                      <span className="pd-category-bar-track">
-                        <span
-                          className="pd-category-bar-fill"
-                          style={{ width: `${pct}%`, background: c.color }}
-                        />
-                      </span>
-                      <span className="pd-category-pct">{pct.toFixed(0)}%</span>
-                      <span className="pd-category-amount">
-                        {formatCurrency(c.local, currency)}
-                      </span>
-                    </li>
-                  );
-                })}
-            </ul>
+        {/* Category totals */}
+        {Object.keys(categoryTotals).length > 0 && (
+          <div className="mt-4">
+            <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-muted">{t("byCategory")}</p>
+            <div className="flex flex-wrap gap-2">
+              {Object.entries(categoryTotals).map(([cat, val]) => {
+                const style = CATEGORY_STYLES[cat] ?? { bg: "bg-gray-100", text: "text-gray-700" };
+                return (
+                  <span key={cat} className={`rounded-full px-3 py-1 text-xs font-semibold ${style.bg ?? "bg-gray-100"} ${style.text ?? "text-gray-700"}`}>
+                    {cat} · {formatCurrency(val, currency)}
+                  </span>
+                );
+              })}
+            </div>
           </div>
         )}
-      </section>
+      </div>
 
-      <footer className="pd-footer">
-        Prepared with Backpackervun · backpackervun.com
-      </footer>
+      {/* ── PDF footer branding ── */}
+      <p className="mt-8 text-center text-[10px] text-ink-muted/60 pdf-footer">
+        {t("pdfFooter")}
+      </p>
     </div>
   );
 }
 
-// ============================================================
-// Day block
-// ============================================================
-function DayBlock({ group, region, currency, showIDR }) {
-  const dayLabel = group.day ? `Day ${group.day}` : "Day —";
-  const dateLabel = formatDayLabel(group.date);
+// ── Sub-components ────────────────────────────────────────────────────────────
 
-  return (
-    <section className="day-block">
-      <header className="day-block-header">
-        <div className="day-block-marker">{group.day ?? "—"}</div>
-        <div className="day-block-heading">
-          <h3 className="day-block-title">
-            {dayLabel}
-            {group.city ? ` — ${group.city}` : ""}
-          </h3>
-          <p className="day-block-meta">{dateLabel}</p>
-        </div>
-      </header>
+function PrintRow({ row, currency, rate, t }) {
+  const budget = Number(row.budgetLocal) || 0;
+  const idr    = Number(row.budgetIDR)   || Math.round(budget * (Number(rate) || 0));
 
-      <ol className="stop-list">
-        {group.items.map((row) => (
-          <Stop
-            key={row.id}
-            row={row}
-            region={region}
-            currency={currency}
-            showIDR={showIDR}
-          />
-        ))}
-      </ol>
-    </section>
+  // Build travel action links
+  const locationQuery = encodeURIComponent(
+    [row.destination, row.city, row.to].filter(Boolean).join(" ")
   );
-}
-
-// ============================================================
-// One stop — no estimates, just facts the user typed
-// ============================================================
-function Stop({ row, region, currency, showIDR }) {
-  const time = formatTimeLabel(row.time);
-  const cat = row.category;
-  const catStyle = CATEGORY_STYLES[cat];
-  const catIcon = CATEGORY_ICONS[cat];
-  const transport = row.transport;
-  const showRoute = row.from && row.to;
-
-  const mapUrl = buildMapUrl(row.destination);
-  const routeUrl = showRoute ? buildRouteUrl(row.from, row.to) : null;
-  const bookingLink = getBookingLink(row, region);
-
-  const local = Number(row.budgetLocal) || 0;
-  const idr = Number(row.budgetIDR) || 0;
+  const mapUrl     = `https://www.google.com/maps/search/?api=1&query=${locationQuery}`;
+  const routeUrl   = row.from && row.to
+    ? `https://www.google.com/maps/dir/${encodeURIComponent(row.from)}/${encodeURIComponent(row.to)}`
+    : null;
+  const flightUrl  = row.from && row.to
+    ? `https://www.google.com/flights?q=Flights+from+${encodeURIComponent(row.from)}+to+${encodeURIComponent(row.to)}`
+    : null;
+  const bookingUrl = row.destination
+    ? `https://www.booking.com/search.html?ss=${encodeURIComponent(row.destination)}`
+    : null;
 
   return (
-    <li className="stop">
-      <div className="stop-rail">
-        <span className="stop-time">{time || "—"}</span>
-        <span className="stop-dot" aria-hidden="true" />
-      </div>
-
-      <div className="stop-body">
-        <div className="stop-headline">
-          {cat && catStyle && (
-            <span
-              className="stop-cat"
-              style={{ color: catStyle.bar, borderColor: catStyle.bar }}
-            >
-              {catIcon ? `${catIcon} ` : ""}{cat}
-            </span>
-          )}
-          <h4 className="stop-title">{row.destination || "Untitled stop"}</h4>
-        </div>
-
-        {/* Transport / route — icon + type + from → to */}
-        {(transport || showRoute) && (
-          <p className="stop-route">
-            {transport && (
-              <>
-                <span className="stop-transport-icon" aria-hidden="true">
-                  {transportIcon(transport)}
-                </span>
-                <span className="stop-transport">{transport}</span>
-              </>
-            )}
-            {transport && showRoute && <span className="stop-sep">·</span>}
-            {showRoute && (
-              <span className="stop-from-to">
-                <span>{row.from}</span>
-                <span className="stop-arrow">→</span>
-                <span>{row.to}</span>
-              </span>
-            )}
-          </p>
+    <div className="px-5 py-3.5">
+      <div className="flex items-start gap-3">
+        {/* Time */}
+        {row.time && (
+          <span className="flex-shrink-0 w-14 text-xs text-ink-muted font-mono mt-0.5">{row.time}</span>
         )}
 
-        {row.notes && <p className="stop-notes">{row.notes}</p>}
+        <div className="min-w-0 flex-1">
+          {/* Destination */}
+          <p className="text-sm font-semibold text-ink leading-snug">
+            {row.destination || row.city || "—"}
+          </p>
 
-        {/* Maps + booking — text-style chips, clickable in the PDF */}
-        {(mapUrl || routeUrl || bookingLink) && (
-          <p className="stop-links">
-            {mapUrl && (
-              <a href={mapUrl} target="_blank" rel="noopener noreferrer">
-                📍 View in Google Maps
-              </a>
-            )}
+          {/* Route */}
+          {(row.from || row.to) && (
+            <p className="mt-0.5 text-xs text-ink-muted">
+              {row.from && <span>{row.from}</span>}
+              {row.from && row.to && <span className="mx-1.5 text-ink-muted/40">→</span>}
+              {row.to && <span>{row.to}</span>}
+              {row.transport && <span className="ml-2 text-ink-muted/60">· {row.transport}</span>}
+            </p>
+          )}
+
+          {/* Notes */}
+          {row.notes && (
+            <p className="mt-1 text-xs text-ink-soft leading-relaxed">{row.notes}</p>
+          )}
+
+          {/* Category tag */}
+          {row.category && (
+            <span className="mt-1.5 inline-block rounded-full bg-paper-dim px-2 py-0.5 text-[10px] font-semibold text-ink-muted">
+              {row.category}
+            </span>
+          )}
+
+          {/* ✅ RESTORED: Travel action link chips */}
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {/* Map */}
+            <TravelChip
+              href={mapUrl}
+              icon="📍"
+              label={t("mapLink").replace("📍 ", "")}
+            />
+            {/* Route */}
             {routeUrl && (
-              <a href={routeUrl} target="_blank" rel="noopener noreferrer">
-                🗺 Open Route
-              </a>
+              <TravelChip href={routeUrl} icon="🗺" label={t("routeLink").replace("🗺 ", "")} />
             )}
-            {bookingLink && (
-              <a
-                href={bookingLink.href}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                {bookingLink.label}
-              </a>
+            {/* Flights */}
+            {flightUrl && (
+              <TravelChip href={flightUrl} icon="✈️" label="Flights" />
             )}
-          </p>
+            {/* Booking */}
+            {bookingUrl && (
+              <TravelChip href={bookingUrl} icon="🎫" label="Booking" />
+            )}
+          </div>
+        </div>
+
+        {/* Budget */}
+        {budget > 0 && (
+          <div className="flex-shrink-0 text-right">
+            <p className="text-sm font-semibold text-ink">{formatIDR(idr)}</p>
+            <p className="text-[10px] text-ink-muted">{formatCurrency(budget, currency)}</p>
+          </div>
         )}
       </div>
-
-      <div className="stop-budget">
-        {local > 0 ? (
-          <>
-            <span className="stop-budget-local">
-              {formatCurrency(local, currency)}
-            </span>
-            {showIDR && (
-              <span className="stop-budget-idr">{formatIDR(idr)}</span>
-            )}
-          </>
-        ) : (
-          <span className="stop-budget-free">—</span>
-        )}
-      </div>
-    </li>
-  );
-}
-
-// ============================================================
-// Helpers
-// ============================================================
-function Meta({ label, value }) {
-  return (
-    <div className="pd-meta-row">
-      <dt>{label}</dt>
-      <dd>{value || "—"}</dd>
     </div>
   );
 }
 
-function computeCategoryTotals(rows) {
-  return CATEGORY_OPTIONS.map((name) => {
-    const local = rows
-      .filter((r) => r.category === name)
-      .reduce((sum, r) => sum + (Number(r.budgetLocal) || 0), 0);
-    return {
-      name,
-      local,
-      color: CATEGORY_STYLES[name].bar,
-    };
-  });
+/**
+ * TravelChip — compact rounded-full link chip.
+ * In preview: clickable link opening a new tab.
+ * In PDF print: chip is visible, URL printed below via CSS.
+ */
+function TravelChip({ href, icon, label }) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={(e) => e.stopPropagation()}
+      className="travel-chip inline-flex items-center gap-1 rounded-full border border-paper-line bg-white px-2.5 py-0.5 text-[10px] font-semibold text-ink-soft shadow-sm transition hover:border-navy-200 hover:bg-navy-50 hover:text-navy-500 print:border-paper-line print:bg-white"
+      data-url={href}
+    >
+      <span className="text-[11px] leading-none">{icon}</span>
+      {label}
+    </a>
+  );
+}
+
+function InfoRow({ label, value }) {
+  return (
+    <div>
+      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-muted">{label}</p>
+      <p className="mt-0.5 text-sm font-medium text-ink">{value}</p>
+    </div>
+  );
+}
+
+function SumCard({ label, value, sub }) {
+  return (
+    <div className="rounded-xl border border-paper-line bg-white p-3 text-center">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-ink-muted">{label}</p>
+      <p className="mt-1 text-lg font-semibold text-ink leading-tight">{value}</p>
+      {sub && <p className="mt-0.5 text-[10px] text-ink-muted">{sub}</p>}
+    </div>
+  );
 }
