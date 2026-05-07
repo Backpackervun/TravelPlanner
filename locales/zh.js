@@ -1,295 +1,318 @@
 const zh = {
-  appName:"Backpackervun 旅行计划助手",
-  tagline:"旅行计划助手",
+  appName: "旅行计划助手",
+  backpackervun: "Backpackervun",
+  loading: "加载中…",
+
+  close: "关闭",
+  cancel: "取消",
+  confirm: "确认",
+  apply: "应用",
+
+  save: "保存",
+  saving: "保存中…",
+  saved: "已保存 ✓",
+  saveRetry: "重试",
+
+  delete: "删除",
+  edit: "编辑",
+  back: "返回",
+  next: "下一步",
+  done: "完成",
+  yes: "是",
+  no: "否",
+  optional: "可选",
+
+  signIn: "登录",
+  signUp: "创建账户",
+  logout: "退出登录",
+  logoutConfirm: "确定要退出账户吗？",
+
+  email: "邮箱",
+  emailPlaceholder: "you@email.com",
+
+  password: "密码",
+  passwordPlaceholder: "至少6个字符",
+
+  confirmPassword: "确认密码",
+  confirmPasswordPlaceholder: "再次输入密码",
+
+  fullName: "全名",
+  fullNamePlaceholder: "例：张伟",
+
+  phoneNumber: "手机号码",
+  phonePlaceholder: "+86 138-1234-5678",
+
+  dreamDestination: "梦想旅行目的地",
+  dreamDestinationPlaceholder: "例：日本、首尔、欧洲、悉尼…",
+  dreamDestinationHint: "我们将根据您的梦想目的地为您提供个性化规划体验。",
+
+  forgotPassword: "忘记密码？",
+  sendResetEmail: "发送重置链接",
+
+  resetEmailSent: "重置链接已发送！请查收邮箱。",
+  resendEmail: "重新发送邮件",
+
+  backToLogin: "返回登录",
+  dontHaveAccount: "还没有账户？",
+  alreadyHaveAccount: "已有账户？",
+
+  createAccountLink: "创建账户",
+
+  signingIn: "登录中…",
+  creatingAccount: "创建账户中…",
+  sendingReset: "发送中…",
+
+  errorUserNotFound: "未找到此邮箱对应的账户。",
+  errorWrongPassword: "密码不正确，请重试。",
+  errorInvalidEmail: "请输入有效的邮箱地址。",
+  errorTooManyRequests: "尝试次数过多，请稍后再试。",
+  errorInvalidCredential: "邮箱或密码不正确。",
+  errorEmailInUse: "此邮箱已存在账户。",
+  errorWeakPassword: "密码至少需要6个字符。",
+  errorGeneric: "出现错误，请重试。",
 
-  save:"保存",
-  saving:"保存中…",
-  saved:"已保存 ✓",
-  saveRetry:"重试",
+  validationNameRequired: "请输入全名。",
+  validationEmailInvalid: "请输入有效的邮箱地址。",
+  validationPhoneRequired: "请输入手机号码。",
+  validationPasswordShort: "密码至少需要6个字符。",
+  validationPasswordMismatch: "两次密码不一致。",
 
-  loadTrip:"加载行程",
-  exportPDF:"导出 PDF",
-  preview:"预览",
+  howToStart: "如何开始",
+  howToStartStep1: "使用姓名、邮箱和电话创建账户。",
+  howToStartStep2: "输入兑换码以激活Lite或Pro套餐。",
+  howToStartStep3: "在计划助手中按日期规划您的行程。",
+  howToStartStep4: "将行程安全保存到云端。",
+  howToStartStep5: "导出高品质PDF行程表与客户分享。",
+  howToStartCta: "需要兑换码？请联系我们",
+  howToStartCtaWhatsApp: "WhatsApp",
+
+  menu: "菜单",
+  help: "帮助",
+  preview: "预览",
+  exportPDF: "导出PDF",
+  backToEdit: "返回编辑",
 
-  backToEdit:"返回编辑",
-  reset:"重置",
-  help:"帮助",
-  menu:"菜单",
+  loadTrip: "加载行程",
+  reset: "重置",
+  resetConfirm: "清除所有内容并重新开始？",
 
-  close:"关闭",
-  cancel:"取消",
-  confirm:"确认",
-  apply:"应用",
+  language: "语言",
+  region: "地区",
+  moreRegions: "更多地区",
+  exchangeRate: "汇率",
 
-  loading:"加载中…",
-  delete:"删除",
-  back:"返回",
-  logout:"退出登录",
-  logoutDesc:"退出您的账户",
+  currencyMode: "输入模式",
+  primaryCurrency: "主要货币",
+  secondaryCurrency: "辅助货币",
 
-  language:"语言",
-  region:"地区",
-  moreRegions:"更多地区",
+  inputCurrency: "输入货币",
+  localCurrency: "当地货币",
 
-  exchangeRate:"汇率",
-  currencyMode:"货币模式",
-  currencyModeDesc:"您输入的货币",
+  useLocalCurrency: "使用当地货币",
+  useIDR: "使用IDR",
+  useRegionalCurrency: "使用地区货币",
 
-  primaryCurrency:"主要",
-  secondaryCurrency:"换算",
+  currencySwitcher: "货币",
 
-  unsavedChanges:"有未保存的更改",
+  editLocal: "编辑{code}",
+  editIDR: "编辑IDR",
 
-  account:"账户",
-  profile:"个人资料",
-  preferences:"偏好设置",
-  tools:"工具",
+  account: "账户",
+  preferences: "偏好设置",
+  tools: "工具",
 
-  signIn:"登录",
-  signUp:"创建账户",
+  setupTitle: "规划新行程",
+  setupSubtitle: "填写基本信息，选择地区，然后开始规划。",
+  setupStep: "设置",
 
-  email:"邮箱",
-  emailPlaceholder:"you@example.com",
+  tripDetailsSection: "行程详情",
+  tripDetailsSubtitle: "这些信息将显示在每份打印行程表的顶部。",
 
-  password:"密码",
-  passwordPlaceholder:"至少6个字符",
+  clientName: "客户姓名",
+  clientNamePlaceholder: "例：张伟及家人",
 
-  confirmPassword:"确认密码",
-  confirmPasswordPlaceholder:"重复输入密码",
+  destinations: "目的地",
+  destinationsPlaceholder: "例：大阪 — 京都 — 东京",
 
-  fullName:"全名",
-  fullNamePlaceholder:"例：张伟",
+  startDate: "出发日期",
+  endDate: "返回日期",
 
-  phoneNumber:"手机号码",
-  phonePlaceholder:"+86 138 1234 5678",
+  duration: "行程天数",
+  durationAuto: "（自动计算）",
+  durationPlaceholder: "例：8天7晚",
 
-  dreamDestination:"您下一个梦想目的地是哪里？",
-  dreamDestinationPlaceholder:"例：日本、首尔、欧洲",
+  pickStartDate: "选择出发日期",
+  pickEndDate: "选择返回日期",
 
-  forgotPassword:"忘记密码？",
-  sendResetEmail:"发送重置邮件",
-  resetEmailSent:"密码重置链接已发送到您的邮箱。",
-  backToLogin:"返回登录",
+  startPlanning: "开始规划",
+  pickRegionFirst: "请先选择地区以继续。",
 
-  dontHaveAccount:"还没有账户？",
-  alreadyHaveAccount:"已有账户？",
+  whereTrip: "您计划前往哪个地区？",
+  whereSubtitle: "选择地区可设置当地货币和交通选项。",
 
-  createAccountLink:"创建账户",
-  signInLink:"登录",
+  whoAndWhere: "出行信息",
+  preparedFor: "为客户准备",
+  clientNameField: "客户姓名",
 
-  authLoading:"登录中…",
-  authCreating:"创建账户中…",
-  authSending:"发送中…",
+  dayByDay: "逐日行程",
+  itinerarySection: "02 — 行程规划",
+  overviewSection: "03 — 旅行概览",
 
-  authErrUserNotFound:"未找到该邮箱对应的账户。",
-  authErrWrongPassword:"密码不正确。",
-  authErrInvalidEmail:"请输入有效的邮箱地址。",
-  authErrTooManyRequests:"尝试次数过多，请稍后再试。",
-  authErrInvalidCredential:"邮箱或密码不正确。",
-  authErrEmailInUse:"该邮箱地址已注册账户。",
-  authErrWeakPassword:"密码至少需要6个字符。",
-  authErrGeneric:"发生错误，请重试。",
+  addRow: "+ 添加行程",
 
-  validationNameRequired:"全名为必填项。",
-  validationEmailInvalid:"请输入有效的邮箱地址。",
-  validationPhoneRequired:"手机号码为必填项。",
-  validationPasswordMin:"密码至少需要6个字符。",
-  validationPasswordMatch:"两次输入的密码不一致。",
+  noStops: "暂无行程。点击添加行程按钮开始规划。",
 
-  helpTitle:"如何开始",
+  stopsCount: "{count}个地点",
+  stopCount: "{count}个地点",
 
-  helpStep1Title:"创建账户",
-  helpStep1:"使用姓名、邮箱、手机号和密码注册。",
+  day: "天",
+  date: "日期",
+  time: "时间",
+  city: "城市",
 
-  helpStep2Title:"输入兑换码",
-  helpStep2:"使用兑换码激活Lite或Pro套餐。",
+  destination: "目的地",
+  destinationPlaceholder: "地点名称",
 
-  helpStep3Title:"开始规划",
-  helpStep3:"添加目的地和预算创建行程。",
+  from: "出发地",
+  to: "目的地",
 
-  helpStep4Title:"导出PDF",
-  helpStep4:"生成专业的行程PDF文件。",
+  transport: "交通方式",
+  category: "类别",
+  notes: "备注",
+  budget: "预算",
+  links: "链接",
+  actions: "操作",
 
-  helpStep5Title:"随时升级",
-  helpStep5:"升级到Pro，无限制创建旅行计划。",
+  insertAbove: "在上方插入",
+  insertBelow: "在下方插入",
+  deleteRow: "删除行",
 
-  helpContactUs:"需要帮助？通过WhatsApp联系我们",
+  mapLink: "📍 地图",
+  routeLink: "🗺 路线",
 
-  setupTitle:"规划新行程",
-  setupSubtitle:"填写基本信息，选择地区，然后开始规划。",
+  viewMap: "在Google地图中查看",
+  openRoute: "打开路线",
 
-  tripDetails:"行程详情",
-  tripDetailsSub:"这些信息将显示在每份打印行程表的顶部。",
+  viewFlights: "搜索航班",
+  ticketBooking: "预订票务",
 
-  clientName:"客户姓名",
-  clientNamePlaceholder:"例：张伟 & 家人",
+  bothCurrenciesEditable: "{local}和IDR均可编辑。",
+  idrOnly: "预算以IDR计算。",
 
-  destinations:"目的地",
-  destinationsPlaceholder:"例：大阪 — 京都 — 东京",
+  catHotel: "酒店",
+  catFood: "餐饮",
+  catAttraction: "景点",
+  catActivity: "活动",
+  catTransport: "交通",
 
-  startDate:"出发日期",
-  endDate:"返回日期",
+  budgetAtAGlance: "预算概览",
+  totalBudget: "总预算",
 
-  duration:"行程天数",
-  durationAuto:"（自动）",
-  durationPlaceholder:"例：8天7晚",
+  transportUsage: "交通方式使用情况",
+  budgetPerCategory: "各类别预算",
 
-  pickStartDate:"选择出发日期",
-  pickEndDate:"选择返回日期",
+  leg: "段",
+  legs: "段",
 
-  startPlanning:"开始规划",
-  pickRegionFirst:"请先选择地区以继续。",
+  inLocalCurrency: "以当地货币计算",
 
-  chooseRegion:"您计划去哪里旅行？",
-  chooseRegionSub:"选择地区 — 交通方式和货币将相应调整。",
+  addTransportToChart: "选择交通方式即可查看此图表。",
+  addBudgetToChart: "输入预算金额即可查看此图表。",
 
-  whoAndWhere:"出行信息",
-  preparedFor:"为客户准备",
+  yourPlan: "您的套餐",
 
-  clientNameInputPlaceholder:"客户姓名",
+  free: "免费",
+  lite: "基础版",
+  pro: "专业版",
 
-  dayByDay:"逐日行程",
-  addRow:"+ 添加行程",
-  stops:"个地点",
-  stop:"个地点",
+  upgradeToPro: "升级到专业版",
 
-  noStops:'暂无行程。点击 "添加行程" 按钮开始规划。',
+  redeemCode: "输入兑换码",
+  redeemApply: "兑换",
 
-  insertAbove:"在上方插入",
-  insertBelow:"在下方插入",
-  deleteRow:"删除行",
+  redeemPlaceholder: "例：BE-3DAYSTRIAL",
 
-  day:"天",
-  date:"日期",
-  time:"时间",
-  city:"城市",
+  redeemChecking: "验证中…",
+  redeemSuccess: "套餐已成功激活！",
 
-  destination:"目的地",
-  destinationPlaceholder:"地点名称",
+  redeemError: "无效或已过期的兑换码。",
+  redeemNeedCode: "需要兑换码？通过WhatsApp联系我们",
 
-  from:"出发地",
-  to:"目的地",
-  transport:"交通方式",
-  category:"类别",
+  lockedTitle: "解锁计划助手",
+  lockedBody: "请输入兑换码或升级套餐以开始创建行程。",
 
-  notes:"备注",
-  budget:"预算",
-  links:"链接",
+  enterCode: "输入兑换码",
+  startPlanningBtn: "开始规划 →",
 
-  mapLink:"📍 地图",
-  routeLink:"🗺 路线",
+  planFeatLite1: "最多3个行程",
+  planFeatLite2: "每次旅行最多20行",
+  planFeatLite3: "PDF导出已启用",
+  planFeatLite4: "云端保存已启用",
 
-  budgetAtAGlance:"预算概览",
-  totalBudget:"总预算",
+  planFeatPro1: "无限行程",
+  planFeatPro2: "无限行数",
+  planFeatPro3: "高级PDF导出",
+  planFeatPro4: "所有分析和图表",
+  planFeatPro5: "优先支持",
 
-  transportUsage:"交通方式使用情况",
-  budgetPerCategory:"各类别预算",
+  planActivatedUntil: "有效期至{date}",
 
-  legs:"段",
-  leg:"段",
+  needHelp: "需要帮助安排这次旅行吗？",
+  ctaSubtitle: "Backpackervun为您处理一切。",
 
-  inLocalCurrency:"以当地货币计算",
+  chatWA: "通过WhatsApp联系",
+  requestTrip: "申请定制行程",
 
-  addTransportToSee:"选择交通方式可查看此图表。",
-  addBudgetToSee:"添加预算可查看此图表。",
+  freeConsult: "免费咨询 · 无隐藏费用",
 
-  tipLocal:"💡 数据保存在本地浏览器中。点击保存按钮存储到云端。",
+  serviceHotels: "🏨 酒店与住宿",
+  serviceTransport: "🚆 交通与JR Pass",
+  serviceFlights: "✈️ 机票与接送",
+  serviceVisa: "📄 签证协助",
+  serviceItinerary: "🗺️ 定制行程规划",
+  serviceArrangement: "🎌 全程安排服务",
 
-  previewTitle:"行程预览",
-  previewSubtitle:"查看您的PDF效果。",
+  contactUs: "联系我们",
 
-  printTip:'在打印对话框中选择 "另存为PDF" 以获得最佳效果。',
+  termsOfUse: "使用条款",
+  privacyPolicy: "隐私政策",
+  contact: "联系我们",
 
-  preparedForLabel:"为客户准备",
+  savedTrips: "已保存行程",
+  noSavedTrips: "暂无已保存的行程。",
 
-  itineraryLabel:"行程",
-  tripSummary:"行程摘要",
+  savedOn: "{date}保存",
 
-  totalStops:"总地点数",
-  totalDays:"总天数",
+  deleteTrip: "删除行程",
+  deleteTripConfirm: "删除此行程？此操作无法撤销。",
 
-  conversionRate:"换算汇率",
-  byCategory:"按类别",
+  loadingTrips: "加载行程中…",
+  couldNotLoad: "无法加载行程，请检查网络连接。",
 
-  preparedWith:"使用 Backpackervun 制作 · backpackervun.com",
+  previewTitle: "预览",
 
-  yourPlan:"您的套餐",
-  free:"免费",
-  lite:"基础版",
-  pro:"专业版",
+  previewHint: "在打印对话框中选择“保存为PDF”可获得最佳效果。",
 
-  upgradeToPro:"升级到专业版",
+  previewLabel: "预览",
 
-  redeemCode:"输入兑换码",
-  redeemCodePlaceholder:"例：BE-3DAYSTRIAL",
+  preparedForClient: "为客户准备",
 
-  redeemApply:"兑换",
-  redeemChecking:"验证中…",
+  itinerary: "行程",
+  tripSummary: "旅行总结",
 
-  redeemSuccess:"套餐已激活！",
-  redeemSuccessDetail:"{plan}套餐现已激活。",
+  noItinerary: "暂无行程条目。",
 
-  redeemError:"无效或已过期的兑换码。",
+  totalStops: "总地点数",
+  totalDays: "总天数",
 
-  redeemNeedCode:"需要兑换码？通过WhatsApp联系我们",
+  conversionRate: "汇率",
+  byCategory: "按类别",
 
-  lockedTitle:"解锁计划助手",
-  lockedBody:"请输入兑换码或升级套餐以开始创建行程。",
+  pdfFooter: "通过Backpackervun规划 · backpackervun.com",
 
-  enterCode:"输入兑换码",
+  preparedWith: "通过Backpackervun规划 · backpackervun.com",
 
-  planActivated:"已激活",
-  validUntil:"有效期至",
-
-  whatUnlocked:"已解锁功能：",
-
-  planFreeDesc:"已锁定",
-  planLiteDesc:"3个行程 · 20行",
-  planProDesc:"无限制",
-
-  needHelp:"需要帮助安排这次旅行吗？",
-  ctaSubtitle:"Backpackervun 为您全程服务。",
-
-  chatWA:"联系 Backpackervun",
-  requestTrip:"申请定制行程",
-
-  freeConsult:"免费咨询 · 无隐藏费用",
-
-  serviceHotels:"🏨 酒店与住宿",
-  serviceTransport:"🚆 交通与JR Pass",
-  serviceFlights:"✈️ 机票与接送",
-  serviceVisa:"📄 签证协助",
-  serviceItinerary:"🗺️ 定制行程规划",
-  serviceArrangement:"🎌 全程安排服务",
-
-  contactUs:"联系我们",
-  contactModal:"联系 Backpackervun",
-  contactSubtitle:"我们很乐意帮助您规划旅行。",
-
-  whatsapp:"WhatsApp",
-  instagram:"Instagram",
-  emailContact:"邮件",
-
-  termsOfUse:"使用条款",
-  privacyPolicy:"隐私政策",
-  contact:"联系我们",
-
-  savedTrips:"已保存行程",
-
-  noSavedTrips:"暂无已保存的行程。点击保存按钮保存当前行程。",
-
-  savedOn:"已保存",
-
-  deleteTrip:"删除行程",
-  deleteConfirm:"删除此行程？此操作无法撤销。",
-
-  untitledTrip:"无标题行程",
-
-  regionMismatch:"⚠️ 位置可能与所选地区不符，请在Google地图上确认。",
-
-  resetConfirm:"清除所有内容并重新开始？",
-
-  hiUser:"{name}，您好 👋",
+  unsavedChanges: "有未保存的更改",
 };
 
 export default zh;
