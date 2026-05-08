@@ -3,35 +3,41 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import Header        from "@/components/Header";
-import HelpModal     from "@/components/HelpModal";
-import PreviewModal  from "@/components/PreviewModal";
-import ProjectsModal from "@/components/ProjectsModal";
-import SetupScreen   from "@/components/SetupScreen";
-import TripInfoPanel from "@/components/TripInfoPanel";
+import Header         from "@/components/Header";
+import HelpModal      from "@/components/HelpModal";
+import PreviewModal   from "@/components/PreviewModal";
+import ProjectsModal  from "@/components/ProjectsModal";
+import SetupScreen    from "@/components/SetupScreen";
+import TripInfoPanel  from "@/components/TripInfoPanel";
 import ItineraryTable from "@/components/ItineraryTable";
-import ChartsPanel   from "@/components/ChartsPanel";
+import ChartsPanel    from "@/components/ChartsPanel";
 import { CTACard, CTAFab } from "@/components/CTACard";
-import ContactModal  from "@/components/ContactModal";
-import Footer        from "@/components/Footer";
-import RedeemModal   from "@/components/RedeemModal";
-import UpgradeModal  from "@/components/UpgradeModal";
+import ContactModal   from "@/components/ContactModal";
+import Footer         from "@/components/Footer";
+import RedeemModal    from "@/components/RedeemModal";
+import UpgradeModal   from "@/components/UpgradeModal";
 
-import { useAuth }                      from "@/context/AuthProvider";
-import { useT }                         from "@/context/TranslationContext";
-import { usePlan }                      from "@/hooks/usePlan";
-import { saveProject, countUserTrips }  from "@/lib/firestore";
-import { fetchRateToIDR, invalidateRate } from "@/lib/exchangeRates";
+import { useAuth }                         from "@/context/AuthProvider";
+import { useT }                            from "@/context/TranslationContext";
+import { usePlan }                         from "@/hooks/usePlan";
+import { saveProject, countUserTrips }     from "@/lib/firestore";
+import { fetchRateToIDR, invalidateRate }  from "@/lib/exchangeRates";
 import { DEFAULT_RATE, generateId, getCurrency } from "@/lib/utils";
 
-const STORAGE_KEY   = "backpackervun-v9";
-const BLANK_TRIP    = { clientName:"", duration:"", destinations:"", travelDates:"", startDate:"", endDate:"" };
+const STORAGE_KEY = "backpackervun-v9";
+const BLANK_TRIP  = { clientName:"", duration:"", destinations:"", travelDates:"", startDate:"", endDate:"" };
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// ── Row helpers ───────────────────────────────────────────────────────────────
 
+/**
+ * KEY FIX: syncIDR computes IDR from local.
+ * But we MUST NOT overwrite budgetIDR when user has typed in it directly.
+ * We use the `lastEdited` field to track what the user typed last.
+ */
 function syncIDR(row, rate) {
   return { ...row, budgetIDR: Math.round((Number(row.budgetLocal) || 0) * (Number(rate) || 0)) };
 }
+
 function normalizeRow(row, rate) {
   const r = { ...row };
   if (r.budgetJPY !== undefined && r.budgetLocal === undefined) r.budgetLocal = r.budgetJPY;
@@ -39,9 +45,15 @@ function normalizeRow(row, rate) {
   if (typeof r.budgetIDR !== "number") return syncIDR(r, rate);
   return r;
 }
+
 function blankRow(s) {
-  return { id: generateId(), date: s?.date ?? "", time: "", city: s?.city ?? "", destination:"", from:"", to:"", transport:"", notes:"", category:"", budgetLocal:0, budgetIDR:0 };
+  return {
+    id: generateId(), date: s?.date ?? "", time: "", city: s?.city ?? "",
+    destination:"", from:"", to:"", transport:"", notes:"", category:"",
+    budgetLocal:0, budgetIDR:0,
+  };
 }
+
 function buildDayMap(rows) {
   const dates = [...new Set(rows.map(r => (r.date||"").trim()).filter(Boolean))].sort();
   const m = {};
@@ -69,8 +81,10 @@ export default function DashboardPage() {
   const [projectId, setProjectId]       = useState(null);
   const [saveStatus, setSaveStatus]     = useState("idle");
   const [hasUnsaved, setHasUnsaved]     = useState(false);
+
   // currencyMode: "local" = edit local currency; "idr" = edit IDR
   const [currencyMode, setCurrencyMode] = useState("local");
+
   const [helpOpen, setHelpOpen]         = useState(false);
   const [helpTab, setHelpTab]           = useState("how");
   const [projectsOpen, setProjectsOpen] = useState(false);
@@ -91,12 +105,14 @@ export default function DashboardPage() {
     const currency = getCurrency(regionId);
     if (currency.code === "IDR") {
       setRate(1); setRateSource("live"); setRateUA(new Date().toISOString());
-      setRows(prev => prev.map(r => syncIDR(r, 1))); return;
+      setRows(prev => prev.map(r => syncIDR(r, 1)));
+      return;
     }
     try {
       const { rate: lr, updatedAt } = await fetchRateToIDR(currency.code);
       setRate(lr); setRateSource("live"); setRateUA(updatedAt);
-      setRows(prev => prev.map(r => syncIDR(r, lr)));
+      // Only sync IDR for rows that were edited in LOCAL mode
+      setRows(prev => prev.map(r => r._lastEdited === "idr" ? r : syncIDR(r, lr)));
     } catch { setRateSource("error"); }
   }, []);
 
@@ -106,12 +122,13 @@ export default function DashboardPage() {
       if (raw) {
         const p = JSON.parse(raw);
         const r = typeof p.rate === "number" && p.rate > 0 ? p.rate : DEFAULT_RATE;
-        if (Array.isArray(p.rows)) setRows(p.rows.map(row => normalizeRow(row, r)));
-        if (p.tripInfo) setTripInfo({ ...BLANK_TRIP, ...p.tripInfo });
+        if (Array.isArray(p.rows))   setRows(p.rows.map(row => normalizeRow(row, r)));
+        if (p.tripInfo)              setTripInfo({ ...BLANK_TRIP, ...p.tripInfo });
         if (typeof p.region === "string") setRegion(p.region === "Korea" ? "South Korea" : p.region);
-        if (typeof p.setupComplete === "boolean") setSetup(p.setupComplete); else if (p.region) setSetup(true);
-        if (p.projectId) setProjectId(p.projectId);
-        if (p.currencyMode) setCurrencyMode(p.currencyMode);
+        if (typeof p.setupComplete === "boolean") setSetup(p.setupComplete);
+        else if (p.region) setSetup(true);
+        if (p.projectId)     setProjectId(p.projectId);
+        if (p.currencyMode)  setCurrencyMode(p.currencyMode);
         setRate(r);
       }
     } catch { /* ignore */ }
@@ -139,24 +156,37 @@ export default function DashboardPage() {
     setHasUnsaved(true);
   }, [rows, tripInfo, rate, region]); // eslint-disable-line
 
-  const totalLocal = useMemo(() => rows.reduce((s, r) => s + (Number(r.budgetLocal)||0), 0), [rows]);
-  const totalIDR   = useMemo(() => Math.round(totalLocal * (Number(rate)||0)), [totalLocal, rate]);
+  // ── BUDGET TOTALS — EXACT FIX ─────────────────────────────────────────────
+  //
+  // PROBLEM: If user inputs 1,000,000 IDR and rate=12:
+  //   budgetLocal = round(1000000/12) = 83333
+  //   totalIDR = 83333 * 12 = 999,996 ← WRONG
+  //
+  // FIX: totalIDR always sums the raw budgetIDR values stored per row.
+  //      This means 1,000,000 stays exactly 1,000,000 in the total.
+  //      totalLocal sums raw budgetLocal values.
+  //      We never re-multiply for the total.
+  //
+  const totalIDR   = useMemo(() => rows.reduce((s, r) => s + (Number(r.budgetIDR)   || 0), 0), [rows]);
+  const totalLocal = useMemo(() => rows.reduce((s, r) => s + (Number(r.budgetLocal) || 0), 0), [rows]);
   const dayMap     = useMemo(() => buildDayMap(rows), [rows]);
   const currency   = useMemo(() => getCurrency(region), [region]);
 
-  // ── DIRECTIONAL CURRENCY — edited field never overwritten ─────────────────
+  // ── DIRECTIONAL CURRENCY — never mutate the field user just typed ─────────
   const updateRow = (id, field, value) => {
     setRows(prev => prev.map(r => {
       if (r.id !== id) return r;
-      const next = { ...r, [field]: value };
-      const rn   = Number(rate) || 1;
+      const next  = { ...r, [field]: value, _lastEdited: field };
+      const rn    = Number(rate) || 1;
 
       if (field === "budgetLocal") {
-        // User typed in LOCAL — compute IDR, never touch budgetLocal
-        next.budgetIDR = Math.round((Number(value) || 0) * rn);
+        // User typed local → compute IDR, budgetLocal stays exactly as typed
+        next.budgetIDR   = Math.round((Number(value) || 0) * rn);
+        next._lastEdited = "local";
       } else if (field === "budgetIDR") {
-        // User typed in IDR — compute LOCAL, never touch budgetIDR
+        // User typed IDR → compute local, budgetIDR stays exactly as typed
         next.budgetLocal = Math.round((Number(value) || 0) / rn);
+        next._lastEdited = "idr";
       }
 
       if ((field === "from" || field === "to") && !next.category) {
@@ -169,7 +199,12 @@ export default function DashboardPage() {
   const handleRateChange = (v) => {
     const n = Number(v) || 0;
     setRate(n); setRateSource("manual");
-    setRows(prev => prev.map(r => syncIDR(r, n)));
+    // When rate changes, only resync rows that were last edited in LOCAL mode
+    setRows(prev => prev.map(r =>
+      r._lastEdited === "idr"
+        ? r  // IDR is source of truth — don't touch
+        : syncIDR(r, n)
+    ));
   };
 
   const addRow    = () => setRows(prev => [...prev, blankRow(prev[prev.length - 1])]);
@@ -192,11 +227,15 @@ export default function DashboardPage() {
   };
 
   const handleRegionChange = (r) => {
-    setRegion(r); invalidateRate(getCurrency(r).code); ratesFetched.current = false;
+    setRegion(r);
+    invalidateRate(getCurrency(r).code);
+    ratesFetched.current = false;
     if (r === "Indonesia") {
       setRate(1); setRateSource("live"); setRateUA(new Date().toISOString());
       setRows(prev => prev.map(row => syncIDR(row, 1)));
-    } else { applyLiveRate(r); }
+    } else {
+      applyLiveRate(r);
+    }
   };
 
   const handleSave = async () => {
@@ -207,6 +246,7 @@ export default function DashboardPage() {
       const { allowed, reason } = checkTrip(count);
       if (!allowed) { setUpgradeReason(reason); setUpgradeOpen(true); return; }
     } catch { /* proceed */ }
+
     setSaveStatus("saving");
     try {
       const id = await saveProject(user.uid, projectId, { tripInfo, rows, region, rate });
@@ -236,7 +276,10 @@ export default function DashboardPage() {
     setPreviewOpen(true);
   };
 
-  const showSetup = hydrated && !setupComplete;
+  // ── SETUP vs PLANNER ──────────────────────────────────────────────────────
+  // These two states are MUTUALLY EXCLUSIVE. Only one section renders at a time.
+  const showSetup    = hydrated && !setupComplete;
+  const showPlanner  = hydrated && setupComplete;
 
   if (authLoading || !hydrated) {
     return (
@@ -252,14 +295,16 @@ export default function DashboardPage() {
   return (
     <div className="paper-bg min-h-screen flex flex-col">
 
-      {/* ── SETUP ── */}
+      {/* ── SETUP ── (only when setupComplete === false) ── */}
       {showSetup && (
         <>
-          <header className="border-b border-paper-line bg-white/85 backdrop-blur-md">
+          <header className="border-b border-paper-line bg-white/85 backdrop-blur-md sticky top-0 z-30">
             <div className="mx-auto flex max-w-[1600px] items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
               <div className="flex items-center gap-3">
                 <img src="/logo.png" alt="Backpackervun" className="h-7 w-auto sm:h-8" />
-                <span className="hidden border-l border-paper-line pl-3 text-[10px] font-semibold uppercase tracking-[0.22em] text-ink-muted sm:block">{t("appName")}</span>
+                <span className="hidden border-l border-paper-line pl-3 text-[10px] font-semibold uppercase tracking-[0.22em] text-ink-muted sm:block">
+                  {t("appName")}
+                </span>
               </div>
               <div className="flex items-center gap-2">
                 <button onClick={() => { setHelpTab("how"); setHelpOpen(true); }}
@@ -268,8 +313,10 @@ export default function DashboardPage() {
                 </button>
                 <button onClick={logout}
                   className="inline-flex items-center gap-1.5 rounded-lg bg-red-500 px-3 py-2 text-xs font-semibold text-white hover:bg-red-600 active:scale-95 transition">
-                  <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+                  <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                    <polyline points="16 17 21 12 16 7"/>
+                    <line x1="21" y1="12" x2="9" y2="12"/>
                   </svg>
                   <span className="hidden sm:inline">{t("logout")}</span>
                 </button>
@@ -286,27 +333,34 @@ export default function DashboardPage() {
                     <p className="font-semibold text-amber-900 text-sm">{t("lockedTitle")}</p>
                     <p className="mt-0.5 text-xs text-amber-800">{t("lockedBody")}</p>
                   </div>
-                  <button onClick={() => setRedeemOpen(true)} className="flex-shrink-0 rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-600">
+                  <button onClick={() => setRedeemOpen(true)}
+                    className="flex-shrink-0 rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-600">
                     {t("enterCode")}
                   </button>
                 </div>
               </div>
             )}
+            {/*
+              SetupScreen renders ONLY here — when setupComplete === false.
+              It does NOT render below the planner.
+            */}
             <SetupScreen
-              tripInfo={tripInfo} region={region}
+              tripInfo={tripInfo}
+              region={region}
               onTripInfoChange={setTripInfo}
               onRegionChange={handleRegionChange}
               onStart={() => {
                 if (isLocked) { setRedeemOpen(true); return; }
-                setSetup(true); initialChange.current = true;
+                setSetup(true);
+                initialChange.current = true;
               }}
             />
           </div>
         </>
       )}
 
-      {/* ── PLANNER ── */}
-      {!showSetup && (
+      {/* ── PLANNER ── (only when setupComplete === true) ── */}
+      {showPlanner && (
         <>
           <Header
             rate={rate}              onRateChange={handleRateChange}
@@ -327,7 +381,7 @@ export default function DashboardPage() {
             <TripInfoPanel tripInfo={tripInfo} onChange={setTripInfo} />
 
             <div className="mt-8 grid gap-6 items-start lg:grid-cols-[minmax(0,1fr)_320px] xl:grid-cols-[minmax(0,1fr)_360px]">
-              {/* Left */}
+              {/* Left: itinerary */}
               <div className="min-w-0">
                 {isLocked ? (
                   <div className="rounded-2xl border border-paper-line bg-white p-10 text-center shadow-soft">
@@ -335,18 +389,24 @@ export default function DashboardPage() {
                     <h3 className="mt-4 text-lg font-semibold text-ink">{t("lockedTitle")}</h3>
                     <p className="mt-2 text-sm text-ink-muted max-w-sm mx-auto">{t("lockedBody")}</p>
                     <div className="mt-5 flex flex-col sm:flex-row gap-2 justify-center">
-                      <button onClick={() => setRedeemOpen(true)} className="rounded-xl bg-navy-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-navy-600">
+                      <button onClick={() => setRedeemOpen(true)}
+                        className="rounded-xl bg-navy-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-navy-600">
                         🎟️ {t("redeemCode")}
                       </button>
-                      <button onClick={() => setContactOpen(true)} className="rounded-xl border border-paper-line px-5 py-2.5 text-sm font-semibold text-ink-soft hover:bg-paper-dim">
+                      <button onClick={() => setContactOpen(true)}
+                        className="rounded-xl border border-paper-line px-5 py-2.5 text-sm font-semibold text-ink-soft hover:bg-paper-dim">
                         {t("chatWA")}
                       </button>
                     </div>
                   </div>
                 ) : (
                   <ItineraryTable
-                    rows={rows} dayMap={dayMap} region={region}
-                    onUpdate={updateRow} onAdd={addRow} onDelete={deleteRow}
+                    rows={rows}
+                    dayMap={dayMap}
+                    region={region}
+                    onUpdate={updateRow}
+                    onAdd={addRow}
+                    onDelete={deleteRow}
                     onInsertAbove={id => insertAt(id, "above")}
                     onInsertBelow={id => insertAt(id, "below")}
                     currencyMode={currencyMode}
@@ -354,7 +414,7 @@ export default function DashboardPage() {
                 )}
               </div>
 
-              {/* Right sidebar — self-start + sticky, flex column for proper spacing */}
+              {/* Right sidebar */}
               <aside className="min-w-0 flex flex-col gap-4 lg:self-start lg:sticky lg:top-[64px]">
                 <ChartsPanel rows={rows} rate={rate} totalLocal={totalLocal} totalIDR={totalIDR} />
                 <div className="hidden md:block">
@@ -369,17 +429,27 @@ export default function DashboardPage() {
             <CTAFab tripInfo={tripInfo} totalLocal={totalLocal} currency={currency} totalIDR={totalIDR} />
           </div>
 
-          <Footer onContactOpen={() => setContactOpen(true)} />
+          <Footer />
         </>
       )}
 
-      {/* ── MODALS ── */}
+      {/* ── Modals (always rendered, visibility controlled by open prop) ── */}
       <PreviewModal
-        open={previewOpen} onClose={() => setPreviewOpen(false)}
-        tripInfo={tripInfo} rows={rows} dayMap={dayMap} region={region}
-        rate={rate} totalLocal={totalLocal} totalIDR={totalIDR}
+        open={previewOpen}
+        onClose={() => setPreviewOpen(false)}
+        tripInfo={tripInfo}
+        rows={rows}
+        dayMap={dayMap}
+        region={region}
+        rate={rate}
+        totalLocal={totalLocal}
+        totalIDR={totalIDR}
         canExportPDF={canExportPDF}
-        onUpgradeNeeded={(reason) => { setPreviewOpen(false); setUpgradeReason(reason); setUpgradeOpen(true); }}
+        onUpgradeNeeded={(reason) => {
+          setPreviewOpen(false);
+          setUpgradeReason(reason);
+          setUpgradeOpen(true);
+        }}
       />
       <HelpModal     open={helpOpen}     initialTab={helpTab}  onClose={() => setHelpOpen(false)} />
       <ProjectsModal open={projectsOpen} userId={user?.uid}    onClose={() => setProjectsOpen(false)} onLoad={handleLoadProject} />

@@ -1,10 +1,10 @@
 /**
- * locales/en.js — v1.0 FINAL
- * Master dictionary. All other locale files must mirror these keys.
- * Two new keys added: loginSubtitle, signupSubtitle
+ * locales/en.js — v1.0 FINAL + pdfCTA fix
+ * 
+ * Added: pdfCTA (was showing as raw key in preview footer)
+ * The pdfCTA key was missing, causing "pdfCTA" text to appear in the PDF footer.
  */
 const en = {
-  // ── App ──────────────────────────────────────────────────────────────────
   appName: "Travel Planner",
   backpackervun: "Backpackervun",
   loading: "Loading…",
@@ -13,10 +13,7 @@ const en = {
   delete: "Delete", edit: "Edit", back: "Back", next: "Next", done: "Done",
   yes: "Yes", no: "No", optional: "optional",
 
-  // ── Auth ─────────────────────────────────────────────────────────────────
-  signIn: "Sign in",
-  signUp: "Create account",
-  logout: "Logout",
+  signIn: "Sign in", signUp: "Create account", logout: "Logout",
   logoutConfirm: "Sign out of your account?",
   loginSubtitle: "Enter your credentials to access the planner.",
   signupSubtitle: "Fill in your details to get started.",
@@ -28,8 +25,7 @@ const en = {
   dreamDestination: "Dream Trip Destination",
   dreamDestinationPlaceholder: "e.g. Japan, Seoul, Europe, Sydney…",
   dreamDestinationHint: "We'll use this to personalise your planning experience.",
-  forgotPassword: "Forgot password?",
-  sendResetEmail: "Send reset link",
+  forgotPassword: "Forgot password?", sendResetEmail: "Send reset link",
   resetEmailSent: "Reset link sent! Check your inbox.",
   resendEmail: "Resend email",
   backToLogin: "Back to sign in",
@@ -38,7 +34,6 @@ const en = {
   createAccountLink: "Create account",
   signingIn: "Signing in…", creatingAccount: "Creating account…", sendingReset: "Sending…",
 
-  // ── Auth errors ───────────────────────────────────────────────────────────
   errorUserNotFound: "No account found with this email address.",
   errorWrongPassword: "Incorrect password. Please try again.",
   errorInvalidEmail: "Please enter a valid email address.",
@@ -48,14 +43,12 @@ const en = {
   errorWeakPassword: "Password must be at least 6 characters.",
   errorGeneric: "Something went wrong. Please try again.",
 
-  // ── Validation ────────────────────────────────────────────────────────────
   validationNameRequired: "Full name is required.",
   validationEmailInvalid: "Please enter a valid email address.",
   validationPhoneRequired: "Phone number is required.",
   validationPasswordShort: "Password must be at least 6 characters.",
   validationPasswordMismatch: "Passwords do not match.",
 
-  // ── Onboarding ────────────────────────────────────────────────────────────
   howToStart: "How to get started",
   howToStartStep1: "Create your account with your name, email and phone number.",
   howToStartStep2: "Enter a redeem code to unlock your Lite or Pro plan.",
@@ -65,7 +58,6 @@ const en = {
   howToStartCta: "Need a redeem code? Chat us on",
   howToStartCtaWhatsApp: "WhatsApp",
 
-  // ── Navigation ────────────────────────────────────────────────────────────
   menu: "Menu", help: "Help", preview: "Preview", exportPDF: "Export PDF",
   backToEdit: "Back to Edit", loadTrip: "Load trip", reset: "Reset",
   resetConfirm: "Clear everything and start over?",
@@ -78,7 +70,6 @@ const en = {
   editLocal: "Edit {code}", editIDR: "Edit IDR",
   account: "Account", preferences: "Preferences", tools: "Tools",
 
-  // ── Setup ─────────────────────────────────────────────────────────────────
   setupTitle: "Plan a new trip",
   setupSubtitle: "Fill in the basics, choose your region, then start planning.",
   setupStep: "Setup",
@@ -95,7 +86,6 @@ const en = {
   whereTrip: "Where are you planning a trip?",
   whereSubtitle: "Pick a region — it sets the local currency and transport options.",
 
-  // ── Planner ───────────────────────────────────────────────────────────────
   whoAndWhere: "Who and where",
   preparedFor: "Prepared for",
   clientNameField: "Client name",
@@ -103,7 +93,6 @@ const en = {
   itinerarySection: "02 — Itinerary Planner",
   overviewSection: "03 — Travel Overview",
 
-  // ── Table ─────────────────────────────────────────────────────────────────
   addRow: "+ Add row",
   noStops: "No stops yet. Click + Add row to start planning.",
   stopsCount: "{count} stops", stopCount: "{count} stop",
@@ -118,20 +107,17 @@ const en = {
   viewFlights: "Search Flights", ticketBooking: "Book Ticket",
   bothCurrenciesEditable: "Both {local} and IDR are editable — change one and the other updates.",
   idrOnly: "Budget is in IDR.",
-  budgetDisabledHint: "This field is auto-calculated.",
+  budgetDisabledHint: "This field is auto-calculated from the other currency.",
 
-  // ── Categories ────────────────────────────────────────────────────────────
   catHotel: "Hotel", catFood: "Food", catAttraction: "Attraction",
   catActivity: "Activity", catTransport: "Transport",
 
-  // ── Charts ────────────────────────────────────────────────────────────────
   budgetAtAGlance: "Budget at a glance", totalBudget: "Total budget",
   transportUsage: "Transport usage", budgetPerCategory: "Budget per category",
   leg: "leg", legs: "legs", inLocalCurrency: "In your local trip currency",
   addTransportToChart: "Pick a transport mode to see this chart.",
   addBudgetToChart: "Add budget amounts to see this chart.",
 
-  // ── Plan system ───────────────────────────────────────────────────────────
   yourPlan: "Your plan", free: "Free", lite: "Lite", pro: "Pro",
   upgradeToPro: "Upgrade to Pro",
   redeemCode: "Enter redeem code", redeemApply: "Apply Code",
@@ -149,7 +135,6 @@ const en = {
   planFeatPro5: "Priority support",
   planActivatedUntil: "Valid until {date}",
 
-  // ── CTA ───────────────────────────────────────────────────────────────────
   needHelp: "Need help arranging this trip?",
   ctaSubtitle: "Backpackervun handles everything.",
   chatWA: "Chat on WhatsApp", requestTrip: "Request Custom Trip",
@@ -162,10 +147,8 @@ const en = {
   serviceArrangement: "🎌 Full arrangement",
   contactUs: "Contact Us",
 
-  // ── Footer ────────────────────────────────────────────────────────────────
   termsOfUse: "Terms", privacyPolicy: "Privacy", contact: "Contact",
 
-  // ── Trips ─────────────────────────────────────────────────────────────────
   savedTrips: "Saved trips",
   noSavedTrips: "No saved trips yet. Click Save to save your current trip.",
   savedOn: "Saved {date}", deleteTrip: "Delete trip",
@@ -173,18 +156,20 @@ const en = {
   loadingTrips: "Loading trips…",
   couldNotLoad: "Could not load trips. Check your connection.",
 
-  // ── Preview / PDF ─────────────────────────────────────────────────────────
-  previewTitle: "Preview", previewHint: "Select 'Save as PDF' in the print dialog.",
+  previewTitle: "Preview",
+  previewHint: "Select 'Save as PDF' in the print dialog.",
   previewLabel: "Preview",
   preparedForClient: "Prepared for client",
   itinerary: "Itinerary", tripSummary: "Trip Summary",
   noItinerary: "No itinerary entries yet.",
   totalStops: "Total stops", totalDays: "Total days",
   conversionRate: "Rate", byCategory: "By category",
+
+  // ✅ pdfCTA key — was showing as raw "pdfCTA" text in preview (images 6 & 8)
+  pdfCTA: "Planned with Backpackervun · backpackervun.com",
   pdfFooter: "Planned with Backpackervun · backpackervun.com",
   preparedWith: "Planned with Backpackervun · backpackervun.com",
 
-  // ── Misc ──────────────────────────────────────────────────────────────────
   unsavedChanges: "Unsaved changes",
 };
 export default en;

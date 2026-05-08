@@ -1,463 +1,415 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import {
-  buildMapUrl, buildRouteUrl,
-  CATEGORY_ICONS, CATEGORY_OPTIONS, CATEGORY_STYLES,
-  checkRegionMismatch, formatCurrency, formatIDR,
-  getBookingLink, getCurrency, getTransportOptions, transportIcon,
-} from "@/lib/utils";
-import SectionHeading from "./SectionHeading";
+import { useState } from "react";
+import { useT } from "@/context/TranslationContext";
+import { getCurrency, CATEGORY_OPTIONS, TRANSPORT_OPTIONS } from "@/lib/utils";
 
-// ── Column definitions ────────────────────────────────────────────────────────
-
-function buildColumns(currency) {
-  const isIDR = currency.code === "IDR";
-  const cols = [
-    { key: "day",         label: "Day",                       width: 48,  align: "center" },
-    { key: "date",        label: "Date",                      width: 130 },
-    { key: "time",        label: "Time",                      width: 92 },
-    { key: "city",        label: "City",                      width: 120 },
-    { key: "destination", label: "Destination",               width: 200 },
-    { key: "from",        label: "From",                      width: 150 },
-    { key: "to",          label: "To",                        width: 150 },
-    { key: "transport",   label: "Transport",                 width: 200 },
-    { key: "category",    label: "Category",                  width: 140 },
-    { key: "notes",       label: "Notes",                     width: 200 },
-    { key: "budgetLocal", label: `Budget · ${currency.code}`, width: 120, align: "right" },
-  ];
-  if (!isIDR) cols.push({ key: "budgetIDR", label: "Budget · IDR", width: 130, align: "right" });
-  cols.push(
-    { key: "links",   label: "Links", width: 240, align: "center", noPrint: true },
-    { key: "actions", label: "",      width: 96,  align: "center", noPrint: true }
-  );
-  return cols;
-}
-
-// ── Main component ────────────────────────────────────────────────────────────
-
+/**
+ * ItineraryTable — live planner table
+ *
+ * Fixes in this version:
+ *  1. Map / Route / Flights / Booking link chips shown per row
+ *  2. Currency mode: disabled field shows muted styling + cursor-not-allowed
+ *  3. Fully translated labels
+ */
 export default function ItineraryTable({
   rows, dayMap, region,
-  onUpdate, onAdd, onDelete, onInsertAbove, onInsertBelow,
+  onUpdate, onAdd, onDelete,
+  onInsertAbove, onInsertBelow,
+  currencyMode = "local",   // "local" | "idr"
 }) {
-  const [isMobile, setIsMobile] = useState(false);
+  const { t } = useT();
+  const currency = getCurrency(region);
+  const isIDR    = currency.code === "IDR";
 
-  useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 768);
-    check();
-    window.addEventListener("resize", check);
-    return () => window.removeEventListener("resize", check);
-  }, []);
+  const localDisabled = currencyMode === "idr";
+  const idrDisabled   = currencyMode === "local";
 
-  const transportOptions = getTransportOptions(region);
-  const currency         = getCurrency(region);
-  const isIDR            = currency.code === "IDR";
-  const COLUMNS          = buildColumns(currency);
+  // Helper: build travel links for a row
+  const links = (row) => {
+    const destQ = encodeURIComponent(
+      [row.destination, row.city, row.to].filter(Boolean).join(" ") || "Indonesia"
+    );
+    const mapUrl     = `https://www.google.com/maps/search/?api=1&query=${destQ}`;
+    const routeUrl   = row.from && row.to
+      ? `https://www.google.com/maps/dir/${encodeURIComponent(row.from)}/${encodeURIComponent(row.to)}`
+      : null;
+    const flightUrl  = row.transport?.toLowerCase().includes("flight") || (row.from && row.to)
+      ? `https://www.google.com/flights?q=Flights+from+${encodeURIComponent(row.from || "")}+to+${encodeURIComponent(row.to || destQ)}`
+      : null;
+    const bookingUrl = row.destination || row.city
+      ? `https://www.booking.com/search.html?ss=${encodeURIComponent(row.destination || row.city)}`
+      : null;
 
-  const handlers = { onUpdate, onDelete, onInsertAbove, onInsertBelow, region, transportOptions, currency, showIDR: !isIDR };
+    return { mapUrl, routeUrl, flightUrl, bookingUrl };
+  };
+
+  const dayNum = (row) => row.date ? (dayMap[(row.date || "").trim()] ?? null) : null;
+
+  // Column hint
+  const modeHint = isIDR
+    ? null
+    : currencyMode === "idr"
+      ? t("editIDR")
+      : t("editLocal", { code: currency.code });
 
   return (
-    <section aria-label="Itinerary planner">
-      <div className="no-print">
-        <SectionHeading
-          eyebrow="02 — Itinerary Planner"
-          title="Day-by-day plan"
-          aside={
-            <span className="rounded-full bg-paper-dim px-2.5 py-1 text-[11px] font-medium text-ink-soft">
-              {rows.length} {rows.length === 1 ? "stop" : "stops"}
-            </span>
-          }
-        />
+    <div className="rounded-2xl border border-paper-line bg-white shadow-soft overflow-hidden">
+
+      {/* Section heading */}
+      <div className="px-5 py-4 border-b border-paper-line flex items-center justify-between gap-3">
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-ink-muted">
+            {t("itinerarySection")}
+          </p>
+          <h2 className="text-lg font-semibold text-ink mt-0.5">{t("dayByDay")}</h2>
+        </div>
+        <span className="rounded-full border border-paper-line bg-paper-dim px-2.5 py-1 text-xs text-ink-muted">
+          {rows.length === 1 ? t("stopCount", { count: 1 }) : t("stopsCount", { count: rows.length })}
+        </span>
       </div>
 
-      <div className="rounded-2xl border border-paper-line bg-white shadow-soft animate-fade-in">
-        {/* Hint bar */}
-        <div className="no-print border-b border-paper-line px-5 py-3">
-          <p className="text-xs text-ink-muted">
-            {isIDR ? "Budget is in IDR." : (
-              <>Both <strong className="font-semibold text-ink">{currency.code}</strong> and <strong className="font-semibold text-ink">IDR</strong> are editable — change one and the other recalculates.</>
-            )}
-            {isMobile && <span className="ml-2 text-navy-500">↕ Tap a card to expand all fields.</span>}
+      {/* Mode hint */}
+      {!isIDR && modeHint && (
+        <div className="border-b border-paper-line bg-accent-50/40 px-5 py-2.5">
+          <p className="text-xs text-navy-500 font-medium">
+            {currencyMode === "idr"
+              ? `✏️ ${t("editIDR")} mode — ${currency.code} is auto-calculated`
+              : `✏️ ${t("editLocal", { code: currency.code })} mode — IDR is auto-calculated`}
           </p>
         </div>
+      )}
 
-        {/* ── MOBILE VIEW ── */}
-        {isMobile && (
-          <div className="no-print-hidden">
-            {rows.length === 0
-              ? <EmptyState />
-              : <MobileList rows={rows} dayMap={dayMap} handlers={handlers} />
-            }
-          </div>
+      {/* Desktop table */}
+      <div className="hidden md:block overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="border-b border-paper-line bg-paper-dim/60">
+            <tr>
+              {["", t("date"), t("time"), t("destination"), t("transport"), t("category"), t("notes"),
+                ...(isIDR ? ["IDR"] : [`${currency.code}`, "IDR"]),
+                t("links"), ""
+              ].map((h, i) => (
+                <th key={i} className="px-3 py-2.5 text-left text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-muted whitespace-nowrap">
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-paper-line/60">
+            {rows.length === 0 ? (
+              <tr>
+                <td colSpan={12} className="px-5 py-12 text-center text-sm text-ink-muted">
+                  {t("noStops")}
+                </td>
+              </tr>
+            ) : (
+              rows.map((row) => {
+                const dn = dayNum(row);
+                const { mapUrl, routeUrl, flightUrl, bookingUrl } = links(row);
+                return (
+                  <tr key={row.id} className="hover:bg-paper-dim/30 transition-colors">
+                    {/* Day badge */}
+                    <td className="px-3 py-2.5">
+                      {dn !== null && (
+                        <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-navy-500 text-[9px] font-bold text-white">
+                          {dn}
+                        </span>
+                      )}
+                    </td>
+
+                    {/* Date */}
+                    <td className="px-2 py-2.5">
+                      <input type="text" value={row.date || ""} onChange={(e) => onUpdate(row.id, "date", e.target.value)}
+                        placeholder="2025-04-05"
+                        className="w-28 rounded-lg border border-transparent bg-transparent px-2 py-1 text-xs font-mono text-ink outline-none hover:border-paper-line focus:border-accent-300 focus:bg-white" />
+                    </td>
+
+                    {/* Time */}
+                    <td className="px-2 py-2.5">
+                      <input type="text" value={row.time || ""} onChange={(e) => onUpdate(row.id, "time", e.target.value)}
+                        placeholder="10:00"
+                        className="w-20 rounded-lg border border-transparent bg-transparent px-2 py-1 text-xs font-mono text-ink outline-none hover:border-paper-line focus:border-accent-300 focus:bg-white" />
+                    </td>
+
+                    {/* Destination */}
+                    <td className="px-2 py-2.5">
+                      <input type="text" value={row.destination || ""} onChange={(e) => onUpdate(row.id, "destination", e.target.value)}
+                        placeholder={t("destinationPlaceholder")}
+                        className="w-36 rounded-lg border border-transparent bg-transparent px-2 py-1 text-sm text-ink outline-none hover:border-paper-line focus:border-accent-300 focus:bg-white" />
+                      {(row.from || row.to) && (
+                        <p className="px-2 text-[10px] text-ink-muted whitespace-nowrap">
+                          {row.from && <span>{row.from}</span>}
+                          {row.from && row.to && <span className="mx-1 text-ink-muted/40">→</span>}
+                          {row.to && <span>{row.to}</span>}
+                        </p>
+                      )}
+                    </td>
+
+                    {/* Transport */}
+                    <td className="px-2 py-2.5">
+                      <select value={row.transport || ""} onChange={(e) => onUpdate(row.id, "transport", e.target.value)}
+                        className="w-28 rounded-lg border border-transparent bg-transparent px-2 py-1 text-xs text-ink outline-none hover:border-paper-line focus:border-accent-300 focus:bg-white">
+                        <option value="">—</option>
+                        {(TRANSPORT_OPTIONS ?? ["Flight","Train","Bus","Car","Ferry","Walk"]).map(op => (
+                          <option key={op} value={op}>{op}</option>
+                        ))}
+                      </select>
+                    </td>
+
+                    {/* Category */}
+                    <td className="px-2 py-2.5">
+                      <select value={row.category || ""} onChange={(e) => onUpdate(row.id, "category", e.target.value)}
+                        className="w-28 rounded-lg border border-transparent bg-transparent px-2 py-1 text-xs text-ink outline-none hover:border-paper-line focus:border-accent-300 focus:bg-white">
+                        <option value="">—</option>
+                        {(CATEGORY_OPTIONS ?? ["Hotel","Food","Attraction","Activity","Transport"]).map(op => (
+                          <option key={op} value={op}>{op}</option>
+                        ))}
+                      </select>
+                    </td>
+
+                    {/* Notes */}
+                    <td className="px-2 py-2.5">
+                      <input type="text" value={row.notes || ""} onChange={(e) => onUpdate(row.id, "notes", e.target.value)}
+                        placeholder="—"
+                        className="w-32 rounded-lg border border-transparent bg-transparent px-2 py-1 text-xs text-ink outline-none hover:border-paper-line focus:border-accent-300 focus:bg-white" />
+                    </td>
+
+                    {/* Budget local — disabled when currencyMode = "idr" */}
+                    {!isIDR && (
+                      <td className="px-2 py-2.5">
+                        <input
+                          type="number"
+                          value={row.budgetLocal || 0}
+                          onChange={(e) => !localDisabled && onUpdate(row.id, "budgetLocal", Number(e.target.value))}
+                          readOnly={localDisabled}
+                          title={localDisabled ? t("budgetDisabledHint") : ""}
+                          className={`w-24 rounded-lg border px-2 py-1 text-right text-xs font-mono outline-none transition ${
+                            localDisabled
+                              ? "cursor-not-allowed select-none border-transparent bg-paper-dim/70 text-ink-muted opacity-50"
+                              : "border-transparent bg-transparent text-ink hover:border-paper-line focus:border-accent-300 focus:bg-white"
+                          }`}
+                        />
+                      </td>
+                    )}
+
+                    {/* Budget IDR — disabled when currencyMode = "local" */}
+                    <td className="px-2 py-2.5">
+                      <input
+                        type="number"
+                        value={row.budgetIDR || 0}
+                        onChange={(e) => !idrDisabled && onUpdate(row.id, "budgetIDR", Number(e.target.value))}
+                        readOnly={idrDisabled}
+                        title={idrDisabled ? t("budgetDisabledHint") : ""}
+                        className={`w-24 rounded-lg border px-2 py-1 text-right text-xs font-mono outline-none transition ${
+                          idrDisabled
+                            ? "cursor-not-allowed select-none border-transparent bg-paper-dim/70 text-ink-muted opacity-50"
+                            : "border-transparent bg-transparent text-navy-500 hover:border-paper-line focus:border-accent-300 focus:bg-white"
+                        }`}
+                      />
+                    </td>
+
+                    {/* ✅ LINKS — Map, Route, Flights, Booking chips */}
+                    <td className="px-2 py-2.5">
+                      <div className="flex items-center gap-1 flex-nowrap">
+                        <LinkChip href={mapUrl} icon="📍" label="Map" />
+                        {routeUrl  && <LinkChip href={routeUrl}  icon="🗺" label="Route" />}
+                        {flightUrl && <LinkChip href={flightUrl} icon="✈️" label="Flights" />}
+                        {bookingUrl && <LinkChip href={bookingUrl} icon="🎫" label="Hotel" />}
+                      </div>
+                    </td>
+
+                    {/* Row actions */}
+                    <td className="px-2 py-2.5">
+                      <RowActions
+                        onInsertAbove={() => onInsertAbove?.(row.id)}
+                        onInsertBelow={() => onInsertBelow?.(row.id)}
+                        onDelete={() => onDelete?.(row.id)}
+                      />
+                    </td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* ── Mobile cards ── */}
+      <div className="md:hidden divide-y divide-paper-line/60">
+        {rows.length === 0 ? (
+          <p className="px-5 py-10 text-center text-sm text-ink-muted">{t("noStops")}</p>
+        ) : (
+          rows.map((row) => {
+            const dn = dayNum(row);
+            const { mapUrl, routeUrl, flightUrl, bookingUrl } = links(row);
+            return (
+              <div key={row.id} className="px-4 py-4 space-y-3">
+                {/* Day + Destination */}
+                <div className="flex items-start gap-2.5">
+                  {dn !== null && (
+                    <span className="flex-shrink-0 flex h-7 w-7 items-center justify-center rounded-full bg-navy-500 text-[10px] font-bold text-white mt-0.5">
+                      {dn}
+                    </span>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <input type="text" value={row.destination || ""} onChange={(e) => onUpdate(row.id, "destination", e.target.value)}
+                      placeholder={t("destinationPlaceholder")}
+                      className="w-full rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-sm font-semibold text-ink outline-none hover:border-paper-line focus:border-accent-300 focus:bg-white" />
+                    <div className="flex gap-2 mt-1">
+                      <input type="text" value={row.date || ""} onChange={(e) => onUpdate(row.id, "date", e.target.value)}
+                        placeholder="Date" className="w-24 text-xs text-ink-muted bg-transparent border-none outline-none" />
+                      <input type="text" value={row.time || ""} onChange={(e) => onUpdate(row.id, "time", e.target.value)}
+                        placeholder="Time" className="w-16 text-xs text-ink-muted bg-transparent border-none outline-none" />
+                    </div>
+                  </div>
+                  <RowActions
+                    onInsertAbove={() => onInsertAbove?.(row.id)}
+                    onInsertBelow={() => onInsertBelow?.(row.id)}
+                    onDelete={() => onDelete?.(row.id)}
+                  />
+                </div>
+
+                {/* Transport + Category + Notes */}
+                <div className="grid grid-cols-3 gap-2">
+                  <div>
+                    <p className="text-[9px] font-semibold uppercase tracking-[0.1em] text-ink-muted mb-1">{t("transport")}</p>
+                    <select value={row.transport || ""} onChange={(e) => onUpdate(row.id, "transport", e.target.value)}
+                      className="w-full rounded-lg border border-paper-line bg-white px-2 py-1.5 text-xs text-ink outline-none">
+                      <option value="">—</option>
+                      {(TRANSPORT_OPTIONS ?? ["Flight","Train","Bus","Car","Ferry","Walk"]).map(op => (
+                        <option key={op} value={op}>{op}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <p className="text-[9px] font-semibold uppercase tracking-[0.1em] text-ink-muted mb-1">{t("category")}</p>
+                    <select value={row.category || ""} onChange={(e) => onUpdate(row.id, "category", e.target.value)}
+                      className="w-full rounded-lg border border-paper-line bg-white px-2 py-1.5 text-xs text-ink outline-none">
+                      <option value="">—</option>
+                      {(CATEGORY_OPTIONS ?? ["Hotel","Food","Attraction","Activity","Transport"]).map(op => (
+                        <option key={op} value={op}>{op}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <p className="text-[9px] font-semibold uppercase tracking-[0.1em] text-ink-muted mb-1">{t("notes")}</p>
+                    <input type="text" value={row.notes || ""} onChange={(e) => onUpdate(row.id, "notes", e.target.value)}
+                      placeholder="—"
+                      className="w-full rounded-lg border border-paper-line bg-white px-2 py-1.5 text-xs text-ink outline-none" />
+                  </div>
+                </div>
+
+                {/* Budget — stacked, both editable based on mode */}
+                <div className="grid grid-cols-2 gap-2">
+                  {!isIDR && (
+                    <div>
+                      <p className="text-[9px] font-semibold uppercase tracking-[0.1em] text-ink-muted mb-1">
+                        {currency.code} {localDisabled && <span className="text-amber-500">auto</span>}
+                      </p>
+                      <input
+                        type="number"
+                        value={row.budgetLocal || 0}
+                        onChange={(e) => !localDisabled && onUpdate(row.id, "budgetLocal", Number(e.target.value))}
+                        readOnly={localDisabled}
+                        className={`w-full rounded-lg border px-2.5 py-2 text-right text-sm font-mono outline-none ${
+                          localDisabled ? "border-paper-line bg-paper-dim/60 text-ink-muted opacity-60 cursor-not-allowed" : "border-paper-line bg-white text-ink"
+                        }`}
+                      />
+                    </div>
+                  )}
+                  <div>
+                    <p className="text-[9px] font-semibold uppercase tracking-[0.1em] text-ink-muted mb-1">
+                      IDR {idrDisabled && !isIDR && <span className="text-amber-500">auto</span>}
+                    </p>
+                    <input
+                      type="number"
+                      value={row.budgetIDR || 0}
+                      onChange={(e) => !idrDisabled && onUpdate(row.id, "budgetIDR", Number(e.target.value))}
+                      readOnly={idrDisabled}
+                      className={`w-full rounded-lg border px-2.5 py-2 text-right text-sm font-mono outline-none ${
+                        idrDisabled && !isIDR ? "border-paper-line bg-paper-dim/60 text-ink-muted opacity-60 cursor-not-allowed" : "border-paper-line bg-white text-navy-500 font-semibold"
+                      }`}
+                    />
+                  </div>
+                </div>
+
+                {/* Mobile link chips */}
+                <div className="flex flex-wrap gap-1.5">
+                  <LinkChip href={mapUrl} icon="📍" label="Map" />
+                  {routeUrl   && <LinkChip href={routeUrl}   icon="🗺"  label="Route" />}
+                  {flightUrl  && <LinkChip href={flightUrl}  icon="✈️" label="Flights" />}
+                  {bookingUrl && <LinkChip href={bookingUrl} icon="🎫" label="Hotel" />}
+                </div>
+              </div>
+            );
+          })
         )}
+      </div>
 
-        {/* ── DESKTOP VIEW (also used for print) ── */}
-        {!isMobile && (
-          <div className="thin-scrollbar overflow-x-auto">
-            <table className="sheet-table">
-              <thead>
-                <tr>
-                  {COLUMNS.map((col) => (
-                    <th
-                      key={col.key}
-                      style={{ width: col.width, minWidth: col.width }}
-                      className={[
-                        col.align === "right" ? "text-right" : col.align === "center" ? "text-center" : "",
-                        col.noPrint ? "no-print" : "",
-                      ].join(" ")}
-                    >{col.label}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {rows.length === 0
-                  ? <tr><td colSpan={COLUMNS.length} className="px-6 py-14 text-center"><EmptyState /></td></tr>
-                  : renderDesktopRows(rows, dayMap, handlers, COLUMNS.length)
-                }
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {/* Add row button */}
+      {/* Add row footer */}
+      <div className="border-t border-paper-line/60 px-5 py-3">
         <button
-          type="button"
           onClick={onAdd}
-          className="no-print group flex w-full items-center justify-center gap-2 rounded-b-2xl border-t border-dashed border-paper-line py-3.5 text-xs font-medium text-ink-muted transition hover:bg-navy-50 hover:text-navy-500"
+          className="inline-flex items-center gap-2 rounded-xl border border-dashed border-paper-line px-4 py-2 text-xs font-semibold text-ink-muted transition hover:border-navy-300 hover:bg-navy-50 hover:text-navy-500"
         >
-          <span className="grid h-5 w-5 place-items-center rounded-full bg-paper-dim transition group-hover:bg-navy-500 group-hover:text-white">
-            <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
-              <path d="M12 5v14M5 12h14" />
-            </svg>
-          </span>
-          Add row
+          <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+          {t("addRow")}
         </button>
       </div>
-    </section>
+    </div>
   );
 }
 
-// ── Desktop row rendering ─────────────────────────────────────────────────────
-
-function renderDesktopRows(rows, dayMap, handlers, colCount) {
-  const out = [];
-  let prevDate = null;
-  rows.forEach((row, idx) => {
-    const date = (row.date || "").trim();
-    if (date && date !== prevDate) {
-      out.push(<DayDivider key={`div-${date}-${idx}`} date={date} city={row.city} day={dayMap?.[date]} colCount={colCount} />);
-      prevDate = date;
-    } else if (!date) prevDate = null;
-    out.push(
-      <DesktopRow
-        key={row.id}
-        row={row}
-        dayNumber={dayMap?.[date] ?? null}
-        {...handlers}
-        onUpdate={(f, v) => handlers.onUpdate(row.id, f, v)}
-        onDelete={() => handlers.onDelete(row.id)}
-        onInsertAbove={() => handlers.onInsertAbove(row.id)}
-        onInsertBelow={() => handlers.onInsertBelow(row.id)}
-      />
-    );
-  });
-  return out;
-}
-
-function DayDivider({ date, city, day, colCount }) {
-  const label = (() => {
-    try { return new Date(date + "T00:00:00").toLocaleDateString("en-US", { weekday: "short", day: "numeric", month: "short", year: "numeric" }); }
-    catch { return date; }
-  })();
+// ── Link chip ─────────────────────────────────────────────────────────────────
+function LinkChip({ href, icon, label }) {
   return (
-    <tr className="day-divider-row">
-      <td colSpan={colCount} className="day-divider">
-        <span className="day-divider-primary">DAY {day ?? "—"}{city ? ` — ${city}` : ""}</span>
-        <span className="day-divider-secondary">{label}</span>
-      </td>
-    </tr>
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={(e) => e.stopPropagation()}
+      className="inline-flex items-center gap-1 rounded-full border border-paper-line bg-white px-2.5 py-1 text-[10px] font-semibold text-ink-soft shadow-sm transition hover:border-navy-200 hover:bg-navy-50 hover:text-navy-500 active:scale-95"
+    >
+      <span className="text-[11px] leading-none">{icon}</span>
+      {label}
+    </a>
   );
 }
 
-function DesktopRow({ row, dayNumber, region, transportOptions, currency, showIDR, onUpdate, onDelete, onInsertAbove, onInsertBelow }) {
-  const mapUrl      = buildMapUrl(row.destination);
-  const routeUrl    = buildRouteUrl(row.from, row.to);
-  const bookingLink = getBookingLink(row, region);
-  const catStyle    = CATEGORY_STYLES[row.category];
-  const mismatch    = checkRegionMismatch(row, region);
-
-  return (
-    <tr>
-      {/* Day */}
-      <td className="text-center">
-        <span className="inline-flex h-7 min-w-[28px] items-center justify-center rounded-md bg-navy-50 px-1.5 font-mono text-xs font-semibold tabular-nums text-navy-500">{dayNumber ?? "—"}</span>
-      </td>
-      {/* Date */}
-      <td><input type="date" value={row.date ?? ""} onChange={(e) => onUpdate("date", e.target.value)} className="cell-input tabular" /></td>
-      {/* Time */}
-      <td><input type="time" value={row.time ?? ""} onChange={(e) => onUpdate("time", e.target.value)} className="cell-input tabular" /></td>
-      {/* City */}
-      <td><input type="text" value={row.city ?? ""} onChange={(e) => onUpdate("city", e.target.value)} placeholder="—" className="cell-input" /></td>
-      {/* Destination + warning */}
-      <td>
-        <div className="flex items-center gap-1">
-          <input type="text" value={row.destination ?? ""} onChange={(e) => onUpdate("destination", e.target.value)} placeholder="Place name" className="cell-input font-medium" />
-          {mismatch.warn && (
-            <span className="no-print flex-shrink-0 cursor-help text-amber-500" title={`⚠️ May not match ${region}. Verify on Google Maps.`}>
-              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-                <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
-              </svg>
-            </span>
-          )}
-        </div>
-      </td>
-      {/* From */}
-      <td><input type="text" value={row.from ?? ""} onChange={(e) => onUpdate("from", e.target.value)} placeholder="—" className="cell-input" /></td>
-      {/* To */}
-      <td><input type="text" value={row.to ?? ""} onChange={(e) => onUpdate("to", e.target.value)} placeholder="—" className="cell-input" /></td>
-      {/* Transport */}
-      <td>
-        <div className="flex items-center gap-1.5 px-1.5">
-          <span className="flex-shrink-0 text-base">{transportIcon(row.transport)}</span>
-          <select value={row.transport ?? ""} onChange={(e) => onUpdate("transport", e.target.value)} className="cell-input cursor-pointer appearance-none pr-6 font-medium" style={{ backgroundImage: "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'><path fill='none' stroke='%2394A3B8' stroke-width='1.5' stroke-linecap='round' d='M3 5l3 3 3-3'/></svg>\")", backgroundRepeat: "no-repeat", backgroundPosition: "right 6px center", backgroundSize: "10px" }}>
-            <option value="">—</option>
-            {transportOptions.map((o) => <option key={o} value={o}>{o}</option>)}
-          </select>
-        </div>
-      </td>
-      {/* Category */}
-      <td>
-        <select value={row.category ?? ""} onChange={(e) => onUpdate("category", e.target.value)} className="cell-input cursor-pointer appearance-none pr-6" style={{ backgroundImage: "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'><path fill='none' stroke='%2394A3B8' stroke-width='1.5' stroke-linecap='round' d='M3 5l3 3 3-3'/></svg>\")", backgroundRepeat: "no-repeat", backgroundPosition: "right 6px center", backgroundSize: "10px" }}>
-          <option value="">—</option>
-          {CATEGORY_OPTIONS.map((o) => <option key={o} value={o}>{CATEGORY_ICONS[o] ?? ""} {o}</option>)}
-        </select>
-      </td>
-      {/* Notes */}
-      <td><input type="text" value={row.notes ?? ""} onChange={(e) => onUpdate("notes", e.target.value)} placeholder="—" className="cell-input" /></td>
-      {/* Budget local */}
-      <td className="text-right">
-        <input type="number" min={0} value={row.budgetLocal ?? ""} onChange={(e) => onUpdate("budgetLocal", e.target.value === "" ? 0 : Number(e.target.value))} placeholder="0" className="cell-input tabular text-right" />
-      </td>
-      {/* Budget IDR */}
-      {showIDR && (
-        <td className="computed text-right">
-          <input type="number" min={0} value={row.budgetIDR ?? ""} onChange={(e) => onUpdate("budgetIDR", e.target.value === "" ? 0 : Number(e.target.value))} placeholder="0" className="cell-input tabular text-right text-navy-500" />
-        </td>
-      )}
-      {/* Links */}
-      <td className="no-print align-middle">
-        <div className="flex flex-wrap items-center justify-center gap-1 px-1.5 py-1">
-          <LinkPill href={mapUrl} label="📍 Map" />
-          <LinkPill href={routeUrl} label="🗺 Route" />
-          {bookingLink && <LinkPill href={bookingLink.href} label={bookingLink.label} variant="booking" />}
-        </div>
-      </td>
-      {/* Actions */}
-      <td className="no-print align-middle">
-        <div className="flex items-center justify-center gap-0.5 px-1">
-          <IconBtn onClick={onInsertAbove} label="Insert above" path="M12 19V5M5 12l7-7 7 7" />
-          <IconBtn onClick={onInsertBelow} label="Insert below" path="M12 5v14M5 12l7 7 7-7" />
-          <IconBtn onClick={onDelete} label="Delete" path="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M6 6l1 14a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-14" />
-        </div>
-      </td>
-    </tr>
-  );
-}
-
-// ── Mobile card list ──────────────────────────────────────────────────────────
-
-function MobileList({ rows, dayMap, handlers }) {
-  const items = [];
-  let prevDate = null;
-  rows.forEach((row, idx) => {
-    const date = (row.date || "").trim();
-    if (date && date !== prevDate) {
-      const day = dayMap?.[date];
-      const nice = (() => { try { return new Date(date + "T00:00:00").toLocaleDateString("en-US", { weekday: "short", day: "numeric", month: "short" }); } catch { return date; } })();
-      items.push(
-        <div key={`mb-div-${idx}`} className="mx-4 mb-1 mt-4 flex items-center gap-3">
-          <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-navy-500 text-xs font-bold text-white">{day ?? "—"}</span>
-          <div>
-            <p className="text-xs font-bold text-navy-500">{day ? `DAY ${day}` : "—"}{row.city ? ` — ${row.city}` : ""}</p>
-            <p className="text-[10px] text-ink-muted">{nice}</p>
-          </div>
-        </div>
-      );
-      prevDate = date;
-    } else if (!date) prevDate = null;
-    items.push(
-      <MobileCard
-        key={row.id}
-        row={row}
-        dayNumber={dayMap?.[(row.date || "").trim()] ?? null}
-        handlers={handlers}
-      />
-    );
-  });
-  return <div className="divide-y divide-paper-line/60">{items}</div>;
-}
-
-function MobileCard({ row, dayNumber, handlers }) {
+// ── Row action menu ───────────────────────────────────────────────────────────
+function RowActions({ onInsertAbove, onInsertBelow, onDelete }) {
   const [open, setOpen] = useState(false);
-  const { region, transportOptions, currency, showIDR } = handlers;
-  const upd = (f, v) => handlers.onUpdate(row.id, f, v);
-  const catStyle = CATEGORY_STYLES[row.category];
-  const catIcon  = CATEGORY_ICONS[row.category];
-  const mapUrl   = buildMapUrl(row.destination);
-  const routeUrl = buildRouteUrl(row.from, row.to);
-  const bookingLink = getBookingLink(row, region);
-
   return (
-    <div className="px-4 py-3">
-      {/* Always-visible summary */}
-      <div className="flex items-start gap-3">
-        <div className="min-w-0 flex-1">
-          {/* Category + time chip row */}
-          <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
-            {row.category && catStyle && (
-              <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ background: catStyle.bar + "18", color: catStyle.bar }}>
-                {catIcon} {row.category}
-              </span>
-            )}
-            {row.time && <span className="font-mono text-[10px] text-ink-muted">{row.time}</span>}
-          </div>
-          {/* Destination */}
-          <input
-            type="text"
-            value={row.destination ?? ""}
-            onChange={(e) => upd("destination", e.target.value)}
-            placeholder="Destination"
-            className="w-full border-b border-transparent bg-transparent pb-0.5 text-sm font-semibold text-ink outline-none placeholder:text-ink-muted/50 focus:border-paper-line"
-          />
-          {/* Transport + route summary */}
-          {(row.transport || row.from || row.to) && (
-            <p className="mt-1 flex flex-wrap items-center gap-1 text-xs text-ink-muted">
-              {row.transport && <span>{transportIcon(row.transport)} {row.transport}</span>}
-              {row.from && <><span className="text-paper-line">·</span><span>{row.from}</span></>}
-              {row.from && row.to && <span>→</span>}
-              {row.to && <span>{row.to}</span>}
-            </p>
-          )}
-        </div>
-        {/* Budget */}
-        <div className="flex-shrink-0 text-right">
-          <input
-            type="number" min={0}
-            value={row.budgetLocal ?? ""}
-            onChange={(e) => upd("budgetLocal", e.target.value === "" ? 0 : Number(e.target.value))}
-            placeholder="0"
-            className="w-24 border-b border-transparent bg-transparent text-right text-sm font-semibold tabular-nums text-ink outline-none focus:border-paper-line"
-          />
-          <p className="text-[10px] text-ink-muted">{currency.code}</p>
-          {showIDR && (row.budgetIDR ?? 0) > 0 && (
-            <p className="text-[10px] tabular-nums text-navy-400">{formatIDR(row.budgetIDR)}</p>
-          )}
-        </div>
-      </div>
-
-      {/* Expand toggle */}
-      <button type="button" onClick={() => setOpen(v => !v)} className="mt-2 flex items-center gap-1 text-[10px] font-medium text-ink-muted hover:text-navy-500">
-        <svg viewBox="0 0 24 24" className={`h-3 w-3 transition ${open ? "rotate-90" : ""}`} fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M9 6l6 6-6 6"/></svg>
-        {open ? "Less" : "More"}
+    <div className="relative flex-shrink-0">
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="grid h-7 w-7 place-items-center rounded-lg text-ink-muted hover:bg-paper-dim"
+      >
+        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/>
+        </svg>
       </button>
-
-      {/* Expanded fields */}
       {open && (
-        <div className="mt-3 space-y-3 border-t border-paper-line/60 pt-3">
-          <div className="grid grid-cols-2 gap-3">
-            <Mfield label="Date" type="date" value={row.date ?? ""} onChange={(v) => upd("date", v)} />
-            <Mfield label="Time" type="time" value={row.time ?? ""} onChange={(v) => upd("time", v)} />
-            <Mfield label="City" type="text" value={row.city ?? ""} onChange={(v) => upd("city", v)} placeholder="City" />
-            <Mfield label="From" type="text" value={row.from ?? ""} onChange={(v) => upd("from", v)} placeholder="From" />
-            <Mfield label="To" type="text" value={row.to ?? ""} onChange={(v) => upd("to", v)} placeholder="To" />
-            {showIDR && <Mfield label="Budget IDR" type="number" value={row.budgetIDR ?? ""} onChange={(v) => upd("budgetIDR", v === "" ? 0 : Number(v))} placeholder="0" />}
+        <>
+          <div className="fixed inset-0 z-30" onClick={() => setOpen(false)} />
+          <div className="absolute right-0 top-full z-40 mt-1 w-36 rounded-xl border border-paper-line bg-white py-1 shadow-card">
+            <ActionItem label="↑ Insert above" onClick={() => { onInsertAbove(); setOpen(false); }} />
+            <ActionItem label="↓ Insert below" onClick={() => { onInsertBelow(); setOpen(false); }} />
+            <ActionItem label="🗑 Delete row" onClick={() => { onDelete(); setOpen(false); }} danger />
           </div>
-
-          {/* Transport select */}
-          <div>
-            <label className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-muted">Transport</label>
-            <select value={row.transport ?? ""} onChange={(e) => upd("transport", e.target.value)} className="w-full rounded-lg border border-paper-line bg-white px-3 py-2.5 text-sm text-ink outline-none focus:border-accent-300 focus:shadow-[0_0_0_3px_rgba(74,144,226,0.18)]">
-              <option value="">—</option>
-              {transportOptions.map((o) => <option key={o} value={o}>{o}</option>)}
-            </select>
-          </div>
-
-          {/* Category select */}
-          <div>
-            <label className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-muted">Category</label>
-            <select value={row.category ?? ""} onChange={(e) => upd("category", e.target.value)} className="w-full rounded-lg border border-paper-line bg-white px-3 py-2.5 text-sm text-ink outline-none focus:border-accent-300 focus:shadow-[0_0_0_3px_rgba(74,144,226,0.18)]">
-              <option value="">—</option>
-              {CATEGORY_OPTIONS.map((o) => <option key={o} value={o}>{CATEGORY_ICONS[o]} {o}</option>)}
-            </select>
-          </div>
-
-          {/* Notes */}
-          <Mfield label="Notes" type="text" value={row.notes ?? ""} onChange={(v) => upd("notes", v)} placeholder="Add a note…" />
-
-          {/* Links */}
-          <div className="flex flex-wrap gap-2">
-            <LinkPill href={mapUrl} label="📍 Map" />
-            <LinkPill href={routeUrl} label="🗺 Route" />
-            {bookingLink && <LinkPill href={bookingLink.href} label={bookingLink.label} variant="booking" />}
-          </div>
-
-          {/* Row actions */}
-          <div className="flex items-center gap-2 pt-1">
-            <button onClick={() => handlers.onInsertAbove(row.id)} className="flex items-center gap-1.5 rounded-lg border border-paper-line px-3 py-2 text-xs font-medium text-ink-soft hover:border-navy-200 hover:text-navy-500">
-              <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg>
-              Insert above
-            </button>
-            <button onClick={() => handlers.onInsertBelow(row.id)} className="flex items-center gap-1.5 rounded-lg border border-paper-line px-3 py-2 text-xs font-medium text-ink-soft hover:border-navy-200 hover:text-navy-500">
-              <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14"/><path d="M5 12l7 7 7-7"/></svg>
-              Insert below
-            </button>
-            <button onClick={() => handlers.onDelete(row.id)} className="ml-auto flex items-center gap-1.5 rounded-lg border border-paper-line px-3 py-2 text-xs font-medium text-ink-muted hover:text-ink-soft">
-              <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M6 6l1 14a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-14"/></svg>
-              Delete
-            </button>
-          </div>
-        </div>
+        </>
       )}
     </div>
   );
 }
 
-// ── Reusable small components ─────────────────────────────────────────────────
-
-function Mfield({ label, type, value, onChange, placeholder, min }) {
+function ActionItem({ label, onClick, danger }) {
   return (
-    <div>
-      <label className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-muted">{label}</label>
-      <input type={type} value={value} min={min} onChange={(e) => onChange(e.target.value)} placeholder={placeholder}
-        className="w-full rounded-lg border border-paper-line bg-white px-3 py-2.5 text-sm font-medium text-ink outline-none focus:border-accent-300 focus:shadow-[0_0_0_3px_rgba(74,144,226,0.18)]" />
-    </div>
-  );
-}
-
-function LinkPill({ href, label, variant = "default" }) {
-  const on = variant === "booking"
-    ? "bg-navy-50 text-navy-500 hover:bg-navy-100"
-    : "bg-paper-dim text-ink-soft hover:bg-navy-50 hover:text-navy-500";
-  const off = "cursor-not-allowed bg-paper-dim/40 text-ink-muted/50";
-  const base = "rounded-md px-1.5 py-1 text-[11px] font-medium leading-none whitespace-nowrap transition";
-  if (!href) return <span className={`${base} ${off}`}>{label}</span>;
-  return <a href={href} target="_blank" rel="noopener noreferrer" className={`${base} ${on}`}>{label}</a>;
-}
-
-function IconBtn({ onClick, label, path }) {
-  return (
-    <button type="button" onClick={onClick} aria-label={label} title={label}
-      className="grid h-6 w-6 place-items-center rounded text-ink-muted transition hover:bg-navy-50 hover:text-navy-500">
-      <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d={path}/></svg>
+    <button onClick={onClick}
+      className={`flex w-full items-center px-3 py-2 text-xs transition hover:bg-paper-dim ${danger ? "text-red-500" : "text-ink-soft"}`}>
+      {label}
     </button>
-  );
-}
-
-function EmptyState() {
-  return (
-    <div className="mx-auto max-w-sm py-10 text-center">
-      <p className="text-sm text-ink-soft">No stops yet. Click <span className="font-semibold text-navy-500">+ Add row</span> below to start planning.</p>
-    </div>
   );
 }
