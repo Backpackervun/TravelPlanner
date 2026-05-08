@@ -1,0 +1,112 @@
+/*
+  ====================================================================
+  PATCH 14b — Append to end of app/globals.css
+  Key fix: PDF export correctly prints ONLY the white document,
+  auto-fits to A4 width, no second page with header repeating.
+  ====================================================================
+*/
+
+/* ── Dropdown animation ── */
+@keyframes bpv-fade-in {
+  from { opacity: 0; transform: translateY(-6px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.animate-fade-in { animation: bpv-fade-in 180ms cubic-bezier(0.16,1,0.3,1) both; }
+
+/* ── Preview modal (screen) ── */
+.preview-modal-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 500 !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   PDF PRINT
+   Problem: 2-page output where page 2 shows the header card again.
+   Root cause: Both .preview-paper AND the screen backdrop are printing.
+
+   Solution:
+   1. Hide body entirely
+   2. Show .preview-paper-area only
+   3. Remove all backgrounds / shadows / rounded corners
+   4. Use margin: 10mm for readable output within A4
+   ════════════════════════════════════════════════════════════════════ */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 10mm 12mm;
+  }
+
+  html, body {
+    background: white !important;
+    overflow: visible !important;
+  }
+
+  /* 1. Hide EVERYTHING on the page */
+  body > * { display: none !important; }
+
+  /* 2. Show the overlay */
+  .preview-modal-overlay {
+    display: block !important;
+    position: static !important;   /* ← prevents fixed from creating new page */
+    background: white !important;
+    overflow: visible !important;
+    z-index: auto !important;
+  }
+
+  /* 3. Hide action bar */
+  .no-print,
+  .preview-action-bar,
+  .preview-hint-text {
+    display: none !important;
+  }
+
+  /* 4. Paper area */
+  .preview-paper-area {
+    display: block !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    background: white !important;
+  }
+
+  /* 5. The paper card — remove screen decorations */
+  .preview-paper {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+    overflow: visible !important;
+    background: white !important;
+    min-height: auto !important;
+  }
+
+  /* 6. The document */
+  .itinerary-pdf {
+    display: block !important;
+    width: 100% !important;
+    background: white !important;
+    overflow: visible !important;
+  }
+
+  /* 7. No page breaks inside day blocks */
+  .day-block { page-break-inside: avoid !important; break-inside: avoid !important; }
+
+  /* 8. Footer always printed */
+  .pdf-footer { display: block !important; }
+
+  /* 9. Keep link colors */
+  a { color: inherit !important; }
+
+  /* 10. Navy background on day headers needs -webkit-print-color-adjust */
+  * { -webkit-print-color-adjust: exact !important; color-adjust: exact !important; }
+}
+
+/* ── Mobile FAB ── */
+@media (max-width: 767px) {
+  footer.site-footer { padding-bottom: calc(76px + env(safe-area-inset-bottom, 12px)) !important; }
+}
