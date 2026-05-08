@@ -2,259 +2,350 @@
 
 import { useMemo } from "react";
 import { useT } from "@/context/TranslationContext";
-import { formatCurrency, formatIDR, getCurrency, CATEGORY_OPTIONS, CATEGORY_STYLES } from "@/lib/utils";
+import { formatCurrency, formatIDR, getCurrency } from "@/lib/utils";
 
-/**
- * PrintLayout v1.0
+/*
+ * PrintLayout — matches the Sydney_Marathon_2026_Trip.pdf reference exactly.
  *
- * Renders the premium A4 document for both PreviewModal and PDF export.
+ * Each row shows:
+ *   • Time
+ *   • Category badge (with emoji icon)
+ *   • Destination name (bold)
+ *   • Transport icon + "Type · From → To"
+ *   • Notes (italic)
+ *   • Links: 📍 View in Google Maps | 🗺 Open Route | ✈ View Flights
+ *   • Budget (right-aligned, "—" if zero)
  *
- * KEY CHANGES from broken version:
- *  - Map / Route / Flights / Booking chip links restored in every row
- *  - Links are real <a> tags that open in a new tab in preview
- *  - In print/PDF they appear as visible chips with URL text beneath them
- *  - pdfFooter translation used at bottom of every page
+ * Day headers: full-width dark navy bar with circle number + "Day N — City" + date
  */
 export default function PrintLayout({
   tripInfo, rows, dayMap, region, rate, totalLocal, totalIDR,
 }) {
-  const { t } = useT();
+  const { t }    = useT();
   const currency = getCurrency(region);
+  const isIDR    = currency.code === "IDR";
 
-  // Group rows by day number
+  // Group rows by day key
   const byDay = useMemo(() => {
     const groups = new Map();
     for (const row of rows) {
-      const dayNum = row.date ? (dayMap[row.date.trim()] ?? 0) : 0;
-      if (!groups.has(dayNum)) groups.set(dayNum, []);
-      groups.get(dayNum).push(row);
+      const key = (row.date || "").trim();
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(row);
     }
-    return [...groups.entries()].sort(([a], [b]) => a - b);
+    return [...groups.entries()]
+      .sort(([a], [b]) => {
+        const da = dayMap[a] ?? 999;
+        const db = dayMap[b] ?? 999;
+        return da - db;
+      });
   }, [rows, dayMap]);
 
+  // Category totals for the summary bar chart
   const categoryTotals = useMemo(() => {
-    const t = {};
-    for (const row of rows) {
-      if (row.category) t[row.category] = (t[row.category] ?? 0) + (Number(row.budgetLocal) || 0);
+    const m = {};
+    for (const r of rows) {
+      if (r.category) m[r.category] = (m[r.category] ?? 0) + (Number(r.budgetLocal) || 0);
     }
-    return t;
+    return m;
   }, [rows]);
 
   const totalDays = Object.keys(dayMap).length || 1;
 
   return (
-    <div className="itinerary-pdf px-8 pb-16 pt-6 font-sans text-ink">
+    <div className="itinerary-pdf font-sans text-ink bg-white">
 
-      {/* ── Trip info block ── */}
-      <div className="mb-8 grid gap-3 rounded-2xl border border-paper-line bg-paper-dim/40 p-5 sm:grid-cols-2">
-        <InfoRow label={t("preparedFor")} value={tripInfo?.clientName || "—"} />
-        <InfoRow label={t("destinations")} value={tripInfo?.destinations || "—"} />
-        <InfoRow label={t("duration")} value={tripInfo?.duration || "—"} />
-        <InfoRow label={t("region")} value={region || "—"} />
-        {tripInfo?.startDate && <InfoRow label={t("startDate")} value={tripInfo.startDate} />}
-        {tripInfo?.endDate   && <InfoRow label={t("endDate")}   value={tripInfo.endDate} />}
+      {/* ── Trip info card ── */}
+      <div className="px-8 pt-6 pb-4">
+        <div className="rounded-xl border border-paper-line bg-[#F8FAFC] p-5">
+          {tripInfo?.clientName && (
+            <div className="mb-4">
+              <p className="text-[9px] font-semibold uppercase tracking-[0.2em] text-ink-muted mb-1">
+                {t("preparedForClient").toUpperCase()}
+              </p>
+              <p className="text-2xl font-semibold text-ink">{tripInfo.clientName}</p>
+            </div>
+          )}
+          <div className="grid grid-cols-2 gap-x-8 gap-y-3 sm:grid-cols-4">
+            {[
+              { label: "DURATION",     value: tripInfo?.duration || "—" },
+              { label: "DESTINATIONS", value: tripInfo?.destinations || "—" },
+              { label: "TRAVEL DATES", value: tripInfo?.travelDates || (tripInfo?.startDate && tripInfo?.endDate ? `${tripInfo.startDate} – ${tripInfo.endDate}` : "—") },
+              { label: "REGION",       value: region || "—" },
+            ].map(({ label, value }) => (
+              <div key={label}>
+                <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-ink-muted">{label}</p>
+                <p className="mt-0.5 text-sm font-medium text-ink">{value}</p>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
-      {/* ── Day-by-day itinerary ── */}
-      <h2 className="mb-4 text-xs font-semibold uppercase tracking-[0.2em] text-ink-muted">
-        {t("itinerary")}
-      </h2>
-
-      {rows.length === 0 ? (
-        <p className="text-sm text-ink-muted py-8 text-center">{t("noItinerary")}</p>
-      ) : (
-        <div className="space-y-6">
-          {byDay.map(([dayNum, dayRows]) => (
-            <div key={dayNum} className="day-block rounded-2xl border border-paper-line overflow-hidden">
-              {/* Day header */}
-              <div className="flex items-center gap-3 border-b border-paper-line bg-navy-50/50 px-5 py-3">
-                <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-navy-500 text-xs font-bold text-white">
-                  {dayNum || "—"}
-                </span>
-                <span className="text-sm font-semibold text-navy-600">
-                  {t("day")} {dayNum || "—"}
-                  {dayRows[0]?.date ? ` · ${dayRows[0].date}` : ""}
-                  {dayRows[0]?.city ? ` · ${dayRows[0].city}` : ""}
-                </span>
-              </div>
-
-              {/* Rows */}
-              <div className="divide-y divide-paper-line/60">
-                {dayRows.map((row) => (
-                  <PrintRow key={row.id} row={row} currency={currency} rate={rate} t={t} />
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* ── Summary ── */}
-      <div className="mt-10 rounded-2xl border border-paper-line bg-paper-dim/40 p-5">
-        <h2 className="mb-4 text-xs font-semibold uppercase tracking-[0.2em] text-ink-muted">
-          {t("tripSummary")}
+      {/* ── Itinerary section ── */}
+      <div className="px-8 pb-4">
+        <h2 className="flex items-center gap-3 text-xl font-semibold text-ink mb-4">
+          <span className="block h-0.5 w-6 bg-navy-500" />
+          {t("itinerary")}
         </h2>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <SumCard label={t("totalBudget")} value={formatIDR(totalIDR)} sub={formatCurrency(totalLocal, currency)} />
-          <SumCard label={t("totalStops")}  value={rows.length} />
-          <SumCard label={t("totalDays")}   value={totalDays} />
-          <SumCard label={t("conversionRate")} value={`1 ${currency.code} = ${rate} IDR`} />
-        </div>
 
-        {/* Category totals */}
-        {Object.keys(categoryTotals).length > 0 && (
-          <div className="mt-4">
-            <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-muted">{t("byCategory")}</p>
-            <div className="flex flex-wrap gap-2">
-              {Object.entries(categoryTotals).map(([cat, val]) => {
-                const style = CATEGORY_STYLES[cat] ?? { bg: "bg-gray-100", text: "text-gray-700" };
-                return (
-                  <span key={cat} className={`rounded-full px-3 py-1 text-xs font-semibold ${style.bg ?? "bg-gray-100"} ${style.text ?? "text-gray-700"}`}>
-                    {cat} · {formatCurrency(val, currency)}
-                  </span>
-                );
-              })}
-            </div>
+        {rows.length === 0 ? (
+          <p className="py-8 text-center text-sm text-ink-muted">{t("noItinerary")}</p>
+        ) : (
+          <div className="space-y-6">
+            {byDay.map(([dateKey, dayRows]) => {
+              const dayNum  = dateKey ? (dayMap[dateKey] ?? null) : null;
+              const city    = dayRows[0]?.city || "";
+              const dateStr = formatDate(dateKey);
+
+              return (
+                <div key={dateKey} className="day-block rounded-xl overflow-hidden border border-[#E8EDF3]">
+                  {/* Day header bar */}
+                  <div className="flex items-center gap-3.5 bg-navy-500 px-5 py-3">
+                    {dayNum !== null && (
+                      <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-white text-sm font-bold text-navy-500">
+                        {dayNum}
+                      </span>
+                    )}
+                    <div>
+                      <p className="text-base font-bold text-white leading-snug">
+                        Day {dayNum ?? "—"}{city ? ` — ${city}` : ""}
+                      </p>
+                      {dateStr && (
+                        <p className="text-xs text-navy-200">{dateStr}</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Rows */}
+                  <div className="divide-y divide-[#EEF2F7] bg-white">
+                    {dayRows.map((row, idx) => (
+                      <PrintRow
+                        key={row.id}
+                        row={row}
+                        currency={currency}
+                        isIDR={isIDR}
+                        t={t}
+                        isLast={idx === dayRows.length - 1}
+                      />
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
 
-      {/* ── PDF footer branding ── */}
-      <p className="mt-8 text-center text-[10px] text-ink-muted/60 pdf-footer">
-        {t("pdfFooter")}
-      </p>
+      {/* ── Trip Summary ── */}
+      <div className="px-8 pb-8 pt-2">
+        <h2 className="text-xl font-semibold text-ink mb-4">{t("tripSummary")}</h2>
+        <div className="rounded-xl border border-[#E8EDF3] overflow-hidden">
+          {[
+            { label: t("totalStops"),    value: rows.length,  bold: false },
+            { label: t("totalDays"),     value: totalDays,     bold: false },
+            { label: "Conversion rate",  value: isIDR ? "1:1" : `1 ${currency.code} = ${rate} IDR`, bold: false },
+            { label: `TOTAL · ${currency.code}`, value: formatCurrency(totalLocal, currency), bold: true },
+            { label: "TOTAL · IDR",      value: formatIDR(totalIDR), bold: true, accent: true },
+          ].map(({ label, value, bold, accent }) => (
+            <div key={label} className="flex items-center justify-between px-5 py-3 border-b border-[#EEF2F7] last:border-0">
+              <span className={`text-sm ${bold ? "font-semibold text-ink" : "text-ink-muted"}`}>{label}</span>
+              <span className={`text-sm ${bold ? "font-semibold" : ""} ${accent ? "text-navy-500" : "text-ink"}`}>{value}</span>
+            </div>
+          ))}
+
+          {/* Category bars */}
+          {Object.keys(categoryTotals).length > 0 && (
+            <div className="px-5 py-4 border-t border-[#EEF2F7] bg-[#F8FAFC]">
+              <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-ink-muted mb-3">
+                {t("byCategory")}
+              </p>
+              <div className="space-y-2.5">
+                {Object.entries(categoryTotals).map(([cat, val]) => {
+                  const pct = totalLocal > 0 ? Math.round((val / totalLocal) * 100) : 0;
+                  const badge = CATEGORY_BADGE[cat] ?? { icon: "📌", bg: "#EEF2F7", text: "#64748B" };
+                  return (
+                    <div key={cat} className="flex items-center gap-3">
+                      <div className="flex items-center gap-1.5 w-28 flex-shrink-0">
+                        <span className="text-[11px]">{badge.icon}</span>
+                        <span className="text-xs font-medium text-ink-soft">{cat}</span>
+                      </div>
+                      <div className="flex-1 h-1.5 rounded-full bg-[#E8EDF3] overflow-hidden">
+                        <div className="h-full rounded-full bg-navy-500 transition-all" style={{ width: `${pct}%` }} />
+                      </div>
+                      <span className="w-8 text-right text-[10px] text-ink-muted">{pct}%</span>
+                      <span className="text-xs font-medium text-ink w-20 text-right">{formatCurrency(val, currency)}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── Footer ── */}
+      <div className="pdf-footer border-t border-paper-line px-8 py-4 text-center">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-ink-muted">
+          {t("preparedWith")}
+        </p>
+      </div>
     </div>
   );
 }
 
-// ── Sub-components ────────────────────────────────────────────────────────────
+// ── PrintRow ──────────────────────────────────────────────────────────────────
 
-function PrintRow({ row, currency, rate, t }) {
-  const budget = Number(row.budgetLocal) || 0;
-  const idr    = Number(row.budgetIDR)   || Math.round(budget * (Number(rate) || 0));
+function PrintRow({ row, currency, isIDR, t }) {
+  const budget    = Number(row.budgetLocal) || 0;
+  const budgetIDR = Number(row.budgetIDR)   || 0;
+  const hasBudget = budget > 0 || budgetIDR > 0;
 
-  // Build travel action links
-  const locationQuery = encodeURIComponent(
-    [row.destination, row.city, row.to].filter(Boolean).join(" ")
-  );
-  const mapUrl     = `https://www.google.com/maps/search/?api=1&query=${locationQuery}`;
-  const routeUrl   = row.from && row.to
+  // Build links
+  const destQ     = encodeURIComponent([row.destination, row.city, row.to].filter(Boolean).join(" ") || "");
+  const mapUrl    = `https://www.google.com/maps/search/?api=1&query=${destQ}`;
+  const routeUrl  = row.from && row.to
     ? `https://www.google.com/maps/dir/${encodeURIComponent(row.from)}/${encodeURIComponent(row.to)}`
     : null;
-  const flightUrl  = row.from && row.to
+  const isFlightRow = (row.transport || "").toLowerCase().includes("flight");
+  const flightUrl = isFlightRow && row.from && row.to
     ? `https://www.google.com/flights?q=Flights+from+${encodeURIComponent(row.from)}+to+${encodeURIComponent(row.to)}`
     : null;
-  const bookingUrl = row.destination
-    ? `https://www.booking.com/search.html?ss=${encodeURIComponent(row.destination)}`
-    : null;
+
+  const badge = row.category ? (CATEGORY_BADGE[row.category] ?? CATEGORY_BADGE["Activity"]) : null;
 
   return (
-    <div className="px-5 py-3.5">
-      <div className="flex items-start gap-3">
-        {/* Time */}
-        {row.time && (
-          <span className="flex-shrink-0 w-14 text-xs text-ink-muted font-mono mt-0.5">{row.time}</span>
-        )}
+    <div className="px-5 py-4">
+      <div className="flex items-start gap-4">
 
-        <div className="min-w-0 flex-1">
+        {/* Time */}
+        <div className="flex-shrink-0 w-14 text-right">
+          {row.time ? (
+            <p className="text-xs font-semibold text-ink-muted font-mono">{formatTime(row.time)}</p>
+          ) : (
+            <p className="text-xs text-ink-muted/40">—</p>
+          )}
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 min-w-0">
+          {/* Category badge */}
+          {badge && (
+            <div className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 mb-1.5"
+              style={{ background: badge.bg }}>
+              <span className="text-[10px] leading-none">{badge.icon}</span>
+              <span className="text-[9px] font-bold uppercase tracking-[0.12em]" style={{ color: badge.text }}>
+                {row.category}
+              </span>
+            </div>
+          )}
+
           {/* Destination */}
-          <p className="text-sm font-semibold text-ink leading-snug">
+          <p className="text-sm font-bold text-ink leading-snug">
             {row.destination || row.city || "—"}
           </p>
 
-          {/* Route */}
-          {(row.from || row.to) && (
-            <p className="mt-0.5 text-xs text-ink-muted">
+          {/* Transport route */}
+          {(row.transport || row.from || row.to) && (
+            <p className="mt-0.5 text-xs text-ink-muted flex items-center gap-1.5 flex-wrap">
+              {row.transport && (
+                <span className="flex items-center gap-1">
+                  <TransportIcon transport={row.transport} />
+                  <span className="font-medium text-ink-soft">{row.transport}</span>
+                </span>
+              )}
+              {row.transport && (row.from || row.to) && <span className="text-ink-muted/40">·</span>}
               {row.from && <span>{row.from}</span>}
-              {row.from && row.to && <span className="mx-1.5 text-ink-muted/40">→</span>}
+              {row.from && row.to && <span className="text-ink-muted/40">→</span>}
               {row.to && <span>{row.to}</span>}
-              {row.transport && <span className="ml-2 text-ink-muted/60">· {row.transport}</span>}
             </p>
           )}
 
           {/* Notes */}
           {row.notes && (
-            <p className="mt-1 text-xs text-ink-soft leading-relaxed">{row.notes}</p>
+            <p className="mt-1 text-xs text-ink-muted italic">{row.notes}</p>
           )}
 
-          {/* Category tag */}
-          {row.category && (
-            <span className="mt-1.5 inline-block rounded-full bg-paper-dim px-2 py-0.5 text-[10px] font-semibold text-ink-muted">
-              {row.category}
-            </span>
-          )}
-
-          {/* ✅ RESTORED: Travel action link chips */}
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            {/* Map */}
-            <TravelChip
-              href={mapUrl}
-              icon="📍"
-              label={t("mapLink").replace("📍 ", "")}
-            />
-            {/* Route */}
-            {routeUrl && (
-              <TravelChip href={routeUrl} icon="🗺" label={t("routeLink").replace("🗺 ", "")} />
-            )}
-            {/* Flights */}
-            {flightUrl && (
-              <TravelChip href={flightUrl} icon="✈️" label="Flights" />
-            )}
-            {/* Booking */}
-            {bookingUrl && (
-              <TravelChip href={bookingUrl} icon="🎫" label="Booking" />
-            )}
+          {/* ✅ LINKS — matching PDF reference exactly */}
+          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+            <PrintLink href={mapUrl} icon="📍" label={t("viewMap")} />
+            {routeUrl  && <PrintLink href={routeUrl}  icon="🗺"  label={t("openRoute")} />}
+            {flightUrl && <PrintLink href={flightUrl} icon="✈️" label={t("viewFlights")} />}
           </div>
         </div>
 
         {/* Budget */}
-        {budget > 0 && (
-          <div className="flex-shrink-0 text-right">
-            <p className="text-sm font-semibold text-ink">{formatIDR(idr)}</p>
-            <p className="text-[10px] text-ink-muted">{formatCurrency(budget, currency)}</p>
-          </div>
-        )}
+        <div className="flex-shrink-0 text-right min-w-[80px]">
+          {hasBudget ? (
+            <>
+              {!isIDR && budget > 0 && (
+                <p className="text-sm font-semibold text-ink">
+                  {formatCurrency(budget, currency)}
+                </p>
+              )}
+              {budgetIDR > 0 && (
+                <p className={`text-xs text-ink-muted ${isIDR ? "text-sm font-semibold text-ink" : ""}`}>
+                  {formatIDR(budgetIDR)}
+                </p>
+              )}
+            </>
+          ) : (
+            <p className="text-sm text-ink-muted/40">—</p>
+          )}
+        </div>
       </div>
     </div>
   );
 }
 
-/**
- * TravelChip — compact rounded-full link chip.
- * In preview: clickable link opening a new tab.
- * In PDF print: chip is visible, URL printed below via CSS.
- */
-function TravelChip({ href, icon, label }) {
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function PrintLink({ href, icon, label }) {
   return (
     <a
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      onClick={(e) => e.stopPropagation()}
-      className="travel-chip inline-flex items-center gap-1 rounded-full border border-paper-line bg-white px-2.5 py-0.5 text-[10px] font-semibold text-ink-soft shadow-sm transition hover:border-navy-200 hover:bg-navy-50 hover:text-navy-500 print:border-paper-line print:bg-white"
-      data-url={href}
+      className="inline-flex items-center gap-1 text-[11px] font-medium text-navy-500 hover:underline underline-offset-2 print:text-navy-400"
     >
-      <span className="text-[11px] leading-none">{icon}</span>
+      <span className="text-[12px] leading-none">{icon}</span>
       {label}
     </a>
   );
 }
 
-function InfoRow({ label, value }) {
-  return (
-    <div>
-      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-muted">{label}</p>
-      <p className="mt-0.5 text-sm font-medium text-ink">{value}</p>
-    </div>
-  );
+function TransportIcon({ transport }) {
+  const icons = {
+    Flight: "✈️", Train: "🚆", Bus: "🚌", Car: "🚗",
+    Ferry: "⛴", Walk: "🚶", Taxi: "🚕", MRT: "🚇", Tram: "🚊",
+  };
+  const icon = icons[transport] ?? "🚌";
+  return <span className="text-xs leading-none">{icon}</span>;
 }
 
-function SumCard({ label, value, sub }) {
-  return (
-    <div className="rounded-xl border border-paper-line bg-white p-3 text-center">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-ink-muted">{label}</p>
-      <p className="mt-1 text-lg font-semibold text-ink leading-tight">{value}</p>
-      {sub && <p className="mt-0.5 text-[10px] text-ink-muted">{sub}</p>}
-    </div>
-  );
+function formatTime(t) {
+  if (!t) return "";
+  try {
+    const [h, m] = t.split(":").map(Number);
+    if (isNaN(h)) return t;
+    const ampm = h >= 12 ? "PM" : "AM";
+    const h12  = h > 12 ? h - 12 : h === 0 ? 12 : h;
+    return `${h12}:${String(m || 0).padStart(2, "0")} ${ampm}`;
+  } catch { return t; }
 }
+
+function formatDate(dateStr) {
+  if (!dateStr) return "";
+  try {
+    const d = new Date(dateStr + "T00:00:00");
+    return d.toLocaleDateString("en-US", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+  } catch { return dateStr; }
+}
+
+const CATEGORY_BADGE = {
+  Transport:  { icon: "🚌", bg: "#EFF6FF", text: "#1D4ED8" },
+  Hotel:      { icon: "🏨", bg: "#F0FDF4", text: "#15803D" },
+  Food:       { icon: "🍽️", bg: "#FFF7ED", text: "#C2410C" },
+  Attraction: { icon: "🎡", bg: "#FDF4FF", text: "#7E22CE" },
+  Activity:   { icon: "🏃", bg: "#ECFDF5", text: "#065F46" },
+};

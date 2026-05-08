@@ -3,44 +3,52 @@
 import { formatCurrency, formatIDR, getCurrency } from "@/lib/utils";
 
 /**
- * Print-only header — sits at the very top of every printed PDF page region.
+ * PrintHeader — white background header matching the Sydney Marathon PDF reference.
  *
  * Layout:
- *   LEFT   — Backpackervun wordmark logo (img, NOT background)
- *            "Travel Planner" tagline
- *   RIGHT  — Total · {currency code} / Total · IDR (omitted for IDR trips)
- *
- * Hidden on screen because its parent .print-layout has display: none on
- * screen (toggled to block when the user enters Preview mode or prints).
+ *   Left: Backpackervun logo + "TRAVEL PLANNER" subtitle
+ *   Right: TOTAL · {LOCAL} and TOTAL · IDR amounts
  */
 export default function PrintHeader({ totalLocal, totalIDR, region }) {
   const currency = getCurrency(region);
-  const showIDR = currency.code !== "IDR";
+  const isIDR    = currency.code === "IDR";
 
   return (
-    <header className="print-header">
-      <div className="ph-brand">
-        <img
-          src="/logo.png"
-          alt="Backpackervun"
-          className="ph-logo"
-          width="200"
-        />
-        <p className="ph-tagline">Travel Planner</p>
-      </div>
+    <div className="print-header border-b-2 border-navy-100 bg-white px-8 py-5">
+      <div className="flex items-center justify-between gap-4">
 
-      <div className="ph-totals">
-        <div className="ph-total">
-          <span className="ph-total-label">Total · {currency.code}</span>
-          <span className="ph-total-val">{formatCurrency(totalLocal, currency)}</span>
-        </div>
-        {showIDR && (
-          <div className="ph-total">
-            <span className="ph-total-label ph-total-label-accent">Total · IDR</span>
-            <span className="ph-total-val ph-total-val-accent">{formatIDR(totalIDR)}</span>
+        {/* Left: brand */}
+        <div className="flex items-center gap-3 min-w-0">
+          <img src="/logo.png" alt="Backpackervun" className="h-8 w-auto flex-shrink-0" />
+          <div className="border-l border-paper-line pl-3">
+            <p className="text-[9px] font-semibold uppercase tracking-[0.25em] text-ink-muted leading-none">
+              TRAVEL PLANNER
+            </p>
           </div>
-        )}
+        </div>
+
+        {/* Right: totals */}
+        <div className="flex-shrink-0 text-right">
+          {!isIDR && (
+            <div>
+              <p className="text-[9px] font-semibold uppercase tracking-[0.15em] text-ink-muted">
+                TOTAL · {currency.code}
+              </p>
+              <p className="text-xl font-semibold text-ink leading-tight">
+                {formatCurrency(totalLocal, currency)}
+              </p>
+            </div>
+          )}
+          <div className={!isIDR ? "mt-1" : ""}>
+            <p className="text-[9px] font-semibold uppercase tracking-[0.15em] text-navy-400">
+              TOTAL · IDR
+            </p>
+            <p className={`font-semibold text-navy-500 leading-tight ${isIDR ? "text-xl" : "text-base"}`}>
+              {formatIDR(totalIDR)}
+            </p>
+          </div>
+        </div>
       </div>
-    </header>
+    </div>
   );
 }
