@@ -1,22 +1,17 @@
 "use client";
 
-import { createPortal } from "react-dom";
-import { useRef, useState } from "react";
+import { Fragment, createPortal, useRef, useState } from "react";
 import { useT } from "@/context/TranslationContext";
 import { getCurrency, CATEGORY_OPTIONS } from "@/lib/utils";
-import { getTransportOptions, getBookingUrl, getKlookUrl } from "@/lib/regions";
+import { getTransportOptions, getBookingUrl } from "@/lib/regions";
 
 /**
- * ItineraryTable — Patch 14b
+ * ItineraryTable — Patch 14c
  *
- * Fixes:
- * 1. Transport options update per region (Japan → Shinkansen, Korea → KTX, etc.)
- * 2. City column wider (min-w-[120px]) so long city names are visible
- * 3. Booking link per transport (Klook, FlixBus, JR Pass, etc.)
- * 4. Day separators between rows with different dates
- * 5. ↑ ↓ move buttons
- * 6. Hotel chip only when category = Hotel
- * 7. 3-dot menu via portal (no overflow clip)
+ * CRITICAL FIX: Previous version wrapped each row in <tbody> inside <tbody>.
+ * This is invalid HTML and breaks column alignment completely.
+ * Now uses React.Fragment so day-separator <tr> and row <tr> share the
+ * same <tbody>, keeping every column perfectly aligned.
  */
 export default function ItineraryTable({
   rows, dayMap, region,
@@ -30,14 +25,12 @@ export default function ItineraryTable({
   const isIDR         = currency.code === "IDR";
   const localDisabled = currencyMode === "idr";
   const idrDisabled   = currencyMode === "local";
-
-  // ✅ Transport options per region
-  const transportOptions = getTransportOptions(region);
+  const transportOpts = getTransportOptions(region);
 
   return (
     <div className="rounded-2xl border border-paper-line bg-white shadow-soft overflow-hidden">
 
-      {/* Heading */}
+      {/* Section heading */}
       <div className="px-5 py-4 border-b border-paper-line flex items-center justify-between gap-3 flex-wrap">
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-navy-400">{t("itinerarySection")}</p>
@@ -48,7 +41,7 @@ export default function ItineraryTable({
         </span>
       </div>
 
-      {/* Mode hint */}
+      {/* Currency mode hint */}
       {!isIDR && (
         <div className="border-b border-paper-line bg-accent-50/40 px-5 py-2">
           <p className="text-xs text-navy-600 font-medium">
@@ -59,43 +52,68 @@ export default function ItineraryTable({
         </div>
       )}
 
-      {/* Desktop table */}
+      {/* ── Desktop table ── */}
       <div className="hidden lg:block overflow-x-auto">
-        <table className="w-full text-sm" style={{ minWidth: "1200px" }}>
+        <table className="w-full text-sm" style={{ minWidth: "1200px", tableLayout: "fixed" }}>
+          <colgroup>
+            <col style={{ width: "36px" }} />   {/* day badge */}
+            <col style={{ width: "130px" }} />  {/* date */}
+            <col style={{ width: "100px" }} />  {/* time */}
+            <col style={{ width: "120px" }} />  {/* city */}
+            <col style={{ width: "130px" }} />  {/* destination */}
+            <col style={{ width: "130px" }} />  {/* from/to */}
+            <col style={{ width: "120px" }} />  {/* transport */}
+            <col style={{ width: "120px" }} />  {/* category */}
+            <col style={{ width: "110px" }} />  {/* notes */}
+            {!isIDR && <col style={{ width: "90px" }} />}  {/* local budget */}
+            <col style={{ width: "90px" }} />   {/* IDR budget */}
+            <col style={{ width: "140px" }} />  {/* links */}
+            <col style={{ width: "36px" }} />   {/* move */}
+            <col style={{ width: "36px" }} />   {/* 3-dot */}
+          </colgroup>
+
           <thead>
             <tr className="border-b border-paper-line bg-paper-dim/60">
+              <th className="px-3 py-2.5 text-left text-[10px] font-semibold uppercase tracking-[0.1em] text-ink-muted" />
               {[
-                "",
-                t("date"), t("time"),
-                t("city"),         // wider column
+                t("date"), t("time"), t("city"),
                 t("destination"), `${t("from")} / ${t("to")}`,
                 t("transport"), t("category"), t("notes"),
                 ...(isIDR ? ["IDR"] : [`${currency.code}`, "IDR"]),
-                t("links"),
-                "↕",
-                "",
+                t("links"), "↕", "",
               ].map((h, i) => (
-                <th key={i} className="px-2 py-2.5 text-left text-[10px] font-semibold uppercase tracking-[0.1em] text-ink-muted whitespace-nowrap first:pl-4 last:pr-3">
+                <th key={i} className="px-2 py-2.5 text-left text-[10px] font-semibold uppercase tracking-[0.1em] text-ink-muted whitespace-nowrap overflow-hidden">
                   {h}
                 </th>
               ))}
             </tr>
           </thead>
-          <tbody>
+
+          {/* ✅ SINGLE tbody — day separators are <tr> inside same <tbody> */}
+          <tbody className="divide-y divide-paper-line/40">
             {rows.length === 0 ? (
-              <tr><td colSpan={15} className="px-5 py-14 text-center text-sm text-ink-muted">{t("noStops")}</td></tr>
+              <tr>
+                <td colSpan={isIDR ? 13 : 14} className="px-5 py-14 text-center text-sm text-ink-muted">
+                  {t("noStops")}
+                </td>
+              </tr>
             ) : (
               rows.map((row, idx) => {
-                const prevDate = idx > 0 ? (rows[idx-1].date||"").trim() : null;
-                const thisDate = (row.date||"").trim();
-                const showSep  = idx > 0 && thisDate && prevDate && thisDate !== prevDate;
-                const dayNum   = thisDate ? (dayMap[thisDate] ?? null) : null;
+                const prevDate  = idx > 0 ? (rows[idx - 1].date || "").trim() : null;
+                const thisDate  = (row.date || "").trim();
+                const showSep   = idx > 0 && thisDate && prevDate && thisDate !== prevDate;
+                const dayNum    = thisDate ? (dayMap[thisDate] ?? null) : null;
+                const { mapUrl, routeUrl, flightUrl, bookingUrl, hotelUrl } = buildLinks(row, region);
+                const showHotel = row.category === "Hotel";
 
                 return (
-                  <tbody key={row.id}>
+                  // ✅ Fragment — not <tbody>. This keeps all <tr> inside one <tbody>.
+                  <Fragment key={row.id}>
+
+                    {/* Day separator row */}
                     {showSep && (
                       <tr className="bg-paper-dim/30">
-                        <td colSpan={15} className="py-1 px-4">
+                        <td colSpan={isIDR ? 13 : 14} className="py-1 px-4">
                           <div className="flex items-center gap-3">
                             <div className="h-px flex-1 bg-navy-100" />
                             <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-navy-400">
@@ -106,22 +124,186 @@ export default function ItineraryTable({
                         </td>
                       </tr>
                     )}
-                    <DesktopRow
-                      row={row} idx={idx} total={rows.length}
-                      dayNum={dayNum}
-                      currency={currency} isIDR={isIDR}
-                      localDisabled={localDisabled} idrDisabled={idrDisabled}
-                      transportOptions={transportOptions}
-                      region={region}
-                      onUpdate={onUpdate}
-                      onMoveUp={() => onMoveUp?.(row.id)}
-                      onMoveDown={() => onMoveDown?.(row.id)}
-                      onInsertAbove={() => onInsertAbove?.(row.id)}
-                      onInsertBelow={() => onInsertBelow?.(row.id)}
-                      onDelete={() => onDelete?.(row.id)}
-                      t={t}
-                    />
-                  </tbody>
+
+                    {/* Data row */}
+                    <tr className="hover:bg-paper-dim/20 transition-colors">
+
+                      {/* Day badge */}
+                      <td className="pl-3 py-2.5">
+                        {dayNum !== null && (
+                          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-navy-500 text-[9px] font-bold text-white">
+                            {dayNum}
+                          </span>
+                        )}
+                      </td>
+
+                      {/* Date — native calendar */}
+                      <td className="px-2 py-2.5">
+                        <input
+                          type="date"
+                          value={row.date || ""}
+                          onChange={(e) => onUpdate(row.id, "date", e.target.value)}
+                          className="w-full rounded-lg border border-transparent bg-transparent px-1.5 py-1 text-xs text-ink outline-none hover:border-paper-line focus:border-accent-300 focus:bg-white transition"
+                        />
+                      </td>
+
+                      {/* Time — native time picker */}
+                      <td className="px-2 py-2.5">
+                        <input
+                          type="time"
+                          value={row.time || ""}
+                          onChange={(e) => onUpdate(row.id, "time", e.target.value)}
+                          className="w-full rounded-lg border border-transparent bg-transparent px-1.5 py-1 text-xs text-ink outline-none hover:border-paper-line focus:border-accent-300 focus:bg-white transition"
+                        />
+                      </td>
+
+                      {/* City */}
+                      <td className="px-2 py-2.5">
+                        <input
+                          type="text"
+                          value={row.city || ""}
+                          placeholder={t("city")}
+                          onChange={(e) => onUpdate(row.id, "city", e.target.value)}
+                          className="w-full rounded-lg border border-transparent bg-transparent px-1.5 py-1 text-xs text-ink outline-none hover:border-paper-line focus:border-accent-300 focus:bg-white transition"
+                        />
+                      </td>
+
+                      {/* Destination */}
+                      <td className="px-2 py-2.5">
+                        <input
+                          type="text"
+                          value={row.destination || ""}
+                          placeholder={t("destinationPlaceholder")}
+                          onChange={(e) => onUpdate(row.id, "destination", e.target.value)}
+                          className="w-full rounded-lg border border-transparent bg-transparent px-1.5 py-1 text-xs text-ink outline-none hover:border-paper-line focus:border-accent-300 focus:bg-white transition"
+                        />
+                      </td>
+
+                      {/* From / To */}
+                      <td className="px-2 py-2.5">
+                        <div className="flex flex-col gap-1">
+                          <input
+                            type="text"
+                            value={row.from || ""}
+                            placeholder={t("from")}
+                            onChange={(e) => onUpdate(row.id, "from", e.target.value)}
+                            className="w-full rounded-lg border border-transparent bg-transparent px-1.5 py-0.5 text-xs text-ink outline-none hover:border-paper-line focus:border-accent-300 focus:bg-white transition"
+                          />
+                          <input
+                            type="text"
+                            value={row.to || ""}
+                            placeholder={t("to")}
+                            onChange={(e) => onUpdate(row.id, "to", e.target.value)}
+                            className="w-full rounded-lg border border-transparent bg-transparent px-1.5 py-0.5 text-xs text-ink outline-none hover:border-paper-line focus:border-accent-300 focus:bg-white transition"
+                          />
+                        </div>
+                      </td>
+
+                      {/* Transport — region-specific options */}
+                      <td className="px-2 py-2.5">
+                        <select
+                          value={row.transport || ""}
+                          onChange={(e) => onUpdate(row.id, "transport", e.target.value)}
+                          className="w-full rounded-lg border border-transparent bg-transparent px-1 py-1 text-xs text-ink outline-none hover:border-paper-line focus:border-accent-300 focus:bg-white transition"
+                        >
+                          <option value="">—</option>
+                          {transportOpts.map(o => <option key={o} value={o}>{o}</option>)}
+                        </select>
+                      </td>
+
+                      {/* Category */}
+                      <td className="px-2 py-2.5">
+                        <select
+                          value={row.category || ""}
+                          onChange={(e) => onUpdate(row.id, "category", e.target.value)}
+                          className="w-full rounded-lg border border-transparent bg-transparent px-1 py-1 text-xs text-ink outline-none hover:border-paper-line focus:border-accent-300 focus:bg-white transition"
+                        >
+                          <option value="">—</option>
+                          {(CATEGORY_OPTIONS ?? ["Hotel","Food","Attraction","Activity","Transport"]).map(o => (
+                            <option key={o} value={o}>{o}</option>
+                          ))}
+                        </select>
+                      </td>
+
+                      {/* Notes */}
+                      <td className="px-2 py-2.5">
+                        <input
+                          type="text"
+                          value={row.notes || ""}
+                          placeholder="—"
+                          onChange={(e) => onUpdate(row.id, "notes", e.target.value)}
+                          className="w-full rounded-lg border border-transparent bg-transparent px-1.5 py-1 text-xs text-ink outline-none hover:border-paper-line focus:border-accent-300 focus:bg-white transition"
+                        />
+                      </td>
+
+                      {/* Budget local */}
+                      {!isIDR && (
+                        <td className="px-2 py-2.5">
+                          <input
+                            type="number"
+                            value={row.budgetLocal || 0}
+                            readOnly={localDisabled}
+                            onChange={(e) => !localDisabled && onUpdate(row.id, "budgetLocal", Number(e.target.value))}
+                            className={`w-full rounded-lg border px-1.5 py-1 text-right text-xs font-mono outline-none transition ${
+                              localDisabled
+                                ? "cursor-not-allowed border-transparent bg-paper-dim/60 text-ink-muted opacity-50"
+                                : "border-transparent bg-transparent text-ink hover:border-paper-line focus:border-accent-300 focus:bg-white"
+                            }`}
+                          />
+                        </td>
+                      )}
+
+                      {/* Budget IDR */}
+                      <td className="px-2 py-2.5">
+                        <input
+                          type="number"
+                          value={row.budgetIDR || 0}
+                          readOnly={idrDisabled && !isIDR}
+                          onChange={(e) => (isIDR || !idrDisabled) && onUpdate(row.id, "budgetIDR", Number(e.target.value))}
+                          className={`w-full rounded-lg border px-1.5 py-1 text-right text-xs font-mono outline-none transition ${
+                            idrDisabled && !isIDR
+                              ? "cursor-not-allowed border-transparent bg-paper-dim/60 text-ink-muted opacity-50"
+                              : "border-transparent bg-transparent text-navy-500 font-semibold hover:border-paper-line focus:border-accent-300 focus:bg-white"
+                          }`}
+                        />
+                      </td>
+
+                      {/* Links */}
+                      <td className="px-2 py-2.5">
+                        <div className="flex flex-wrap gap-1">
+                          <LinkChip href={mapUrl}     icon="📍" label="Map" />
+                          {routeUrl   && <LinkChip href={routeUrl}   icon="🗺"  label="Route" />}
+                          {flightUrl  && <LinkChip href={flightUrl}  icon="✈️" label="Flights" />}
+                          {bookingUrl && <LinkChip href={bookingUrl} icon="🎫" label="Book" />}
+                          {showHotel && hotelUrl && <LinkChip href={hotelUrl} icon="🏨" label="Hotel" />}
+                        </div>
+                      </td>
+
+                      {/* Move up/down */}
+                      <td className="px-1 py-2.5">
+                        <div className="flex flex-col gap-0.5">
+                          <button onClick={() => onMoveUp?.(row.id)} disabled={idx === 0}
+                            className="grid h-5 w-5 place-items-center rounded text-ink-muted hover:bg-paper-dim disabled:opacity-30 disabled:cursor-not-allowed">
+                            <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 15l-6-6-6 6"/></svg>
+                          </button>
+                          <button onClick={() => onMoveDown?.(row.id)} disabled={idx === rows.length - 1}
+                            className="grid h-5 w-5 place-items-center rounded text-ink-muted hover:bg-paper-dim disabled:opacity-30 disabled:cursor-not-allowed">
+                            <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+                          </button>
+                        </div>
+                      </td>
+
+                      {/* 3-dot menu */}
+                      <td className="pr-3 py-2.5">
+                        <RowActions
+                          onInsertAbove={() => onInsertAbove?.(row.id)}
+                          onInsertBelow={() => onInsertBelow?.(row.id)}
+                          onDelete={() => onDelete?.(row.id)}
+                          t={t}
+                        />
+                      </td>
+                    </tr>
+                  </Fragment>
                 );
               })
             )}
@@ -129,46 +311,52 @@ export default function ItineraryTable({
         </table>
       </div>
 
-      {/* Mobile cards */}
+      {/* ── Mobile cards ── */}
       <div className="lg:hidden divide-y divide-paper-line/60">
         {rows.length === 0 ? (
           <p className="px-5 py-12 text-center text-sm text-ink-muted">{t("noStops")}</p>
-        ) : rows.map((row, idx) => {
-          const prevDate = idx > 0 ? (rows[idx-1].date||"").trim() : null;
-          const thisDate = (row.date||"").trim();
-          const showSep  = idx > 0 && thisDate && prevDate && thisDate !== prevDate;
-          const dayNum   = thisDate ? (dayMap[thisDate] ?? null) : null;
-          return (
-            <div key={row.id}>
-              {showSep && (
-                <div className="bg-paper-dim/60 py-1.5 px-4">
-                  <div className="flex items-center gap-2">
-                    <div className="h-px flex-1 bg-navy-100" />
-                    <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-navy-400">
-                      {t("day")} {dayMap[thisDate] ?? "?"}
-                    </span>
-                    <div className="h-px flex-1 bg-navy-100" />
+        ) : (
+          rows.map((row, idx) => {
+            const prevDate = idx > 0 ? (rows[idx - 1].date || "").trim() : null;
+            const thisDate = (row.date || "").trim();
+            const showSep  = idx > 0 && thisDate && prevDate && thisDate !== prevDate;
+            const dayNum   = thisDate ? (dayMap[thisDate] ?? null) : null;
+            const { mapUrl, routeUrl, flightUrl, bookingUrl, hotelUrl } = buildLinks(row, region);
+            const showHotel = row.category === "Hotel";
+
+            return (
+              <Fragment key={row.id}>
+                {showSep && (
+                  <div className="bg-paper-dim/60 py-1.5 px-4">
+                    <div className="flex items-center gap-2">
+                      <div className="h-px flex-1 bg-navy-100" />
+                      <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-navy-400">
+                        {t("day")} {dayMap[thisDate] ?? "?"}
+                      </span>
+                      <div className="h-px flex-1 bg-navy-100" />
+                    </div>
                   </div>
-                </div>
-              )}
-              <MobileCard
-                row={row} idx={idx} total={rows.length}
-                dayNum={dayNum}
-                currency={currency} isIDR={isIDR}
-                localDisabled={localDisabled} idrDisabled={idrDisabled}
-                transportOptions={transportOptions}
-                region={region}
-                onUpdate={onUpdate}
-                onMoveUp={() => onMoveUp?.(row.id)}
-                onMoveDown={() => onMoveDown?.(row.id)}
-                onInsertAbove={() => onInsertAbove?.(row.id)}
-                onInsertBelow={() => onInsertBelow?.(row.id)}
-                onDelete={() => onDelete?.(row.id)}
-                t={t}
-              />
-            </div>
-          );
-        })}
+                )}
+                <MobileCard
+                  row={row} idx={idx} total={rows.length}
+                  dayNum={dayNum}
+                  currency={currency} isIDR={isIDR}
+                  localDisabled={localDisabled} idrDisabled={idrDisabled}
+                  transportOpts={transportOpts}
+                  mapUrl={mapUrl} routeUrl={routeUrl} flightUrl={flightUrl}
+                  bookingUrl={bookingUrl} hotelUrl={hotelUrl} showHotel={showHotel}
+                  onUpdate={onUpdate}
+                  onMoveUp={() => onMoveUp?.(row.id)}
+                  onMoveDown={() => onMoveDown?.(row.id)}
+                  onInsertAbove={() => onInsertAbove?.(row.id)}
+                  onInsertBelow={() => onInsertBelow?.(row.id)}
+                  onDelete={() => onDelete?.(row.id)}
+                  t={t}
+                />
+              </Fragment>
+            );
+          })
+        )}
       </div>
 
       {/* Add row */}
@@ -185,176 +373,36 @@ export default function ItineraryTable({
   );
 }
 
-// ── Desktop row ───────────────────────────────────────────────────────────────
-
-function DesktopRow({
-  row, idx, total, dayNum,
-  currency, isIDR, localDisabled, idrDisabled,
-  transportOptions, region,
-  onUpdate, onMoveUp, onMoveDown, onInsertAbove, onInsertBelow, onDelete, t,
-}) {
-  const showHotel = row.category === "Hotel";
-  const { mapUrl, routeUrl, flightUrl, bookingUrl, hotelUrl } = buildLinks(row, region);
-
-  const ci = "w-full rounded-lg border border-transparent bg-transparent px-2 py-1 text-xs text-ink outline-none hover:border-paper-line focus:border-accent-300 focus:bg-white transition";
-  const si = "w-full rounded-lg border border-transparent bg-transparent px-1 py-1 text-xs text-ink outline-none hover:border-paper-line focus:border-accent-300 focus:bg-white transition";
-
-  return (
-    <tr className="hover:bg-paper-dim/20 border-b border-paper-line/40 transition-colors">
-
-      {/* Day badge */}
-      <td className="pl-4 py-2.5 w-8">
-        {dayNum !== null && (
-          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-navy-500 text-[9px] font-bold text-white">{dayNum}</span>
-        )}
-      </td>
-
-      {/* Date */}
-      <td className="px-2 py-2.5">
-        <input type="date" value={row.date||""} onChange={(e) => onUpdate(row.id,"date",e.target.value)}
-          className={`${ci} w-[120px]`} />
-      </td>
-
-      {/* Time */}
-      <td className="px-2 py-2.5">
-        <input type="time" value={row.time||""} onChange={(e) => onUpdate(row.id,"time",e.target.value)}
-          className={`${ci} w-[90px]`} />
-      </td>
-
-      {/* ✅ City — wider min-width so long names are visible */}
-      <td className="px-2 py-2.5">
-        <input type="text" value={row.city||""} placeholder={t("city")}
-          onChange={(e) => onUpdate(row.id,"city",e.target.value)}
-          className={`${ci}`} style={{ minWidth: "120px", width: "120px" }} />
-      </td>
-
-      {/* Destination */}
-      <td className="px-2 py-2.5">
-        <input type="text" value={row.destination||""} placeholder={t("destinationPlaceholder")}
-          onChange={(e) => onUpdate(row.id,"destination",e.target.value)}
-          className={`${ci} w-32`} />
-      </td>
-
-      {/* From / To */}
-      <td className="px-2 py-2.5">
-        <div className="flex flex-col gap-1">
-          <input type="text" value={row.from||""} placeholder={t("from")}
-            onChange={(e) => onUpdate(row.id,"from",e.target.value)} className={`${ci} w-28`} />
-          <input type="text" value={row.to||""} placeholder={t("to")}
-            onChange={(e) => onUpdate(row.id,"to",e.target.value)} className={`${ci} w-28`} />
-        </div>
-      </td>
-
-      {/* ✅ Transport — region-specific options */}
-      <td className="px-2 py-2.5">
-        <select value={row.transport||""} onChange={(e) => onUpdate(row.id,"transport",e.target.value)} className={`${si} w-28`}>
-          <option value="">—</option>
-          {transportOptions.map(o => <option key={o} value={o}>{o}</option>)}
-        </select>
-      </td>
-
-      {/* Category */}
-      <td className="px-2 py-2.5">
-        <select value={row.category||""} onChange={(e) => onUpdate(row.id,"category",e.target.value)} className={`${si} w-28`}>
-          <option value="">—</option>
-          {(CATEGORY_OPTIONS ?? ["Hotel","Food","Attraction","Activity","Transport"]).map(o => <option key={o} value={o}>{o}</option>)}
-        </select>
-      </td>
-
-      {/* Notes */}
-      <td className="px-2 py-2.5">
-        <input type="text" value={row.notes||""} placeholder="—"
-          onChange={(e) => onUpdate(row.id,"notes",e.target.value)} className={`${ci} w-28`} />
-      </td>
-
-      {/* Budget local */}
-      {!isIDR && (
-        <td className="px-2 py-2.5">
-          <input type="number" value={row.budgetLocal||0} readOnly={localDisabled}
-            onChange={(e) => !localDisabled && onUpdate(row.id,"budgetLocal",Number(e.target.value))}
-            className={`w-24 rounded-lg border px-2 py-1 text-right text-xs font-mono outline-none transition ${
-              localDisabled ? "cursor-not-allowed border-transparent bg-paper-dim/60 text-ink-muted opacity-50"
-              : "border-transparent bg-transparent text-ink hover:border-paper-line focus:border-accent-300 focus:bg-white"
-            }`} />
-        </td>
-      )}
-
-      {/* Budget IDR */}
-      <td className="px-2 py-2.5">
-        <input type="number" value={row.budgetIDR||0} readOnly={idrDisabled && !isIDR}
-          onChange={(e) => (isIDR||!idrDisabled) && onUpdate(row.id,"budgetIDR",Number(e.target.value))}
-          className={`w-24 rounded-lg border px-2 py-1 text-right text-xs font-mono outline-none transition ${
-            idrDisabled && !isIDR ? "cursor-not-allowed border-transparent bg-paper-dim/60 text-ink-muted opacity-50"
-            : "border-transparent bg-transparent text-navy-500 font-semibold hover:border-paper-line focus:border-accent-300 focus:bg-white"
-          }`} />
-      </td>
-
-      {/* ✅ Links — Map, Route, Flights, booking per transport, Hotel */}
-      <td className="px-2 py-2.5">
-        <div className="flex gap-1 flex-wrap" style={{ minWidth: "90px" }}>
-          <LinkChip href={mapUrl}     icon="📍" label="Map" />
-          {routeUrl   && <LinkChip href={routeUrl}   icon="🗺"  label="Route" />}
-          {flightUrl  && <LinkChip href={flightUrl}  icon="✈️" label="Flights" />}
-          {bookingUrl && <LinkChip href={bookingUrl} icon="🎫" label="Book" />}
-          {showHotel && hotelUrl && <LinkChip href={hotelUrl} icon="🏨" label="Hotel" />}
-        </div>
-      </td>
-
-      {/* Move up/down */}
-      <td className="px-1 py-2.5">
-        <div className="flex flex-col gap-0.5">
-          <button onClick={onMoveUp} disabled={idx===0}
-            className="grid h-5 w-5 place-items-center rounded text-ink-muted hover:bg-paper-dim disabled:opacity-30 disabled:cursor-not-allowed" title="Move up">
-            <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 15l-6-6-6 6"/></svg>
-          </button>
-          <button onClick={onMoveDown} disabled={idx===total-1}
-            className="grid h-5 w-5 place-items-center rounded text-ink-muted hover:bg-paper-dim disabled:opacity-30 disabled:cursor-not-allowed" title="Move down">
-            <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6"/></svg>
-          </button>
-        </div>
-      </td>
-
-      {/* 3-dot */}
-      <td className="pr-3 py-2.5">
-        <RowActions onInsertAbove={onInsertAbove} onInsertBelow={onInsertBelow} onDelete={onDelete} t={t} />
-      </td>
-    </tr>
-  );
-}
-
 // ── Mobile card ───────────────────────────────────────────────────────────────
 
 function MobileCard({
   row, idx, total, dayNum,
   currency, isIDR, localDisabled, idrDisabled,
-  transportOptions, region,
+  transportOpts, mapUrl, routeUrl, flightUrl, bookingUrl, hotelUrl, showHotel,
   onUpdate, onMoveUp, onMoveDown, onInsertAbove, onInsertBelow, onDelete, t,
 }) {
-  const showHotel = row.category === "Hotel";
-  const { mapUrl, routeUrl, flightUrl, bookingUrl, hotelUrl } = buildLinks(row, region);
+  const inp = "w-full rounded-lg border border-paper-line bg-white px-2.5 py-2 text-xs text-ink outline-none focus:border-accent-300";
 
   return (
     <div className="px-4 py-4 space-y-3">
-      {/* Header */}
       <div className="flex items-start gap-2.5">
         {dayNum !== null && (
           <span className="flex-shrink-0 flex h-7 w-7 items-center justify-center rounded-full bg-navy-500 text-[10px] font-bold text-white mt-0.5">{dayNum}</span>
         )}
         <div className="flex-1 min-w-0">
-          <input type="text" value={row.destination||""} placeholder={t("destinationPlaceholder")}
-            onChange={(e) => onUpdate(row.id,"destination",e.target.value)}
+          <input type="text" value={row.destination || ""} placeholder={t("destinationPlaceholder")}
+            onChange={(e) => onUpdate(row.id, "destination", e.target.value)}
             className="w-full rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-sm font-semibold text-ink outline-none hover:border-paper-line focus:border-accent-300 focus:bg-white" />
-          {/* ✅ City — full width input */}
-          <input type="text" value={row.city||""} placeholder={t("city")}
-            onChange={(e) => onUpdate(row.id,"city",e.target.value)}
+          <input type="text" value={row.city || ""} placeholder={t("city")}
+            onChange={(e) => onUpdate(row.id, "city", e.target.value)}
             className="w-full mt-0.5 rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-xs text-ink-muted outline-none hover:border-paper-line focus:border-accent-300 focus:bg-white" />
         </div>
         <div className="flex items-center gap-1">
-          <button onClick={onMoveUp} disabled={idx===0}
+          <button onClick={onMoveUp} disabled={idx === 0}
             className="grid h-6 w-6 place-items-center rounded text-ink-muted hover:bg-paper-dim disabled:opacity-30">
             <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 15l-6-6-6 6"/></svg>
           </button>
-          <button onClick={onMoveDown} disabled={idx===total-1}
+          <button onClick={onMoveDown} disabled={idx === total - 1}
             className="grid h-6 w-6 place-items-center rounded text-ink-muted hover:bg-paper-dim disabled:opacity-30">
             <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6"/></svg>
           </button>
@@ -363,53 +411,47 @@ function MobileCard({
       </div>
 
       <div className="grid grid-cols-2 gap-2">
-        <div><p className="text-[9px] font-semibold uppercase tracking-[0.1em] text-ink-muted mb-1">{t("date")}</p>
-          <input type="date" value={row.date||""} onChange={(e) => onUpdate(row.id,"date",e.target.value)}
-            className="w-full rounded-lg border border-paper-line bg-white px-2.5 py-2 text-xs text-ink outline-none" /></div>
-        <div><p className="text-[9px] font-semibold uppercase tracking-[0.1em] text-ink-muted mb-1">{t("time")}</p>
-          <input type="time" value={row.time||""} onChange={(e) => onUpdate(row.id,"time",e.target.value)}
-            className="w-full rounded-lg border border-paper-line bg-white px-2.5 py-2 text-xs text-ink outline-none" /></div>
+        <div><p className="mlab">{t("date")}</p><input type="date" value={row.date || ""} onChange={(e) => onUpdate(row.id, "date", e.target.value)} className={inp} /></div>
+        <div><p className="mlab">{t("time")}</p><input type="time" value={row.time || ""} onChange={(e) => onUpdate(row.id, "time", e.target.value)} className={inp} /></div>
       </div>
 
       <div className="grid grid-cols-2 gap-2">
-        <div><p className="text-[9px] font-semibold uppercase tracking-[0.1em] text-ink-muted mb-1">{t("from")}</p>
-          <input type="text" value={row.from||""} placeholder="—" onChange={(e) => onUpdate(row.id,"from",e.target.value)}
-            className="w-full rounded-lg border border-paper-line bg-white px-2.5 py-2 text-xs text-ink outline-none" /></div>
-        <div><p className="text-[9px] font-semibold uppercase tracking-[0.1em] text-ink-muted mb-1">{t("to")}</p>
-          <input type="text" value={row.to||""} placeholder="—" onChange={(e) => onUpdate(row.id,"to",e.target.value)}
-            className="w-full rounded-lg border border-paper-line bg-white px-2.5 py-2 text-xs text-ink outline-none" /></div>
+        <div><p className="mlab">{t("from")}</p><input type="text" value={row.from || ""} placeholder="—" onChange={(e) => onUpdate(row.id, "from", e.target.value)} className={inp} /></div>
+        <div><p className="mlab">{t("to")}</p><input type="text" value={row.to || ""} placeholder="—" onChange={(e) => onUpdate(row.id, "to", e.target.value)} className={inp} /></div>
       </div>
 
       <div className="grid grid-cols-2 gap-2">
-        <div><p className="text-[9px] font-semibold uppercase tracking-[0.1em] text-ink-muted mb-1">{t("transport")}</p>
-          <select value={row.transport||""} onChange={(e) => onUpdate(row.id,"transport",e.target.value)}
-            className="w-full rounded-lg border border-paper-line bg-white px-2.5 py-2 text-xs text-ink outline-none">
+        <div><p className="mlab">{t("transport")}</p>
+          <select value={row.transport || ""} onChange={(e) => onUpdate(row.id, "transport", e.target.value)} className={inp}>
             <option value="">—</option>
-            {transportOptions.map(o => <option key={o} value={o}>{o}</option>)}
-          </select></div>
-        <div><p className="text-[9px] font-semibold uppercase tracking-[0.1em] text-ink-muted mb-1">{t("category")}</p>
-          <select value={row.category||""} onChange={(e) => onUpdate(row.id,"category",e.target.value)}
-            className="w-full rounded-lg border border-paper-line bg-white px-2.5 py-2 text-xs text-ink outline-none">
+            {transportOpts.map(o => <option key={o} value={o}>{o}</option>)}
+          </select>
+        </div>
+        <div><p className="mlab">{t("category")}</p>
+          <select value={row.category || ""} onChange={(e) => onUpdate(row.id, "category", e.target.value)} className={inp}>
             <option value="">—</option>
             {(CATEGORY_OPTIONS ?? ["Hotel","Food","Attraction","Activity","Transport"]).map(o => <option key={o} value={o}>{o}</option>)}
-          </select></div>
+          </select>
+        </div>
       </div>
 
-      <div><p className="text-[9px] font-semibold uppercase tracking-[0.1em] text-ink-muted mb-1">{t("notes")}</p>
-        <input type="text" value={row.notes||""} placeholder="—" onChange={(e) => onUpdate(row.id,"notes",e.target.value)}
-          className="w-full rounded-lg border border-paper-line bg-white px-2.5 py-2 text-xs text-ink outline-none" /></div>
+      <div><p className="mlab">{t("notes")}</p>
+        <input type="text" value={row.notes || ""} placeholder="—" onChange={(e) => onUpdate(row.id, "notes", e.target.value)} className={inp} />
+      </div>
 
       <div className="grid grid-cols-2 gap-2">
         {!isIDR && (
-          <div><p className="text-[9px] font-semibold uppercase tracking-[0.1em] text-ink-muted mb-1">{currency.code}{localDisabled ? " (auto)":""}</p>
-            <input type="number" value={row.budgetLocal||0} readOnly={localDisabled}
-              onChange={(e) => !localDisabled && onUpdate(row.id,"budgetLocal",Number(e.target.value))}
-              className={`w-full rounded-lg border px-2.5 py-2 text-right font-mono text-sm outline-none ${localDisabled ? "border-paper-line bg-paper-dim/60 text-ink-muted opacity-60 cursor-not-allowed" : "border-paper-line bg-white text-ink"}`} /></div>
+          <div><p className="mlab">{currency.code}{localDisabled ? " (auto)" : ""}</p>
+            <input type="number" value={row.budgetLocal || 0} readOnly={localDisabled}
+              onChange={(e) => !localDisabled && onUpdate(row.id, "budgetLocal", Number(e.target.value))}
+              className={`${inp} text-right font-mono ${localDisabled ? "bg-paper-dim/60 text-ink-muted opacity-60 cursor-not-allowed" : ""}`} />
+          </div>
         )}
-        <div><p className="text-[9px] font-semibold uppercase tracking-[0.1em] text-ink-muted mb-1">IDR{idrDisabled && !isIDR ? " (auto)":""}</p>
-          <input type="number" value={row.budgetIDR||0} readOnly={idrDisabled && !isIDR}
-            onChange={(e) => (isIDR||!idrDisabled) && onUpdate(row.id,"budgetIDR",Number(e.target.value))}
-            className={`w-full rounded-lg border px-2.5 py-2 text-right font-mono text-sm font-semibold outline-none ${idrDisabled && !isIDR ? "border-paper-line bg-paper-dim/60 text-ink-muted opacity-60 cursor-not-allowed" : "border-paper-line bg-white text-navy-500"}`} /></div>
+        <div><p className="mlab">IDR{idrDisabled && !isIDR ? " (auto)" : ""}</p>
+          <input type="number" value={row.budgetIDR || 0} readOnly={idrDisabled && !isIDR}
+            onChange={(e) => (isIDR || !idrDisabled) && onUpdate(row.id, "budgetIDR", Number(e.target.value))}
+            className={`${inp} text-right font-mono font-semibold text-navy-500 ${idrDisabled && !isIDR ? "bg-paper-dim/60 text-ink-muted opacity-60 cursor-not-allowed" : ""}`} />
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-1.5">
@@ -426,25 +468,24 @@ function MobileCard({
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function buildLinks(row, region) {
-  const destQ  = encodeURIComponent([row.destination, row.city, row.to].filter(Boolean).join(" ")||"");
+  const destQ  = encodeURIComponent([row.destination, row.city, row.to].filter(Boolean).join(" ") || "");
   const mapUrl = `https://www.google.com/maps/search/?api=1&query=${destQ}`;
 
   const routeUrl = row.from && row.to
     ? `https://www.google.com/maps/dir/${encodeURIComponent(row.from)}/${encodeURIComponent(row.to)}`
     : null;
 
-  const isFlightTransport = (row.transport||"").toLowerCase().includes("flight");
+  const isFlightTransport = (row.transport || "").toLowerCase().includes("flight");
   const flightUrl = isFlightTransport && row.from && row.to
     ? `https://www.google.com/flights?q=Flights+from+${encodeURIComponent(row.from)}+to+${encodeURIComponent(row.to)}`
     : null;
 
-  // ✅ Booking link per transport type
   const bookingUrl = row.transport
-    ? getBookingUrl(row.transport, { from: row.from, to: row.to, destination: row.destination||row.city, region })
+    ? getBookingUrl(row.transport, { from: row.from, to: row.to, destination: row.destination || row.city, region })
     : null;
 
-  const hotelUrl = (row.destination||row.city)
-    ? `https://www.booking.com/search.html?ss=${encodeURIComponent(row.destination||row.city)}`
+  const hotelUrl = (row.destination || row.city)
+    ? `https://www.booking.com/search.html?ss=${encodeURIComponent(row.destination || row.city)}`
     : null;
 
   return { mapUrl, routeUrl, flightUrl, bookingUrl, hotelUrl };
@@ -454,7 +495,7 @@ function LinkChip({ href, icon, label }) {
   if (!href) return null;
   return (
     <a href={href} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
-      className="inline-flex items-center gap-1 rounded-full border border-paper-line bg-white px-2.5 py-0.5 text-[10px] font-semibold text-ink-soft shadow-sm transition hover:border-navy-200 hover:bg-navy-50 hover:text-navy-500 active:scale-95">
+      className="inline-flex items-center gap-1 rounded-full border border-paper-line bg-white px-2.5 py-0.5 text-[10px] font-semibold text-ink-soft shadow-sm transition hover:border-navy-200 hover:bg-navy-50 hover:text-navy-500 active:scale-95 whitespace-nowrap">
       <span className="text-[11px] leading-none">{icon}</span>{label}
     </a>
   );
@@ -468,7 +509,7 @@ function RowActions({ onInsertAbove, onInsertBelow, onDelete, t }) {
   const handleOpen = () => {
     if (btnRef.current) {
       const rect = btnRef.current.getBoundingClientRect();
-      setStyle({ position:"fixed", top: rect.bottom+4, right: window.innerWidth-rect.right, zIndex:9999, minWidth:"160px" });
+      setStyle({ position: "fixed", top: rect.bottom + 4, right: window.innerWidth - rect.right, zIndex: 9999, minWidth: "160px" });
     }
     setOpen(v => !v);
   };
@@ -483,7 +524,7 @@ function RowActions({ onInsertAbove, onInsertBelow, onDelete, t }) {
       </button>
       {open && typeof window !== "undefined" && createPortal(
         <>
-          <div className="fixed inset-0" style={{ zIndex:9998 }} onClick={() => setOpen(false)} />
+          <div className="fixed inset-0" style={{ zIndex: 9998 }} onClick={() => setOpen(false)} />
           <div className="rounded-xl border border-paper-line bg-white py-1 shadow-card" style={style}>
             <RA label={`↑ ${t("insertAbove")}`} onClick={() => { onInsertAbove(); setOpen(false); }} />
             <RA label={`↓ ${t("insertBelow")}`} onClick={() => { onInsertBelow(); setOpen(false); }} />
@@ -495,6 +536,7 @@ function RowActions({ onInsertAbove, onInsertBelow, onDelete, t }) {
     </>
   );
 }
+
 function RA({ label, onClick, danger }) {
   return (
     <button onClick={onClick}
