@@ -501,39 +501,142 @@ function LinkChip({ href, icon, label }) {
   );
 }
 
-function RowActions({ onInsertAbove, onInsertBelow, onDelete, t }) {
+function RowActions({
+  onInsertAbove,
+  onInsertBelow,
+  onDelete,
+  t,
+}) {
   const [open, setOpen] = useState(false);
-  const [style, setStyle] = useState({});
-  const btnRef = useRef(null);
+  const wrapperRef = useRef(null);
 
-  const handleOpen = () => {
-    if (btnRef.current) {
-      const rect = btnRef.current.getBoundingClientRect();
-      setStyle({ position: "fixed", top: rect.bottom + 4, right: window.innerWidth - rect.right, zIndex: 9999, minWidth: "160px" });
+  useEffect(() => {
+    function handleOutside(event) {
+      if (
+        wrapperRef.current &&
+        !wrapperRef.current.contains(event.target)
+      ) {
+        setOpen(false);
+      }
     }
-    setOpen(v => !v);
-  };
+
+    document.addEventListener(
+      "mousedown",
+      handleOutside
+    );
+
+    return () => {
+      document.removeEventListener(
+        "mousedown",
+        handleOutside
+      );
+    };
+  }, []);
 
   return (
-    <>
-      <button ref={btnRef} onClick={handleOpen}
-        className="grid h-7 w-7 place-items-center rounded-lg text-ink-muted hover:bg-paper-dim">
-        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/>
+    <div
+      ref={wrapperRef}
+      className="relative"
+    >
+      <button
+        type="button"
+        onClick={() => setOpen(v => !v)}
+        className="
+          grid h-8 w-8 place-items-center
+          rounded-xl
+          border border-paper-line
+          bg-white
+          text-ink-muted
+          hover:bg-paper-dim
+          transition
+        "
+      >
+        <svg
+          viewBox="0 0 24 24"
+          className="h-4 w-4"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <circle cx="12" cy="5" r="1" />
+          <circle cx="12" cy="12" r="1" />
+          <circle cx="12" cy="19" r="1" />
         </svg>
       </button>
-      {open && typeof window !== "undefined" && createPortal(
-        <>
-          <div className="fixed inset-0" style={{ zIndex: 9998 }} onClick={() => setOpen(false)} />
-          <div className="rounded-xl border border-paper-line bg-white py-1 shadow-card" style={style}>
-            <RA label={`↑ ${t("insertAbove")}`} onClick={() => { onInsertAbove(); setOpen(false); }} />
-            <RA label={`↓ ${t("insertBelow")}`} onClick={() => { onInsertBelow(); setOpen(false); }} />
-            <RA label={`🗑 ${t("deleteRow")}`}   onClick={() => { onDelete();       setOpen(false); }} danger />
+
+      {open && (
+        <div
+          className="
+            absolute right-0 top-10 z-50
+            w-44 overflow-hidden
+            rounded-2xl
+            border border-paper-line
+            bg-white
+            shadow-2xl
+          "
+        >
+          <div className="py-1">
+
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                onInsertAbove?.();
+              }}
+              className="
+                w-full text-left px-4 py-2.5 text-sm
+                text-slate-700 hover:bg-slate-100
+                transition
+              "
+            >
+              ↑ {t("insertAbove")}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                onInsertBelow?.();
+              }}
+              className="
+                w-full text-left px-4 py-2.5 text-sm
+                text-slate-700 hover:bg-slate-100
+                transition
+              "
+            >
+              ↓ {t("insertBelow")}
+            </button>
+
+            <div className="my-1 border-t border-paper-line" />
+
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false);
+
+                const ok = window.confirm(
+                  "Delete this row?"
+                );
+
+                if (ok) {
+                  onDelete?.();
+                }
+              }}
+              className="
+                w-full text-left px-4 py-2.5 text-sm
+                text-red-600 hover:bg-red-50
+                transition
+              "
+            >
+              🗑 {t("deleteRow")}
+            </button>
+
           </div>
-        </>,
-        document.body
+        </div>
       )}
-    </>
+    </div>
   );
 }
 
