@@ -27,12 +27,9 @@ import { DEFAULT_RATE, generateId, getCurrency } from "@/lib/utils";
 const STORAGE_KEY = "backpackervun-v9";
 const BLANK_TRIP  = { clientName:"", duration:"", destinations:"", travelDates:"", startDate:"", endDate:"" };
 
-// ── Row helpers ───────────────────────────────────────────────────────────────
-
 function syncIDR(row, rate) {
   return { ...row, budgetIDR: Math.round((Number(row.budgetLocal)||0) * (Number(rate)||0)) };
 }
-
 function normalizeRow(row, rate) {
   const r = { ...row };
   if (r.budgetJPY !== undefined && r.budgetLocal === undefined) r.budgetLocal = r.budgetJPY;
@@ -40,7 +37,6 @@ function normalizeRow(row, rate) {
   if (typeof r.budgetIDR !== "number") return syncIDR(r, rate);
   return r;
 }
-
 function blankRow(s) {
   return {
     id: generateId(), date: s?.date ?? "", time: "", city: s?.city ?? "",
@@ -48,15 +44,12 @@ function blankRow(s) {
     budgetLocal:0, budgetIDR:0, _lastEdited:"local",
   };
 }
-
 function buildDayMap(rows) {
   const dates = [...new Set(rows.map(r=>(r.date||"").trim()).filter(Boolean))].sort();
   const m = {};
-  dates.forEach((d,i)=>{ m[d]=i+1; });
+  dates.forEach((d,i) => { m[d]=i+1; });
   return m;
 }
-
-// ── Component ─────────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -64,10 +57,8 @@ export default function DashboardPage() {
   const { plan, canSave, canExportPDF, checkTrip, isLocked } = usePlan();
   const { t } = useT();
 
-  // ── State ──────────────────────────────────────────────────────────────────
   const [hydrated, setHydrated]         = useState(false);
-  // "view" is THE single source of truth — either "setup" or "planner", never both
-  const [view, setView]                 = useState("setup");
+  const [view, setView]                 = useState("setup"); // "setup" | "planner"
   const [previewOpen, setPreviewOpen]   = useState(false);
   const [rows, setRows]                 = useState([]);
   const [tripInfo, setTripInfo]         = useState(BLANK_TRIP);
@@ -109,7 +100,6 @@ export default function DashboardPage() {
     } catch { setRateSource("error"); }
   }, []);
 
-  // Load localStorage + migrate old setupComplete → view
   useEffect(() => {
     try {
       const raw = window.localStorage.getItem(STORAGE_KEY);
@@ -122,12 +112,8 @@ export default function DashboardPage() {
         if (p.currencyMode) setCurrencyMode(p.currencyMode);
         if (p.projectId)    setProjectId(p.projectId);
         setRate(r);
-
-        // ✅ Migration: old "setupComplete" boolean → new "view" string
-        if (p.view === "planner" || p.setupComplete === true) {
-          setView("planner");
-        }
-        // else view stays "setup"
+        // Migration from old setupComplete boolean
+        if (p.view === "planner" || p.setupComplete === true) setView("planner");
       }
     } catch { /* ignore */ }
     setHydrated(true);
@@ -154,18 +140,16 @@ export default function DashboardPage() {
     setHasUnsaved(true);
   }, [rows, tripInfo, rate, region]); // eslint-disable-line
 
-  // ── Budget totals — sum raw values (no re-multiplication) ─────────────────
-  const totalIDR   = useMemo(() => rows.reduce((s,r) => s + (Number(r.budgetIDR)||0), 0), [rows]);
-  const totalLocal = useMemo(() => rows.reduce((s,r) => s + (Number(r.budgetLocal)||0), 0), [rows]);
+  const totalIDR   = useMemo(() => rows.reduce((s,r) => s+(Number(r.budgetIDR)||0), 0), [rows]);
+  const totalLocal = useMemo(() => rows.reduce((s,r) => s+(Number(r.budgetLocal)||0), 0), [rows]);
   const dayMap     = useMemo(() => buildDayMap(rows), [rows]);
   const currency   = useMemo(() => getCurrency(region), [region]);
 
-  // ── Directional currency ──────────────────────────────────────────────────
   const updateRow = (id, field, value) => {
     setRows(prev => prev.map(r => {
       if (r.id !== id) return r;
       const next = { ...r, [field]: value };
-      const rn   = Number(rate) || 1;
+      const rn = Number(rate) || 1;
       if (field === "budgetLocal") { next.budgetIDR = Math.round((Number(value)||0)*rn); next._lastEdited="local"; }
       if (field === "budgetIDR")   { next.budgetLocal = Math.round((Number(value)||0)/rn); next._lastEdited="idr"; }
       if ((field==="from"||field==="to") && !next.category) {
@@ -182,13 +166,23 @@ export default function DashboardPage() {
   };
 
   const addRow    = () => setRows(prev => [...prev, blankRow(prev[prev.length-1])]);
-  const deleteRow = (id) => setRows(prev => prev.filter(r=>r.id!==id));
+  const deleteRow = (id) => setRows(prev => prev.filter(r => r.id !== id));
   const insertAt  = (refId, pos) => {
     setRows(prev => {
-      const i = prev.findIndex(r=>r.id===refId);
-      if (i===-1) return prev;
-      const n=[...prev]; n.splice(pos==="above"?i:i+1, 0, blankRow(prev[i]));
+      const i = prev.findIndex(r => r.id === refId);
+      if (i === -1) return prev;
+      const n = [...prev]; n.splice(pos==="above"?i:i+1, 0, blankRow(prev[i]));
       return n;
+    });
+  };
+
+  // ✅ Move row up or down
+  const moveRow = (id, dir) => {
+    setRows(prev => {
+      const i = prev.findIndex(r => r.id === id);
+      if (dir === "up"   && i > 0)               { const n=[...prev]; [n[i-1],n[i]]=[n[i],n[i-1]]; return n; }
+      if (dir === "down" && i < prev.length - 1) { const n=[...prev]; [n[i],n[i+1]]=[n[i+1],n[i]]; return n; }
+      return prev;
     });
   };
 
@@ -201,9 +195,9 @@ export default function DashboardPage() {
 
   const handleRegionChange = (r) => {
     setRegion(r); invalidateRate(getCurrency(r).code); ratesFetched.current=false;
-    if (r==="Indonesia") {
+    if (r === "Indonesia") {
       setRate(1); setRateSource("live"); setRateUA(new Date().toISOString());
-      setRows(prev=>prev.map(row=>syncIDR(row,1)));
+      setRows(prev => prev.map(row => syncIDR(row, 1)));
     } else { applyLiveRate(r); }
   };
 
@@ -220,17 +214,17 @@ export default function DashboardPage() {
       const id = await saveProject(user.uid, projectId, { tripInfo, rows, region, rate });
       if (!projectId) setProjectId(id);
       setSaveStatus("saved"); setHasUnsaved(false);
-      setTimeout(()=>setSaveStatus("idle"), 2500);
-    } catch (e) {
+      setTimeout(() => setSaveStatus("idle"), 2500);
+    } catch(e) {
       console.error("[save]", e);
       setSaveStatus("error");
-      setTimeout(()=>setSaveStatus("idle"), 3000);
+      setTimeout(() => setSaveStatus("idle"), 3000);
     }
   };
 
   const handleLoadProject = (p) => {
     const lr = p.rate ?? DEFAULT_RATE;
-    setRows((p.rows??[]).map(r=>normalizeRow(r,lr)));
+    setRows((p.rows??[]).map(r => normalizeRow(r, lr)));
     setTripInfo({ ...BLANK_TRIP, ...(p.tripInfo??{}) });
     setRate(lr); setRateSource("manual");
     setRegion(p.region??null); setProjectId(p.id);
@@ -244,7 +238,6 @@ export default function DashboardPage() {
     setPreviewOpen(true);
   };
 
-  // ── Loading ────────────────────────────────────────────────────────────────
   if (authLoading || !hydrated) {
     return (
       <div className="min-h-screen paper-bg flex items-center justify-center">
@@ -257,13 +250,13 @@ export default function DashboardPage() {
   }
 
   // ══════════════════════════════════════════════════════════════════════════
-  // VIEW: SETUP — COMPLETELY SEPARATE from planner, impossible to co-render
+  // VIEW: SETUP — mutually exclusive with planner
   // ══════════════════════════════════════════════════════════════════════════
   if (view === "setup") {
     return (
       <div className="paper-bg min-h-screen flex flex-col">
-        <header className="border-b border-paper-line bg-white/85 backdrop-blur-md sticky top-0 z-30">
-          <div className="mx-auto flex max-w-[1600px] items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
+        <header className="border-b border-paper-line bg-white sticky top-0 z-30">
+          <div className="mx-auto flex max-w-[1600px] items-center justify-between px-4 py-3 sm:px-5">
             <div className="flex items-center gap-3">
               <img src="/logo.png" alt="Backpackervun" className="h-7 w-auto sm:h-8" />
               <span className="hidden border-l border-paper-line pl-3 text-[10px] font-semibold uppercase tracking-[0.22em] text-ink-muted sm:block">
@@ -277,10 +270,9 @@ export default function DashboardPage() {
               </button>
               <button onClick={logout}
                 className="inline-flex items-center gap-1.5 rounded-lg bg-red-500 px-3 py-2 text-xs font-semibold text-white hover:bg-red-600 active:scale-95">
-                <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-                  <polyline points="16 17 21 12 16 7"/>
-                  <line x1="21" y1="12" x2="9" y2="12"/>
+                  <polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
                 </svg>
                 <span className="hidden sm:inline">{t("logout")}</span>
               </button>
@@ -304,15 +296,13 @@ export default function DashboardPage() {
               </div>
             </div>
           )}
-          {/* SetupScreen ONLY exists here — never in planner view */}
           <SetupScreen
-            tripInfo={tripInfo}
-            region={region}
+            tripInfo={tripInfo} region={region}
             onTripInfoChange={setTripInfo}
             onRegionChange={handleRegionChange}
             onStart={() => {
               if (isLocked) { setRedeemOpen(true); return; }
-              setView("planner"); // ← single state change, atomically switches view
+              setView("planner");
               initialChange.current = true;
             }}
           />
@@ -325,7 +315,7 @@ export default function DashboardPage() {
   }
 
   // ══════════════════════════════════════════════════════════════════════════
-  // VIEW: PLANNER — SetupScreen does NOT appear anywhere in this render tree
+  // VIEW: PLANNER — SetupScreen NOT rendered anywhere here
   // ══════════════════════════════════════════════════════════════════════════
   return (
     <div className="paper-bg min-h-screen flex flex-col">
@@ -344,11 +334,11 @@ export default function DashboardPage() {
         onCurrencyModeChange={setCurrencyMode}
       />
 
-      <main className="flex-1 mx-auto w-full max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
-        {/* TripInfoPanel shows already-filled editable trip details — no region selector */}
+      <main className="flex-1 mx-auto w-full max-w-[1600px] px-4 py-6 sm:px-5 lg:py-8">
+        {/* ✅ TripInfoPanel — editable trip details, NOT SetupScreen */}
         <TripInfoPanel tripInfo={tripInfo} onChange={setTripInfo} />
 
-        <div className="mt-8 grid gap-6 items-start lg:grid-cols-[minmax(0,1fr)_320px] xl:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="mt-6 grid gap-6 items-start lg:grid-cols-[minmax(0,1fr)_320px] xl:grid-cols-[minmax(0,1fr)_360px]">
           <div className="min-w-0">
             {isLocked ? (
               <div className="rounded-2xl border border-paper-line bg-white p-10 text-center shadow-soft">
@@ -372,12 +362,14 @@ export default function DashboardPage() {
                 onUpdate={updateRow} onAdd={addRow} onDelete={deleteRow}
                 onInsertAbove={id => insertAt(id, "above")}
                 onInsertBelow={id => insertAt(id, "below")}
+                onMoveUp={id => moveRow(id, "up")}
+                onMoveDown={id => moveRow(id, "down")}
                 currencyMode={currencyMode}
               />
             )}
           </div>
 
-          <aside className="min-w-0 flex flex-col gap-4 lg:self-start lg:sticky lg:top-[64px]">
+          <aside className="min-w-0 flex flex-col gap-4 lg:self-start lg:sticky lg:top-[56px]">
             <ChartsPanel rows={rows} rate={rate} totalLocal={totalLocal} totalIDR={totalIDR} />
             <div className="hidden md:block">
               <CTACard tripInfo={tripInfo} totalLocal={totalLocal} currency={currency} totalIDR={totalIDR}
@@ -392,7 +384,6 @@ export default function DashboardPage() {
       </div>
       <Footer />
 
-      {/* ── PreviewModal — the ONLY preview system, no inline preview anywhere ── */}
       <PreviewModal
         open={previewOpen} onClose={() => setPreviewOpen(false)}
         tripInfo={tripInfo} rows={rows} dayMap={dayMap}

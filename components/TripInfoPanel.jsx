@@ -1,163 +1,142 @@
 "use client";
 
-import RegionSelector from "./RegionSelector";
+import { useMemo } from "react";
+import { differenceInDays } from "date-fns";
+import { useT } from "@/context/TranslationContext";
 
-/* =========================================================
-   Duration helper
-========================================================= */
-export const calcDuration = (startDate, endDate) => {
-  if (!startDate || !endDate) return "";
+/**
+ * TripInfoPanel — shows already-filled trip details in PLANNER view.
+ *
+ * This is NOT the setup form. It shows the data that was entered on the
+ * setup screen, all fields are editable inline, but it's compact and
+ * doesn't include the region selector (region is in the header).
+ *
+ * Fix: replaces the SetupScreen rendering in planner view.
+ */
+export default function TripInfoPanel({ tripInfo, onChange }) {
+  const { t } = useT();
 
-  try {
-    const start = new Date(startDate);
-    const end = new Date(endDate);
+  const set = (field, value) => onChange?.({ ...tripInfo, [field]: value });
 
-    const diffTime = end - start;
+  // Auto-calculate duration when dates change
+  const autoDuration = useMemo(() => {
+    const { startDate, endDate } = tripInfo ?? {};
+    if (!startDate || !endDate) return null;
+    try {
+      const nights = differenceInDays(new Date(endDate), new Date(startDate));
+      if (nights < 0) return null;
+      const days = nights + 1;
+      return `${days} Day${days > 1 ? "s" : ""} ${nights} Night${nights > 1 ? "s" : ""}`;
+    } catch { return null; }
+  }, [tripInfo?.startDate, tripInfo?.endDate]);
 
-    if (diffTime < 0) return "";
+  // Auto travel dates display
+  const autoTravelDates = useMemo(() => {
+    const { startDate, endDate } = tripInfo ?? {};
+    if (!startDate || !endDate) return null;
+    return `${startDate} – ${endDate}`;
+  }, [tripInfo?.startDate, tripInfo?.endDate]);
 
-    const days = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-    const nights = Math.max(days - 1, 0);
-
-    return `${days} Days ${nights} Nights`;
-  } catch {
-    return "";
-  }
-};
-
-/* =========================================================
-   Setup Screen
-========================================================= */
-export default function SetupScreen({
-  tripInfo,
-  region,
-  onTripInfoChange,
-  onRegionChange,
-  onStart,
-}) {
-  const canStart = !!region;
-
-  const update = (field, value) => {
-    onTripInfoChange({
-      ...tripInfo,
-      [field]: value,
-    });
+  const handleStartDate = (v) => {
+    const dur = computeDuration(v, tripInfo?.endDate);
+    onChange?.({ ...tripInfo, startDate: v, duration: dur || tripInfo?.duration, travelDates: computeTravel(v, tripInfo?.endDate) });
   };
 
+  const handleEndDate = (v) => {
+    const dur = computeDuration(tripInfo?.startDate, v);
+    onChange?.({ ...tripInfo, endDate: v, duration: dur || tripInfo?.duration, travelDates: computeTravel(tripInfo?.startDate, v) });
+  };
+
+  function computeDuration(s, e) {
+    if (!s || !e) return "";
+    try {
+      const nights = differenceInDays(new Date(e), new Date(s));
+      if (nights < 0) return "";
+      const days = nights + 1;
+      return `${days} Days ${nights} Night${nights > 1 ? "s" : ""}`;
+    } catch { return ""; }
+  }
+
+  function computeTravel(s, e) {
+    if (!s || !e) return "";
+    return `${s} – ${e}`;
+  }
+
+  const displayDuration = autoDuration || tripInfo?.duration || "";
+  const displayDates    = autoTravelDates || tripInfo?.travelDates || "";
+
   return (
-    <div className="mx-auto max-w-3xl px-4 py-10 sm:py-14">
+    <div className="rounded-2xl border border-paper-line bg-white shadow-soft overflow-hidden">
       {/* Header */}
-      <div className="mb-8 text-center">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-navy-500">
-          Setup
-        </p>
-
-        <h1 className="mt-2 text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
-          Plan a new trip
-        </h1>
-
-        <p className="mt-3 text-sm text-ink-muted">
-          Fill in the basics, choose your region, then start planning.
-        </p>
+      <div className="border-b border-paper-line px-5 py-3.5">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-ink-muted">01 — {t("tripDetailsSection")}</p>
+        <p className="mt-0.5 text-xs text-ink-muted">{t("tripDetailsSubtitle")}</p>
       </div>
 
-      {/* Trip Details */}
-      <section className="rounded-2xl border border-paper-line bg-white p-6 shadow-soft sm:p-8">
-        <h2 className="text-base font-semibold text-ink">
-          Trip details
-        </h2>
+      {/* Fields grid */}
+      <div className="grid grid-cols-2 gap-0 sm:grid-cols-3 lg:grid-cols-6 divide-x divide-paper-line/60">
 
-        <p className="mt-1 text-xs text-ink-muted">
-          These show up at the top of every printed itinerary.
-        </p>
-
-        <div className="mt-6 grid gap-4 sm:grid-cols-2">
-          <Field
-            label="Client Name"
-            placeholder="e.g. Aiko Tanaka & Family"
-            value={tripInfo.clientName || ""}
-            onChange={(v) => update("clientName", v)}
+        <TF label={t("clientName")}>
+          <input
+            type="text"
+            value={tripInfo?.clientName ?? ""}
+            onChange={(e) => set("clientName", e.target.value)}
+            placeholder={t("clientNamePlaceholder")}
+            className="w-full bg-transparent text-sm font-semibold text-ink outline-none placeholder:font-normal placeholder:text-ink-muted/50"
           />
+        </TF>
 
-          <Field
-            label="Duration"
-            placeholder="e.g. 8 Days 7 Nights"
-            value={tripInfo.duration || ""}
-            onChange={(v) => update("duration", v)}
+        <TF label={t("destinations")}>
+          <input
+            type="text"
+            value={tripInfo?.destinations ?? ""}
+            onChange={(e) => set("destinations", e.target.value)}
+            placeholder={t("destinationsPlaceholder")}
+            className="w-full bg-transparent text-sm text-ink outline-none placeholder:text-ink-muted/50"
           />
+        </TF>
 
-          <Field
-            label="Destination"
-            placeholder="e.g. Osaka — Kyoto — Tokyo"
-            value={tripInfo.destinations || ""}
-            onChange={(v) => update("destinations", v)}
+        <TF label={t("startDate")}>
+          <input
+            type="date"
+            value={tripInfo?.startDate ?? ""}
+            onChange={(e) => handleStartDate(e.target.value)}
+            className="w-full bg-transparent text-sm text-ink outline-none"
           />
+        </TF>
 
-          <Field
-            label="Travel Dates"
-            placeholder="e.g. 5 Apr → 12 Apr 2025"
-            value={tripInfo.travelDates || ""}
-            onChange={(v) => update("travelDates", v)}
+        <TF label={t("endDate")}>
+          <input
+            type="date"
+            value={tripInfo?.endDate ?? ""}
+            min={tripInfo?.startDate ?? ""}
+            onChange={(e) => handleEndDate(e.target.value)}
+            className="w-full bg-transparent text-sm text-ink outline-none"
           />
-        </div>
-      </section>
+        </TF>
 
-      {/* Region */}
-      <section className="mt-6 rounded-2xl border border-paper-line bg-white p-6 shadow-soft sm:p-8">
-        <RegionSelector
-          value={region}
-          onChange={onRegionChange}
-          variant="grid"
-        />
-      </section>
-
-      {/* CTA */}
-      <div className="mt-8 flex flex-col items-center gap-2">
-        <button
-          type="button"
-          onClick={onStart}
-          disabled={!canStart}
-          className={`inline-flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-semibold transition ${
-            canStart
-              ? "bg-navy-500 text-white hover:bg-navy-600"
-              : "cursor-not-allowed bg-paper text-ink-muted"
-          }`}
-        >
-          Start Planning →
-        </button>
-
-        {!canStart && (
-          <p className="text-xs text-ink-muted">
-            Pick a region to continue.
+        <TF label={`${t("duration")} ${t("durationAuto")}`}>
+          <p className="text-sm text-ink-soft truncate">
+            {displayDuration || <span className="text-ink-muted/40">{t("durationPlaceholder")}</span>}
           </p>
-        )}
+        </TF>
+
+        <TF label="Travel Dates">
+          <p className="text-sm text-ink-soft truncate">
+            {displayDates || <span className="text-ink-muted/40">—</span>}
+          </p>
+        </TF>
+
       </div>
     </div>
   );
 }
 
-/* =========================================================
-   Reusable Field
-========================================================= */
-function Field({
-  label,
-  placeholder,
-  value,
-  onChange,
-}) {
+function TF({ label, children }) {
   return (
-    <label className="block">
-      <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-ink-muted">
-        {label}
-      </span>
-
-      <input
-        type="text"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="mt-2 w-full rounded-xl border border-paper-line bg-white px-4 py-3 text-sm text-ink outline-none transition placeholder:text-ink-muted/60 focus:border-accent-300 focus:ring-4 focus:ring-accent-100"
-      />
-    </label>
+    <div className="px-4 py-3 min-w-0">
+      <p className="text-[9px] font-semibold uppercase tracking-[0.15em] text-ink-muted mb-1.5 truncate">{label}</p>
+      {children}
+    </div>
   );
 }
