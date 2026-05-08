@@ -1,111 +1,173 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useT } from "@/context/TranslationContext";
 import PrintHeader from "./PrintHeader";
 import PrintLayout from "./PrintLayout";
 
+/**
+ * PreviewModal — Patch 14d
+ *
+ * PDF FIX: Instead of relying on @media print CSS (which always had
+ * the 2-page duplicate bug), we use a JavaScript-based print approach:
+ *
+ * 1. Get the HTML of .preview-paper
+ * 2. Open a new blank window
+ * 3. Write only the paper HTML + extracted stylesheets
+ * 4. window.print() from that clean window
+ * 5. Close the window after print
+ *
+ * This guarantees only the itinerary document is in the PDF.
+ * No background, no action bar, no duplicate pages.
+ */
 export default function PreviewModal({
-  open,
-  onClose,
-  tripInfo,
-  rows,
-  dayMap,
-  region,
-  rate,
-  totalLocal,
-  totalIDR,
-  canExportPDF,
-  onUpgradeNeeded,
+  open, onClose, tripInfo, rows, dayMap,
+  region, rate, totalLocal, totalIDR,
+  canExportPDF, onUpgradeNeeded,
 }) {
-  const { t } = useT();
+  const { t }    = useT();
+  const paperRef = useRef(null);
 
   useEffect(() => {
     if (!open) return;
+    const fn = (e) => { if (e.key === "Escape") onClose?.(); };
+    document.addEventListener("keydown", fn);
+    return () => document.removeEventListener("keydown", fn);
+  }, [open, onClose]);
 
-    const onKey = (e) => {
-      if (e.key === "Escape") onClose?.();
-    };
-
-    document.addEventListener("keydown", onKey);
-
+  useEffect(() => {
+    if (!open) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      document.body.style.overflow = prev;
-    };
-  }, [open, onClose]);
+    return () => { document.body.style.overflow = prev; };
+  }, [open]);
 
   if (!open) return null;
 
   const handleExport = () => {
     if (!canExportPDF) {
-      onUpgradeNeeded?.("PDF export requires Lite or Pro.");
+      onUpgradeNeeded?.("PDF export requires a Lite or Pro plan.");
       return;
     }
 
-    window.print();
+    const paperEl = paperRef.current;
+    if (!paperEl) { window.print(); return; }
+
+    // ── JS-BASED PRINT: Open clean window with only the paper HTML ──
+    const printWin = window.open("", "_blank", "width=900,height=700");
+    if (!printWin) {
+      // Popup blocked — fall back to CSS print
+      window.print();
+      return;
+    }
+
+    // Collect all stylesheets from the current page
+    const styleLinks = Array.from(document.querySelectorAll('link[rel="stylesheet"]'))
+      .map(l => `<link rel="stylesheet" href="${l.href}">`)
+      .join("\n");
+
+    // Also collect inline <style> tags
+    const inlineStyles = Array.from(document.querySelectorAll("style"))
+      .map(s => `<style>${s.textContent}</style>`)
+      .join("\n");
+
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Backpackervun Travel Planner</title>
+  ${styleLinks}
+  ${inlineStyles}
+  <style>
+    @page { size: A4 portrait; margin: 10mm 12mm; }
+    html, body { background: white !important; margin: 0; padding: 0; }
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    .preview-paper { box-shadow: none !important; border-radius: 0 !important; border: none !important; }
+  </style>
+</head>
+<body class="bg-white font-sans">
+  ${paperEl.outerHTML}
+  <script>
+    // Wait for fonts/images to load then print
+    window.addEventListener('load', function() {
+      setTimeout(function() {
+        window.print();
+        setTimeout(function() { window.close(); }, 500);
+      }, 400);
+    });
+  </script>
+</body>
+</html>`;
+
+    printWin.document.open();
+    printWin.document.write(html);
+    printWin.document.close();
   };
 
   return (
     <div
-      className="preview-modal-overlay"
+      className="preview-modal-overlay fixed inset-0 z-[500] flex flex-col"
       role="dialog"
       aria-modal="true"
     >
-      {/* BACKDROP */}
+      {/* Backdrop */}
       <div className="absolute inset-0 bg-[#0f172a]/90 backdrop-blur-md" />
 
-      {/* ACTION BAR */}
-      <div className="preview-action-bar no-print">
+      {/* Action bar */}
+      <div className="no-print preview-action-bar relative z-10 flex-shrink-0 flex items-center justify-between gap-3 bg-[#0f172a]/95 border-b border-white/10 px-4 py-3 sm:px-6">
         <button
           onClick={onClose}
-          className="preview-top-btn"
+          className="inline-flex items-center gap-2 rounded-lg border border-white/20 bg-white/10 px-3.5 py-2 text-xs font-semibold text-white transition hover:bg-white/20 active:scale-[0.97]"
         >
-          ← {t("backToEdit")}
+          <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M19 12H5"/><path d="M12 5l-7 7 7 7"/>
+          </svg>
+          <span className="hidden sm:inline">{t("backToEdit")}</span>
+          <span className="sm:hidden">{t("back")}</span>
         </button>
 
-        <span className="preview-pill">
+        <span className="rounded-full bg-white/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-white/60">
           {t("previewTitle")}
         </span>
 
         <button
           onClick={handleExport}
-          className="preview-export-btn"
+          className="inline-flex items-center gap-2 rounded-lg bg-white px-4 py-2 text-xs font-semibold text-[#0f172a] shadow-lg transition hover:bg-white/90 active:scale-[0.97]"
         >
-          ⬇ {t("exportPDF")}
+          <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          {t("exportPDF")}
         </button>
       </div>
 
-      {/* PAPER AREA */}
-      <div className="preview-paper-area">
-
-        <div className="preview-paper">
-
-          <PrintHeader
-            totalLocal={totalLocal}
-            totalIDR={totalIDR}
-            region={region}
-          />
-
+      {/* Paper area */}
+      <div
+        className="preview-paper-area relative flex-1 overflow-y-auto py-8 px-3 sm:px-6"
+        style={{ WebkitOverflowScrolling: "touch" }}
+      >
+        {/* ✅ This is the ONLY thing that gets printed */}
+        <div
+          ref={paperRef}
+          className="preview-paper mx-auto max-w-[860px] rounded-2xl bg-white overflow-hidden"
+          style={{
+            boxShadow: "0 30px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.05)",
+            minHeight: "1100px",
+          }}
+        >
+          <PrintHeader totalLocal={totalLocal} totalIDR={totalIDR} region={region} />
           <PrintLayout
-            tripInfo={tripInfo}
-            rows={rows}
-            dayMap={dayMap}
-            region={region}
-            rate={rate}
-            totalLocal={totalLocal}
-            totalIDR={totalIDR}
+            tripInfo={tripInfo} rows={rows} dayMap={dayMap}
+            region={region} rate={rate} totalLocal={totalLocal} totalIDR={totalIDR}
           />
-
         </div>
 
-        <p className="preview-hint-text no-print">
+        <p className="no-print preview-hint-text mt-4 pb-8 text-center text-xs text-white/25">
           {t("previewHint")}
         </p>
-
       </div>
     </div>
   );

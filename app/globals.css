@@ -49,17 +49,17 @@ UNIFIED PREVIEW + PDF SYSTEM
 
   padding: 14px 20px;
 
-  background: rgba(15,23,42,.95);
+  background: rgba(15, 23, 42, 0.95);
 
-  border-bottom: 1px solid rgba(255,255,255,.08);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 
   backdrop-filter: blur(12px);
 }
 
 .preview-top-btn {
-  border: 1px solid rgba(255,255,255,.15);
+  border: 1px solid rgba(255, 255, 255, 0.15);
 
-  background: rgba(255,255,255,.08);
+  background: rgba(255, 255, 255, 0.08);
 
   color: white;
 
@@ -72,11 +72,11 @@ UNIFIED PREVIEW + PDF SYSTEM
 
   cursor: pointer;
 
-  transition: all .15s ease;
+  transition: all 0.15s ease;
 }
 
 .preview-top-btn:hover {
-  background: rgba(255,255,255,.12);
+  background: rgba(255, 255, 255, 0.12);
 }
 
 .preview-export-btn {
@@ -94,7 +94,7 @@ UNIFIED PREVIEW + PDF SYSTEM
 
   cursor: pointer;
 
-  transition: all .15s ease;
+  transition: all 0.15s ease;
 }
 
 .preview-export-btn:hover {
@@ -106,14 +106,14 @@ UNIFIED PREVIEW + PDF SYSTEM
 
   border-radius: 999px;
 
-  background: rgba(255,255,255,.08);
+  background: rgba(255, 255, 255, 0.08);
 
-  color: rgba(255,255,255,.7);
+  color: rgba(255, 255, 255, 0.7);
 
   font-size: 10px;
   font-weight: 700;
 
-  letter-spacing: .2em;
+  letter-spacing: 0.2em;
   text-transform: uppercase;
 }
 
@@ -146,8 +146,8 @@ FIXED PREVIEW PAPER
   height: auto;
 
   box-shadow:
-    0 30px 80px rgba(0,0,0,.45),
-    0 0 0 1px rgba(255,255,255,.05);
+    0 30px 80px rgba(0, 0, 0, 0.45),
+    0 0 0 1px rgba(255, 255, 255, 0.05);
 }
 
 .preview-hint-text {
@@ -156,7 +156,7 @@ FIXED PREVIEW PAPER
 
   text-align: center;
 
-  color: rgba(255,255,255,.3);
+  color: rgba(255, 255, 255, 0.3);
 
   font-size: 12px;
 }
@@ -280,4 +280,53 @@ MOBILE
   .preview-pill {
     display: none;
   }
+}
+
+/* =========================================================
+PATCH 14D
+========================================================= */
+
+/* ── Mobile label helper ── */
+.mlab {
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #94A3B8;
+  margin-bottom: 4px;
+}
+
+/* ── Dropdown animation ── */
+@keyframes bpv-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.97);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-fade-in {
+  animation: bpv-fade-in 180ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* ── FAB spacing mobile ── */
+@media (max-width: 767px) {
+  footer.site-footer {
+    padding-bottom:
+      calc(76px + env(safe-area-inset-bottom, 12px)) !important;
+  }
+}
+
+/* ── Scrollbar hide ── */
+.scrollbar-hide {
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none !important;
 }
