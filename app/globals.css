@@ -125,17 +125,25 @@ UNIFIED PREVIEW + PDF SYSTEM
   padding: 32px 16px;
 }
 
+/* =========================================================
+FIXED PREVIEW PAPER
+========================================================= */
+
 .preview-paper {
   width: 860px;
   max-width: 100%;
 
   margin: 0 auto;
 
-  overflow: hidden;
-
   background: white;
 
   border-radius: 24px;
+
+  overflow: visible;
+
+  min-height: auto;
+
+  height: auto;
 
   box-shadow:
     0 30px 80px rgba(0,0,0,.45),
@@ -196,6 +204,7 @@ PRINT SYSTEM
     max-width: 210mm !important;
 
     min-height: auto !important;
+    height: auto !important;
 
     margin: 0 !important;
     padding: 0 !important;
@@ -205,6 +214,8 @@ PRINT SYSTEM
     box-shadow: none !important;
 
     overflow: visible !important;
+
+    page-break-after: auto;
 
     background: white !important;
   }
@@ -223,7 +234,9 @@ PRINT SYSTEM
 
   .day-block,
   .stop,
-  .pd-summary {
+  .pd-summary,
+  .print-card,
+  .summary-card {
     break-inside: avoid !important;
     page-break-inside: avoid !important;
   }
