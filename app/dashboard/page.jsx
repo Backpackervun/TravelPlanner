@@ -25,49 +25,34 @@ import { fetchRateToIDR, invalidateRate } from "@/lib/exchangeRates";
 import { DEFAULT_RATE, generateId, getCurrency } from "@/lib/utils";
 
 const STORAGE_KEY = "backpackervun-v9";
-const BLANK_TRIP  = {
-  clientName:"", duration:"", destinations:"", travelDates:"",
-  startDate:"", endDate:"",
-};
+const BLANK_TRIP  = { clientName:"", duration:"", destinations:"", travelDates:"", startDate:"", endDate:"" };
 
 // ── Row helpers ───────────────────────────────────────────────────────────────
 
-/** Compute IDR from local (local is source of truth) */
 function syncIDR(row, rate) {
-  return { ...row, budgetIDR: Math.round((Number(row.budgetLocal) || 0) * (Number(rate) || 0)) };
+  return { ...row, budgetIDR: Math.round((Number(row.budgetLocal)||0) * (Number(rate)||0)) };
 }
 
 function normalizeRow(row, rate) {
   const r = { ...row };
-  // Migrate old budgetJPY field
   if (r.budgetJPY !== undefined && r.budgetLocal === undefined) r.budgetLocal = r.budgetJPY;
   delete r.budgetJPY;
   if (typeof r.budgetIDR !== "number") return syncIDR(r, rate);
   return r;
 }
 
-function blankRow(sibling) {
+function blankRow(s) {
   return {
-    id: generateId(),
-    date: sibling?.date ?? "",
-    time: "",
-    city: sibling?.city ?? "",
-    destination: "",
-    from: "",
-    to: "",
-    transport: "",
-    notes: "",
-    category: "",
-    budgetLocal: 0,
-    budgetIDR: 0,
-    _lastEdited: "local",
+    id: generateId(), date: s?.date ?? "", time: "", city: s?.city ?? "",
+    destination:"", from:"", to:"", transport:"", notes:"", category:"",
+    budgetLocal:0, budgetIDR:0, _lastEdited:"local",
   };
 }
 
 function buildDayMap(rows) {
-  const dates = [...new Set(rows.map(r => (r.date || "").trim()).filter(Boolean))].sort();
+  const dates = [...new Set(rows.map(r=>(r.date||"").trim()).filter(Boolean))].sort();
   const m = {};
-  dates.forEach((d, i) => { m[d] = i + 1; });
+  dates.forEach((d,i)=>{ m[d]=i+1; });
   return m;
 }
 
@@ -81,7 +66,7 @@ export default function DashboardPage() {
 
   // ── State ──────────────────────────────────────────────────────────────────
   const [hydrated, setHydrated]         = useState(false);
-  // VIEW: "setup" or "planner"  — single string, never both at once
+  // "view" is THE single source of truth — either "setup" or "planner", never both
   const [view, setView]                 = useState("setup");
   const [previewOpen, setPreviewOpen]   = useState(false);
   const [rows, setRows]                 = useState([]);
@@ -93,7 +78,7 @@ export default function DashboardPage() {
   const [projectId, setProjectId]       = useState(null);
   const [saveStatus, setSaveStatus]     = useState("idle");
   const [hasUnsaved, setHasUnsaved]     = useState(false);
-  const [currencyMode, setCurrencyMode] = useState("local"); // "local" | "idr"
+  const [currencyMode, setCurrencyMode] = useState("local");
   const [helpOpen, setHelpOpen]         = useState(false);
   const [helpTab, setHelpTab]           = useState("how");
   const [projectsOpen, setProjectsOpen] = useState(false);
@@ -105,12 +90,10 @@ export default function DashboardPage() {
   const ratesFetched  = useRef(false);
   const initialChange = useRef(true);
 
-  // Auth guard
   useEffect(() => {
     if (!authLoading && !user) router.replace("/login");
   }, [authLoading, user, router]);
 
-  // Live rate
   const applyLiveRate = useCallback(async (regionId) => {
     if (!regionId) return;
     const currency = getCurrency(regionId);
@@ -122,26 +105,29 @@ export default function DashboardPage() {
     try {
       const { rate: lr, updatedAt } = await fetchRateToIDR(currency.code);
       setRate(lr); setRateSource("live"); setRateUA(updatedAt);
-      setRows(prev => prev.map(r =>
-        r._lastEdited === "idr" ? r : syncIDR(r, lr)
-      ));
+      setRows(prev => prev.map(r => r._lastEdited === "idr" ? r : syncIDR(r, lr)));
     } catch { setRateSource("error"); }
   }, []);
 
-  // Load localStorage
+  // Load localStorage + migrate old setupComplete → view
   useEffect(() => {
     try {
       const raw = window.localStorage.getItem(STORAGE_KEY);
       if (raw) {
         const p = JSON.parse(raw);
         const r = typeof p.rate === "number" && p.rate > 0 ? p.rate : DEFAULT_RATE;
-        if (Array.isArray(p.rows))            setRows(p.rows.map(row => normalizeRow(row, r)));
-        if (p.tripInfo)                       setTripInfo({ ...BLANK_TRIP, ...p.tripInfo });
-        if (typeof p.region === "string")     setRegion(p.region === "Korea" ? "South Korea" : p.region);
-        if (p.view === "planner")             setView("planner");
-        if (p.projectId)                      setProjectId(p.projectId);
-        if (p.currencyMode)                   setCurrencyMode(p.currencyMode);
+        if (Array.isArray(p.rows))   setRows(p.rows.map(row => normalizeRow(row, r)));
+        if (p.tripInfo)              setTripInfo({ ...BLANK_TRIP, ...p.tripInfo });
+        if (typeof p.region === "string") setRegion(p.region === "Korea" ? "South Korea" : p.region);
+        if (p.currencyMode) setCurrencyMode(p.currencyMode);
+        if (p.projectId)    setProjectId(p.projectId);
         setRate(r);
+
+        // ✅ Migration: old "setupComplete" boolean → new "view" string
+        if (p.view === "planner" || p.setupComplete === true) {
+          setView("planner");
+        }
+        // else view stays "setup"
       }
     } catch { /* ignore */ }
     setHydrated(true);
@@ -153,7 +139,6 @@ export default function DashboardPage() {
     applyLiveRate(region);
   }, [hydrated, region, applyLiveRate]);
 
-  // Save to localStorage
   useEffect(() => {
     if (!hydrated) return;
     try {
@@ -163,57 +148,46 @@ export default function DashboardPage() {
     } catch { /* quota */ }
   }, [rows, rate, tripInfo, region, view, projectId, hydrated, currencyMode]);
 
-  // Unsaved tracker
   useEffect(() => {
     if (!hydrated) return;
     if (initialChange.current) { initialChange.current = false; return; }
     setHasUnsaved(true);
   }, [rows, tripInfo, rate, region]); // eslint-disable-line
 
-  // ── Budget totals — use raw stored values, no re-conversion ───────────────
-  // FIX: Sum budgetIDR directly (not totalLocal * rate) to avoid rounding errors
-  const totalIDR   = useMemo(() => rows.reduce((s, r) => s + (Number(r.budgetIDR)   || 0), 0), [rows]);
-  const totalLocal = useMemo(() => rows.reduce((s, r) => s + (Number(r.budgetLocal) || 0), 0), [rows]);
+  // ── Budget totals — sum raw values (no re-multiplication) ─────────────────
+  const totalIDR   = useMemo(() => rows.reduce((s,r) => s + (Number(r.budgetIDR)||0), 0), [rows]);
+  const totalLocal = useMemo(() => rows.reduce((s,r) => s + (Number(r.budgetLocal)||0), 0), [rows]);
   const dayMap     = useMemo(() => buildDayMap(rows), [rows]);
   const currency   = useMemo(() => getCurrency(region), [region]);
 
-  // ── DIRECTIONAL CURRENCY — never overwrite the field the user just typed ──
+  // ── Directional currency ──────────────────────────────────────────────────
   const updateRow = (id, field, value) => {
     setRows(prev => prev.map(r => {
       if (r.id !== id) return r;
       const next = { ...r, [field]: value };
       const rn   = Number(rate) || 1;
-
-      if (field === "budgetLocal") {
-        next.budgetIDR   = Math.round((Number(value) || 0) * rn);
-        next._lastEdited = "local";
-      } else if (field === "budgetIDR") {
-        next.budgetLocal = Math.round((Number(value) || 0) / rn);
-        next._lastEdited = "idr";
-      }
-      if ((field === "from" || field === "to") && !next.category) {
-        if ((next.from || "").trim() && (next.to || "").trim()) next.category = "Transport";
+      if (field === "budgetLocal") { next.budgetIDR = Math.round((Number(value)||0)*rn); next._lastEdited="local"; }
+      if (field === "budgetIDR")   { next.budgetLocal = Math.round((Number(value)||0)/rn); next._lastEdited="idr"; }
+      if ((field==="from"||field==="to") && !next.category) {
+        if ((next.from||"").trim() && (next.to||"").trim()) next.category="Transport";
       }
       return next;
     }));
   };
 
   const handleRateChange = (v) => {
-    const n = Number(v) || 0;
+    const n = Number(v)||0;
     setRate(n); setRateSource("manual");
-    setRows(prev => prev.map(r =>
-      r._lastEdited === "idr" ? r : syncIDR(r, n)
-    ));
+    setRows(prev => prev.map(r => r._lastEdited==="idr" ? r : syncIDR(r, n)));
   };
 
-  const addRow    = () => setRows(prev => [...prev, blankRow(prev[prev.length - 1])]);
-  const deleteRow = (id) => setRows(prev => prev.filter(r => r.id !== id));
+  const addRow    = () => setRows(prev => [...prev, blankRow(prev[prev.length-1])]);
+  const deleteRow = (id) => setRows(prev => prev.filter(r=>r.id!==id));
   const insertAt  = (refId, pos) => {
     setRows(prev => {
-      const i = prev.findIndex(r => r.id === refId);
-      if (i === -1) return prev;
-      const n = [...prev];
-      n.splice(pos === "above" ? i : i + 1, 0, blankRow(prev[i]));
+      const i = prev.findIndex(r=>r.id===refId);
+      if (i===-1) return prev;
+      const n=[...prev]; n.splice(pos==="above"?i:i+1, 0, blankRow(prev[i]));
       return n;
     });
   };
@@ -222,19 +196,15 @@ export default function DashboardPage() {
     if (!window.confirm(t("resetConfirm"))) return;
     setRows([]); setTripInfo(BLANK_TRIP); setRate(DEFAULT_RATE); setRateSource("manual");
     setRegion(null); setView("setup"); setProjectId(null); setHasUnsaved(false);
-    ratesFetched.current = false; initialChange.current = true;
+    ratesFetched.current=false; initialChange.current=true;
   };
 
   const handleRegionChange = (r) => {
-    setRegion(r);
-    invalidateRate(getCurrency(r).code);
-    ratesFetched.current = false;
-    if (r === "Indonesia") {
+    setRegion(r); invalidateRate(getCurrency(r).code); ratesFetched.current=false;
+    if (r==="Indonesia") {
       setRate(1); setRateSource("live"); setRateUA(new Date().toISOString());
-      setRows(prev => prev.map(row => syncIDR(row, 1)));
-    } else {
-      applyLiveRate(r);
-    }
+      setRows(prev=>prev.map(row=>syncIDR(row,1)));
+    } else { applyLiveRate(r); }
   };
 
   const handleSave = async () => {
@@ -245,28 +215,27 @@ export default function DashboardPage() {
       const { allowed, reason } = checkTrip(count);
       if (!allowed) { setUpgradeReason(reason); setUpgradeOpen(true); return; }
     } catch { /* proceed */ }
-
     setSaveStatus("saving");
     try {
       const id = await saveProject(user.uid, projectId, { tripInfo, rows, region, rate });
       if (!projectId) setProjectId(id);
       setSaveStatus("saved"); setHasUnsaved(false);
-      setTimeout(() => setSaveStatus("idle"), 2500);
+      setTimeout(()=>setSaveStatus("idle"), 2500);
     } catch (e) {
       console.error("[save]", e);
       setSaveStatus("error");
-      setTimeout(() => setSaveStatus("idle"), 3000);
+      setTimeout(()=>setSaveStatus("idle"), 3000);
     }
   };
 
   const handleLoadProject = (p) => {
     const lr = p.rate ?? DEFAULT_RATE;
-    setRows((p.rows ?? []).map(r => normalizeRow(r, lr)));
-    setTripInfo({ ...BLANK_TRIP, ...(p.tripInfo ?? {}) });
+    setRows((p.rows??[]).map(r=>normalizeRow(r,lr)));
+    setTripInfo({ ...BLANK_TRIP, ...(p.tripInfo??{}) });
     setRate(lr); setRateSource("manual");
-    setRegion(p.region ?? null); setProjectId(p.id);
+    setRegion(p.region??null); setProjectId(p.id);
     setView("planner"); setHasUnsaved(false);
-    ratesFetched.current = false; initialChange.current = true;
+    ratesFetched.current=false; initialChange.current=true;
     if (p.region) { invalidateRate(getCurrency(p.region).code); applyLiveRate(p.region); }
   };
 
@@ -275,8 +244,7 @@ export default function DashboardPage() {
     setPreviewOpen(true);
   };
 
-  // ── Render ─────────────────────────────────────────────────────────────────
-
+  // ── Loading ────────────────────────────────────────────────────────────────
   if (authLoading || !hydrated) {
     return (
       <div className="min-h-screen paper-bg flex items-center justify-center">
@@ -288,7 +256,9 @@ export default function DashboardPage() {
     );
   }
 
-  // ── VIEW: SETUP (mutually exclusive with planner) ─────────────────────────
+  // ══════════════════════════════════════════════════════════════════════════
+  // VIEW: SETUP — COMPLETELY SEPARATE from planner, impossible to co-render
+  // ══════════════════════════════════════════════════════════════════════════
   if (view === "setup") {
     return (
       <div className="paper-bg min-h-screen flex flex-col">
@@ -323,7 +293,7 @@ export default function DashboardPage() {
             <div className="mx-auto max-w-3xl px-4 pt-8">
               <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 flex items-start gap-3">
                 <span className="text-xl">🔒</span>
-                <div className="flex-1">
+                <div className="flex-1 min-w-0">
                   <p className="font-semibold text-amber-900 text-sm">{t("lockedTitle")}</p>
                   <p className="mt-0.5 text-xs text-amber-800">{t("lockedBody")}</p>
                 </div>
@@ -334,8 +304,7 @@ export default function DashboardPage() {
               </div>
             </div>
           )}
-
-          {/* SetupScreen — ONLY in this view block */}
+          {/* SetupScreen ONLY exists here — never in planner view */}
           <SetupScreen
             tripInfo={tripInfo}
             region={region}
@@ -343,23 +312,23 @@ export default function DashboardPage() {
             onRegionChange={handleRegionChange}
             onStart={() => {
               if (isLocked) { setRedeemOpen(true); return; }
-              setView("planner");
+              setView("planner"); // ← single state change, atomically switches view
               initialChange.current = true;
             }}
           />
         </div>
 
-        {/* Modals that can be triggered from setup */}
-        <HelpModal    open={helpOpen}    initialTab={helpTab} onClose={() => setHelpOpen(false)} />
-        <RedeemModal  open={redeemOpen}  onClose={() => setRedeemOpen(false)} onSuccess={() => refreshPlan()} />
+        <HelpModal   open={helpOpen}   initialTab={helpTab} onClose={() => setHelpOpen(false)} />
+        <RedeemModal open={redeemOpen} onClose={() => setRedeemOpen(false)} onSuccess={() => refreshPlan()} />
       </div>
     );
   }
 
-  // ── VIEW: PLANNER ─────────────────────────────────────────────────────────
+  // ══════════════════════════════════════════════════════════════════════════
+  // VIEW: PLANNER — SetupScreen does NOT appear anywhere in this render tree
+  // ══════════════════════════════════════════════════════════════════════════
   return (
     <div className="paper-bg min-h-screen flex flex-col">
-
       <Header
         rate={rate}              onRateChange={handleRateChange}
         onReset={handleReset}    onPreview={handlePreview}
@@ -376,10 +345,10 @@ export default function DashboardPage() {
       />
 
       <main className="flex-1 mx-auto w-full max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+        {/* TripInfoPanel shows already-filled editable trip details — no region selector */}
         <TripInfoPanel tripInfo={tripInfo} onChange={setTripInfo} />
 
         <div className="mt-8 grid gap-6 items-start lg:grid-cols-[minmax(0,1fr)_320px] xl:grid-cols-[minmax(0,1fr)_360px]">
-          {/* Itinerary */}
           <div className="min-w-0">
             {isLocked ? (
               <div className="rounded-2xl border border-paper-line bg-white p-10 text-center shadow-soft">
@@ -399,12 +368,8 @@ export default function DashboardPage() {
               </div>
             ) : (
               <ItineraryTable
-                rows={rows}
-                dayMap={dayMap}
-                region={region}
-                onUpdate={updateRow}
-                onAdd={addRow}
-                onDelete={deleteRow}
+                rows={rows} dayMap={dayMap} region={region}
+                onUpdate={updateRow} onAdd={addRow} onDelete={deleteRow}
                 onInsertAbove={id => insertAt(id, "above")}
                 onInsertBelow={id => insertAt(id, "below")}
                 currencyMode={currencyMode}
@@ -412,7 +377,6 @@ export default function DashboardPage() {
             )}
           </div>
 
-          {/* Sidebar */}
           <aside className="min-w-0 flex flex-col gap-4 lg:self-start lg:sticky lg:top-[64px]">
             <ChartsPanel rows={rows} rate={rate} totalLocal={totalLocal} totalIDR={totalIDR} />
             <div className="hidden md:block">
@@ -426,29 +390,16 @@ export default function DashboardPage() {
       <div className="md:hidden">
         <CTAFab tripInfo={tripInfo} totalLocal={totalLocal} currency={currency} totalIDR={totalIDR} />
       </div>
-
       <Footer />
 
-      {/* Preview modal */}
+      {/* ── PreviewModal — the ONLY preview system, no inline preview anywhere ── */}
       <PreviewModal
-        open={previewOpen}
-        onClose={() => setPreviewOpen(false)}
-        tripInfo={tripInfo}
-        rows={rows}
-        dayMap={dayMap}
-        region={region}
-        rate={rate}
-        totalLocal={totalLocal}
-        totalIDR={totalIDR}
+        open={previewOpen} onClose={() => setPreviewOpen(false)}
+        tripInfo={tripInfo} rows={rows} dayMap={dayMap}
+        region={region} rate={rate} totalLocal={totalLocal} totalIDR={totalIDR}
         canExportPDF={canExportPDF}
-        onUpgradeNeeded={(reason) => {
-          setPreviewOpen(false);
-          setUpgradeReason(reason);
-          setUpgradeOpen(true);
-        }}
+        onUpgradeNeeded={(reason) => { setPreviewOpen(false); setUpgradeReason(reason); setUpgradeOpen(true); }}
       />
-
-      {/* All modals */}
       <HelpModal     open={helpOpen}     initialTab={helpTab}  onClose={() => setHelpOpen(false)} />
       <ProjectsModal open={projectsOpen} userId={user?.uid}    onClose={() => setProjectsOpen(false)} onLoad={handleLoadProject} />
       <RedeemModal   open={redeemOpen}   onClose={() => setRedeemOpen(false)} onSuccess={() => refreshPlan()} />
