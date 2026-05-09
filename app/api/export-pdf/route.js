@@ -1,22 +1,25 @@
 import puppeteer from "puppeteer";
 
 export const dynamic = "force-dynamic";
-export async function GET(req) {
+
+export async function GET() {
 
   const browser = await puppeteer.launch({
     headless: true,
   });
 
-  const baseUrl =
-  process.env.NEXT_PUBLIC_SITE_URL ||
-  "http://localhost:3000";
+  const page = await browser.newPage();
 
-await page.goto(
-  `${baseUrl}/print/demo`,
-  {
-    waitUntil: "networkidle0",
-  }
-);
+  const baseUrl =
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    "http://localhost:3000";
+
+  await page.goto(
+    `${baseUrl}/print/demo`,
+    {
+      waitUntil: "networkidle0",
+    }
+  );
 
   const pdf = await page.pdf({
 
