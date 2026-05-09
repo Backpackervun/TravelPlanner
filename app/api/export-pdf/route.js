@@ -38,7 +38,7 @@ export async function GET(req) {
       await browser.newPage();
 
    await page.goto(
-  `${baseUrl}/print/${id}?export=true`,
+  `${baseUrl}/print/export`,
   {
     waitUntil: "networkidle0",
   }

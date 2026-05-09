@@ -66,11 +66,21 @@ const handleExportPDF = async () => {
 
   try {
 
-    const tripId =
-      tripInfo?.id || "demo";
+    localStorage.setItem(
+      "bpv-print-data",
+      JSON.stringify({
+        tripInfo,
+        rows,
+        dayMap,
+        region,
+        rate,
+        totalLocal,
+        totalIDR,
+      })
+    );
 
-    const url =
-      `/api/export-pdf?id=${tripId}`;
+const url =
+  `/api/export-pdf`;
 
     const isIOS =
       /iPad|iPhone|iPod/.test(
