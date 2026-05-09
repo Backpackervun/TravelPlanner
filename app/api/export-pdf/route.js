@@ -2,47 +2,62 @@ import puppeteer from "puppeteer";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function POST(req) {
 
-  const browser = await puppeteer.launch({
-    headless: true,
-  });
+  try {
 
-  const page = await browser.newPage();
+    const { html } = await req.json();
 
-  const baseUrl =
-    process.env.NEXT_PUBLIC_SITE_URL ||
-    "http://localhost:3000";
+    const browser = await puppeteer.launch({
+      headless: true,
+    });
 
-  await page.goto(
-    `${baseUrl}/print/demo`,
-    {
+    const page = await browser.newPage();
+
+    await page.setContent(html, {
       waitUntil: "networkidle0",
-    }
-  );
+    });
 
-  const pdf = await page.pdf({
+    const pdf = await page.pdf({
 
-    format: "A4",
+      format: "A4",
 
-    printBackground: true,
+      printBackground: true,
 
-    preferCSSPageSize: true,
+      preferCSSPageSize: true,
 
-    margin: {
-      top: "0px",
-      right: "0px",
-      bottom: "0px",
-      left: "0px",
-    },
+      margin: {
+        top: "0px",
+        right: "0px",
+        bottom: "0px",
+        left: "0px",
+      },
 
-  });
+    });
 
-  await browser.close();
+    await browser.close();
 
-  return new Response(pdf, {
-    headers: {
-      "Content-Type": "application/pdf",
-    },
-  });
+    return new Response(pdf, {
+
+      headers: {
+        "Content-Type":
+          "application/pdf",
+
+        "Content-Disposition":
+          'attachment; filename="backpackervun-itinerary.pdf"',
+      },
+
+    });
+
+  } catch (err) {
+
+    console.error(err);
+
+    return new Response(
+      "Failed to generate PDF",
+      {
+        status: 500,
+      }
+    );
+  }
 }

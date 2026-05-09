@@ -1,12 +1,10 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { pdf } from "@react-pdf/renderer";
 import { useT } from "@/context/TranslationContext";
 
 import PrintHeader from "./PrintHeader";
 import PrintLayout from "./PrintLayout";
-import TravelPdfDocument from "./pdf/TravelPdfDocument";
 
 export default function PreviewModal({
   open,
@@ -55,70 +53,132 @@ export default function PreviewModal({
 
   if (!open) return null;
 
-  const handleExportPDF = async () => {
 
-    if (!canExportPDF) {
-      onUpgradeNeeded?.(
-        "PDF export requires a Lite or Pro plan."
+     const handleExportPDF = async () => {
+
+  if (!canExportPDF) {
+    onUpgradeNeeded?.(
+      "PDF export requires a Lite or Pro plan."
+    );
+    return;
+  }
+
+  try {
+
+    const paperEl = paperRef.current;
+
+    if (!paperEl) return;
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8" />
+
+        <style>
+          * {
+            box-sizing: border-box;
+          }
+
+          body {
+            margin: 0;
+            background: white;
+            font-family: Inter, sans-serif;
+          }
+
+          @page {
+            size: A4;
+            margin: 0;
+          }
+
+          .preview-paper {
+            width: 210mm;
+            background: white;
+          }
+
+          a {
+            color: inherit !important;
+            text-decoration: none !important;
+          }
+        </style>
+      </head>
+
+      <body>
+        ${paperEl.outerHTML}
+      </body>
+      </html>
+    `;
+
+    const response = await fetch(
+      "/api/export-pdf",
+      {
+        method: "POST",
+
+        headers: {
+          "Content-Type":
+            "application/json",
+        },
+
+        body: JSON.stringify({
+          html,
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(
+        "Failed to export PDF"
       );
-      return;
     }
 
-    try {
+    const blob =
+      await response.blob();
 
-      const blob = await pdf(
-        <TravelPdfDocument
-          tripInfo={tripInfo}
-          rows={rows}
-          dayMap={dayMap}
-          region={region}
-          totalLocal={totalLocal}
-          totalIDR={totalIDR}
-          rate={rate}
-        />
-      ).toBlob();
+    const url =
+      URL.createObjectURL(blob);
 
-      const url = URL.createObjectURL(blob);
+    const isIOS =
+      /iPad|iPhone|iPod/.test(
+        navigator.userAgent
+      );
 
-      const isIOS =
-        /iPad|iPhone|iPod/.test(
-          navigator.userAgent
-        );
+    if (isIOS) {
+
+      window.open(url, "_blank");
+
+    } else {
 
       const link =
         document.createElement("a");
 
       link.href = url;
+
       link.download =
         "backpackervun-itinerary.pdf";
 
-      document.body.appendChild(link);
+      document.body.appendChild(
+        link
+      );
 
-      // iPhone fallback
-      if (isIOS) {
+      link.click();
 
-        window.open(url, "_blank");
-
-      } else {
-
-        link.click();
-
-      }
-
-      document.body.removeChild(link);
-
-      setTimeout(() => {
-        URL.revokeObjectURL(url);
-      }, 10000);
-
-    } catch (err) {
-
-      console.error(err);
-
-      alert("Failed to generate PDF.");
-
+      document.body.removeChild(
+        link
+      );
     }
-  };
+
+    setTimeout(() => {
+      URL.revokeObjectURL(url);
+    }, 10000);
+
+  } catch (err) {
+
+    console.error(err);
+
+    alert("Failed to export PDF.");
+
+  }
+};
 
   return (
 
