@@ -1,4 +1,5 @@
-import puppeteer from "puppeteer";
+import puppeteer from "puppeteer-core";
+import chromium from "@sparticuz/chromium";
 
 export const dynamic = "force-dynamic";
 
@@ -9,13 +10,25 @@ export async function POST(req) {
     const { html } = await req.json();
 
     const browser = await puppeteer.launch({
-      headless: true,
+
+      args: chromium.args,
+
+      defaultViewport:
+        chromium.defaultViewport,
+
+      executablePath:
+        await chromium.executablePath(),
+
+      headless: chromium.headless,
+
     });
 
     const page = await browser.newPage();
 
     await page.setContent(html, {
+
       waitUntil: "networkidle0",
+
     });
 
     const pdf = await page.pdf({
@@ -40,6 +53,7 @@ export async function POST(req) {
     return new Response(pdf, {
 
       headers: {
+
         "Content-Type":
           "application/pdf",
 
@@ -54,7 +68,11 @@ export async function POST(req) {
     console.error(err);
 
     return new Response(
-      "Failed to generate PDF",
+
+      JSON.stringify({
+        error: String(err),
+      }),
+
       {
         status: 500,
       }
