@@ -1,30 +1,42 @@
 import PrintHeader from "@/components/PrintHeader";
 import PrintLayout from "@/components/PrintLayout";
 
-export default async function PrintPage() {
-
-  /*
-    Nanti data trip asli
-    akan diambil dari DB/API.
-    
-    Untuk sekarang sementara
-    pakai dummy/test data dulu.
-  */
+export default function PrintPage() {
 
   const tripInfo = {
+    id: "demo",
     clientName: "Ervan",
-    duration: "7 Days",
-    region: "Australia",
-    destinations: "Sydney",
-    travelDates: "25 - 31 August 2026",
+    duration: "5 Days 4 Nights",
+    destinations: "Tokyo",
+    travelDates: "2026-05-11 – 2026-05-15",
   };
 
-  const rows = [];
+  const rows = [
+    {
+      date: "2026-05-11",
+      time: "05:35",
+      destination: "Narita Airport",
+      from: "Soekarno Hatta Airport",
+      to: "Narita Airport",
+      transportType: "Flight",
+      budgetLocal: 90090,
+    },
 
-  const dayMap = {};
+    {
+      date: "2026-05-12",
+      time: "06:38",
+      destination: "Asakusa Station",
+      from: "Narita Airport",
+      to: "Asakusa Station",
+      transportType: "Train",
+      budgetLocal: 1100,
+    },
+  ];
 
-  const totalLocal = 0;
-  const totalIDR = 0;
+  const dayMap = {
+    "2026-05-11": 1,
+    "2026-05-12": 2,
+  };
 
   return (
 
@@ -34,18 +46,18 @@ export default async function PrintPage() {
 
         <PrintHeader
           tripInfo={tripInfo}
-          region="Australia"
-          totalLocal={totalLocal}
-          totalIDR={totalIDR}
+          region="Japan"
+          totalLocal={91190}
+          totalIDR={10121815}
         />
 
         <PrintLayout
           tripInfo={tripInfo}
           rows={rows}
           dayMap={dayMap}
-          region="Australia"
-          totalLocal={totalLocal}
-          totalIDR={totalIDR}
+          region="Japan"
+          totalLocal={91190}
+          totalIDR={10121815}
         />
 
       </div>
