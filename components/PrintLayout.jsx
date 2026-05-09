@@ -170,7 +170,7 @@ export default function PrintLayout({
 
                 {/* DAY HEADER */}
 
-                <div className="border-b border-slate-200 bg-slate-50 px-6 py-5">
+                <div className="day-header border-b border-slate-200 bg-slate-50 px-6 py-5">
 
                   <div className="flex items-center gap-4">
 
@@ -207,10 +207,10 @@ export default function PrintLayout({
 
                     return (
 
-                      <div
-                        key={row.id || rowIdx}
-                        className="border-b border-slate-100 px-6 py-6 last:border-b-0"
-                      >
+                     <div
+  key={row.id || rowIdx}
+  className="day-item border-b border-slate-100 px-6 py-6 last:border-b-0"
+>
 
                         <div className="flex items-start justify-between gap-6">
 
@@ -329,7 +329,7 @@ export default function PrintLayout({
           SUMMARY
       ========================== */}
 
-      <section className="px-8 pb-10 pt-2">
+      <section className="summary-section px-8 pb-10 pt-2">
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
 
