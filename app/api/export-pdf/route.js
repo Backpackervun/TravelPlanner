@@ -37,12 +37,24 @@ export async function GET(req) {
     const page =
       await browser.newPage();
 
-    await page.goto(
-      `${baseUrl}/print/${id}?export=true`,
-      {
-        waitUntil: "networkidle0",
-      }
-    );
+   await page.goto(
+  `${baseUrl}/print/${id}?export=true`,
+  {
+    waitUntil: "networkidle0",
+  }
+);
+
+await page.waitForSelector(
+  ".preview-paper"
+);
+
+await new Promise((resolve) =>
+  setTimeout(resolve, 1500)
+);
+
+await page.emulateMediaType(
+  "screen"
+);
 
     const pdf =
       await page.pdf({
