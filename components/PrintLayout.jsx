@@ -137,6 +137,114 @@ export default function PrintLayout({
       </section>
 
       {/* =========================
+          SUMMARY
+      ========================== */}
+
+      <section className="px-8 pb-6">
+
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+
+          {/* TOTAL BUDGET */}
+
+          <div className="rounded-2xl border border-[#E8EDF3] bg-[#F8FAFC] p-5">
+
+            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+              TOTAL BUDGET
+            </p>
+
+            <div className="mt-3 text-3xl font-bold text-slate-900">
+              {formatCurrency(Number(totalLocal || 0), currency)}
+            </div>
+
+            {!isIDR && (
+              <div className="mt-2 text-sm text-slate-500">
+                ≈ {formatIDR(Number(totalIDR || 0))}
+              </div>
+            )}
+
+          </div>
+
+          {/* TRAVEL STATS */}
+
+          <div className="rounded-2xl border border-[#E8EDF3] bg-[#F8FAFC] p-5">
+
+            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+              TRAVEL STATS
+            </p>
+
+            <div className="mt-3 space-y-2 text-sm text-slate-700">
+
+              <div className="flex items-center justify-between">
+                <span>Total Stops</span>
+
+                <span className="font-semibold">
+                  {meaningfulRows.length}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <span>Total Days</span>
+
+                <span className="font-semibold">
+                  {grouped.length}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <span>Region</span>
+
+                <span className="font-semibold">
+                  {region || "—"}
+                </span>
+              </div>
+
+            </div>
+
+          </div>
+
+          {/* TRANSPORT USAGE */}
+
+          <div className="rounded-2xl border border-[#E8EDF3] bg-[#F8FAFC] p-5">
+
+            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+              TRANSPORT USAGE
+            </p>
+
+            <div className="mt-3 space-y-2 text-sm text-slate-700">
+
+              {["Flight", "Train", "Bus", "Walk"].map((type) => {
+
+                const count = meaningfulRows.filter((r) =>
+                  String(r.transport || "")
+                    .toLowerCase()
+                    .includes(type.toLowerCase())
+                ).length;
+
+                if (!count) return null;
+
+                return (
+                  <div
+                    key={type}
+                    className="flex items-center justify-between"
+                  >
+                    <span>{type}</span>
+
+                    <span className="font-semibold">
+                      {count}
+                    </span>
+                  </div>
+                );
+              })}
+
+            </div>
+
+          </div>
+
+        </div>
+
+      </section>
+
+      {/* =========================
           ITINERARY
       ========================== */}
 
