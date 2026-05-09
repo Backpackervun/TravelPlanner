@@ -163,10 +163,10 @@ export default function PrintLayout({
 
             return (
 
-              <section
-                key={date + idx}
-                className="mb-8 overflow-hidden rounded-2xl border border-slate-200"
-              >
+             <section
+  key={date + idx}
+  className="itinerary-card print-card mb-8 overflow-hidden rounded-2xl border border-slate-200"
+>
 
                 {/* DAY HEADER */}
 
@@ -329,7 +329,7 @@ export default function PrintLayout({
           SUMMARY
       ========================== */}
 
-      <section className="summary-section px-8 pb-10 pt-2">
+     <section className="summary-section print-section px-8 pb-10 pt-2">
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
 
@@ -557,7 +557,7 @@ export default function PrintLayout({
 
         {/* WATERMARK FOOTER */}
 
-        <div className="mt-10 border-t border-slate-200 pt-5">
+       <div className="print-footer mt-10 border-t border-slate-200 pt-5">
 
           <p className="text-center text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-300">
 
