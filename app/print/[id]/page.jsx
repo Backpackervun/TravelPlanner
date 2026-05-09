@@ -42,7 +42,7 @@ export default function PrintPage() {
 
     <main className="min-h-screen bg-[#0f172a] py-10">
 
-      <div className="mx-auto w-full max-w-[210mm] overflow-hidden rounded-[28px] bg-white shadow-2xl">
+     <div className="preview-paper mx-auto w-full max-w-[210mm] overflow-hidden rounded-[28px] bg-white shadow-2xl">
 
         <PrintHeader
           tripInfo={tripInfo}
