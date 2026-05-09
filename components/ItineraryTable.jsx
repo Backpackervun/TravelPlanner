@@ -1,21 +1,22 @@
 "use client";
 
-import { Fragment, createPortal, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { useT } from "@/context/TranslationContext";
 import { getCurrency, CATEGORY_OPTIONS } from "@/lib/utils";
 
 /*
- * ItineraryTable — Patch 14d
+ * ItineraryTable — Patch 14e
  *
- * FIXES:
- * 1. All region/transport data INLINED — no external lib/regions import
- *    (that import was crashing the app when lib/regions.js didn't exist)
- * 2. Smart link chips: Flight = Map+Route+Flights ONLY (no Book chip)
- *    Train/Bus/Ferry = Map+Route+Book  |  Walk/Car = Map+Route
- * 3. Fragment (not tbody) to keep columns aligned
+ * BUG FIX: createPortal was crashing the entire Next.js App Router page
+ * when the 3-dot menu was clicked. In Next.js 14 App Router, portaling
+ * to document.body inside a table cell can cause React reconciliation
+ * errors that propagate as unhandled exceptions.
+ *
+ * FIX: Replace createPortal entirely with a simple inline div that uses
+ * position:fixed + getBoundingClientRect(). position:fixed escapes ALL
+ * overflow:hidden ancestors (including table cells), so no portal needed.
  */
 
-// ── Region-specific transport options (inlined, no external import) ─────────
 const REGION_TRANSPORT = {
   "Japan":       ["Flight","Shinkansen","Train","Bus","Subway","Car","Ferry","Walk","Taxi"],
   "South Korea": ["Flight","KTX","Train","Bus","Subway","Car","Ferry","Walk","Taxi"],
@@ -35,52 +36,49 @@ function getTransportOpts(region) {
   return REGION_TRANSPORT[region] ?? REGION_TRANSPORT.default;
 }
 
-// ── Booking URL per transport (inlined) ──────────────────────────────────────
 function getBookingUrl(transport, { from, to, destination, region } = {}) {
   const enc = encodeURIComponent;
-  const t   = (transport || "").toLowerCase();
-
-  // Flight — Google Flights is already the booking site; no separate Book chip
-  if (t.includes("flight")) return null;
-
-  // Shinkansen / JR Pass
+  if (!transport) return null;
+  const tl = transport.toLowerCase();
+  if (tl.includes("flight")) return null;
   if (transport === "Shinkansen") return "https://www.jrpass.com";
-
-  // KTX
   if (transport === "KTX") return "https://www.letskorail.com";
-
-  // Eurostar
   if (transport === "Eurostar") return "https://www.eurostar.com";
-
-  // FlixBus
-  if (transport === "FlixBus") {
-    if (from && to) return `https://www.flixbus.com/bus/${enc(from)}-${enc(to)}`;
-    return "https://www.flixbus.com";
-  }
-
-  // Amtrak
+  if (transport === "FlixBus") return from && to ? `https://www.flixbus.com/bus/${enc(from)}-${enc(to)}` : "https://www.flixbus.com";
   if (transport === "Amtrak") return "https://www.amtrak.com";
-
-  // High-Speed Rail (China)
   if (transport === "High-Speed Rail") return "https://www.trip.com/trains/";
-
-  // Generic train
   if (transport === "Train") {
     if (region === "Japan") return "https://www.jrpass.com";
     if (region === "South Korea") return "https://www.letskorail.com";
     return `https://www.klook.com/search/?keyword=${enc("train " + (destination || ""))}`;
   }
-
-  // Bus, Ferry → Klook
-  if (["Bus", "Ferry", "Speedboat"].includes(transport)) {
+  if (["Bus","Ferry","Speedboat"].includes(transport)) {
     return `https://www.klook.com/search/?keyword=${enc(transport + " " + (destination || ""))}`;
   }
-
-  // Walk, Car, Taxi, Grab, Uber, Tuk-Tuk, etc. → no booking link
   return null;
 }
 
-// ── Component ─────────────────────────────────────────────────────────────────
+function buildLinks(row, region) {
+  const enc   = encodeURIComponent;
+  const destQ = enc([row.destination, row.city, row.to].filter(Boolean).join(" ") || "");
+  const mapUrl   = `https://www.google.com/maps/search/?api=1&query=${destQ}`;
+  const routeUrl = row.from && row.to ? `https://www.google.com/maps/dir/${enc(row.from)}/${enc(row.to)}` : null;
+  const isFlight = (row.transport || "").toLowerCase().includes("flight");
+  const flightUrl = isFlight && row.from && row.to
+    ? `https://www.google.com/flights?q=Flights+from+${enc(row.from)}+to+${enc(row.to)}` : null;
+  const bookUrl  = !isFlight ? getBookingUrl(row.transport, { from: row.from, to: row.to, destination: row.destination || row.city, region }) : null;
+  const hotelUrl = row.category === "Hotel" && (row.destination || row.city)
+    ? `https://www.booking.com/search.html?ss=${enc(row.destination || row.city)}` : null;
+  return { mapUrl, routeUrl, flightUrl, bookUrl, hotelUrl };
+}
+
+// ── Input style constants ─────────────────────────────────────────────────────
+const CI = "w-full rounded-lg border border-transparent bg-transparent px-1.5 py-1 text-xs text-ink outline-none hover:border-paper-line focus:border-accent-300 focus:bg-white transition";
+const SI = "w-full rounded-lg border border-transparent bg-transparent px-1 py-1 text-xs text-ink outline-none hover:border-paper-line focus:border-accent-300 focus:bg-white transition";
+const BI = "w-full rounded-lg border border-transparent bg-transparent px-1.5 py-1 text-right text-xs font-mono outline-none hover:border-paper-line focus:border-accent-300 focus:bg-white transition";
+const DIS = "cursor-not-allowed bg-paper-dim/60 text-ink-muted opacity-50";
+
+// ── Main component ────────────────────────────────────────────────────────────
 
 export default function ItineraryTable({
   rows, dayMap, region,
@@ -95,9 +93,7 @@ export default function ItineraryTable({
   const localDisabled = currencyMode === "idr";
   const idrDisabled   = currencyMode === "local";
   const transportOpts = getTransportOpts(region);
-
-  // colCount for colSpan
-  const colCount = isIDR ? 13 : 14;
+  const colCount      = isIDR ? 13 : 14;
 
   return (
     <div className="rounded-2xl border border-paper-line bg-white shadow-soft overflow-hidden">
@@ -153,14 +149,13 @@ export default function ItineraryTable({
                 ...(isIDR ? ["IDR"] : [`${currency.code}`, "IDR"]),
                 t("links"), "↕", "",
               ].map((h, i) => (
-                <th key={i} className="px-2 py-2.5 text-left text-[10px] font-semibold uppercase tracking-[0.1em] text-ink-muted overflow-hidden text-ellipsis whitespace-nowrap">
+                <th key={i} className="px-2 py-2.5 text-left text-[10px] font-semibold uppercase tracking-[0.1em] text-ink-muted overflow-hidden whitespace-nowrap">
                   {h}
                 </th>
               ))}
             </tr>
           </thead>
 
-          {/* ✅ SINGLE tbody using Fragment — no nested tbody */}
           <tbody className="divide-y divide-paper-line/40">
             {rows.length === 0 ? (
               <tr>
@@ -169,11 +164,11 @@ export default function ItineraryTable({
                 </td>
               </tr>
             ) : rows.map((row, idx) => {
-              const prevDate  = idx > 0 ? (rows[idx - 1].date || "").trim() : null;
-              const thisDate  = (row.date || "").trim();
-              const showSep   = idx > 0 && thisDate && prevDate && thisDate !== prevDate;
-              const dayNum    = thisDate ? (dayMap[thisDate] ?? null) : null;
-              const links     = buildLinks(row, region);
+              const prevDate = idx > 0 ? (rows[idx - 1].date || "").trim() : null;
+              const thisDate = (row.date || "").trim();
+              const showSep  = idx > 0 && thisDate && prevDate && thisDate !== prevDate;
+              const dayNum   = thisDate ? (dayMap[thisDate] ?? null) : null;
+              const links    = buildLinks(row, region);
 
               return (
                 <Fragment key={row.id}>
@@ -192,101 +187,56 @@ export default function ItineraryTable({
                   )}
 
                   <tr className="hover:bg-paper-dim/20 transition-colors">
-                    {/* Day badge */}
                     <td className="pl-3 py-3">
                       {dayNum !== null && (
-                        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-navy-500 text-[9px] font-bold text-white">
-                          {dayNum}
-                        </span>
+                        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-navy-500 text-[9px] font-bold text-white">{dayNum}</span>
                       )}
                     </td>
-
-                    {/* Date */}
                     <td className="px-2 py-2.5">
-                      <input type="date" value={row.date || ""}
-                        onChange={(e) => onUpdate(row.id, "date", e.target.value)}
-                        className={CI} />
+                      <input type="date" value={row.date||""} onChange={(e)=>onUpdate(row.id,"date",e.target.value)} className={CI} />
                     </td>
-
-                    {/* Time */}
                     <td className="px-2 py-2.5">
-                      <input type="time" value={row.time || ""}
-                        onChange={(e) => onUpdate(row.id, "time", e.target.value)}
-                        className={CI} />
+                      <input type="time" value={row.time||""} onChange={(e)=>onUpdate(row.id,"time",e.target.value)} className={CI} />
                     </td>
-
-                    {/* City */}
                     <td className="px-2 py-2.5">
-                      <input type="text" value={row.city || ""} placeholder={t("city")}
-                        onChange={(e) => onUpdate(row.id, "city", e.target.value)}
-                        className={CI} />
+                      <input type="text" value={row.city||""} placeholder={t("city")} onChange={(e)=>onUpdate(row.id,"city",e.target.value)} className={CI} />
                     </td>
-
-                    {/* Destination */}
                     <td className="px-2 py-2.5">
-                      <input type="text" value={row.destination || ""} placeholder={t("destinationPlaceholder")}
-                        onChange={(e) => onUpdate(row.id, "destination", e.target.value)}
-                        className={CI} />
+                      <input type="text" value={row.destination||""} placeholder={t("destinationPlaceholder")} onChange={(e)=>onUpdate(row.id,"destination",e.target.value)} className={CI} />
                     </td>
-
-                    {/* From / To */}
                     <td className="px-2 py-2.5">
                       <div className="space-y-1">
-                        <input type="text" value={row.from || ""} placeholder={t("from")}
-                          onChange={(e) => onUpdate(row.id, "from", e.target.value)} className={CI} />
-                        <input type="text" value={row.to || ""} placeholder={t("to")}
-                          onChange={(e) => onUpdate(row.id, "to", e.target.value)} className={CI} />
+                        <input type="text" value={row.from||""} placeholder={t("from")} onChange={(e)=>onUpdate(row.id,"from",e.target.value)} className={CI} />
+                        <input type="text" value={row.to||""} placeholder={t("to")} onChange={(e)=>onUpdate(row.id,"to",e.target.value)} className={CI} />
                       </div>
                     </td>
-
-                    {/* Transport */}
                     <td className="px-2 py-2.5">
-                      <select value={row.transport || ""}
-                        onChange={(e) => onUpdate(row.id, "transport", e.target.value)}
-                        className={SI}>
+                      <select value={row.transport||""} onChange={(e)=>onUpdate(row.id,"transport",e.target.value)} className={SI}>
                         <option value="">—</option>
-                        {transportOpts.map(o => <option key={o} value={o}>{o}</option>)}
+                        {transportOpts.map(o=><option key={o} value={o}>{o}</option>)}
                       </select>
                     </td>
-
-                    {/* Category */}
                     <td className="px-2 py-2.5">
-                      <select value={row.category || ""}
-                        onChange={(e) => onUpdate(row.id, "category", e.target.value)}
-                        className={SI}>
+                      <select value={row.category||""} onChange={(e)=>onUpdate(row.id,"category",e.target.value)} className={SI}>
                         <option value="">—</option>
-                        {(CATEGORY_OPTIONS ?? ["Hotel","Food","Attraction","Activity","Transport"]).map(o => (
-                          <option key={o} value={o}>{o}</option>
-                        ))}
+                        {(CATEGORY_OPTIONS??["Hotel","Food","Attraction","Activity","Transport"]).map(o=><option key={o} value={o}>{o}</option>)}
                       </select>
                     </td>
-
-                    {/* Notes */}
                     <td className="px-2 py-2.5">
-                      <input type="text" value={row.notes || ""} placeholder="—"
-                        onChange={(e) => onUpdate(row.id, "notes", e.target.value)}
-                        className={CI} />
+                      <input type="text" value={row.notes||""} placeholder="—" onChange={(e)=>onUpdate(row.id,"notes",e.target.value)} className={CI} />
                     </td>
-
-                    {/* Budget local */}
                     {!isIDR && (
                       <td className="px-2 py-2.5">
-                        <input type="number" value={row.budgetLocal || 0}
-                          readOnly={localDisabled}
-                          onChange={(e) => !localDisabled && onUpdate(row.id, "budgetLocal", Number(e.target.value))}
-                          className={localDisabled ? `${BI} ${DISABLED}` : `${BI} text-ink`} />
+                        <input type="number" value={row.budgetLocal||0} readOnly={localDisabled}
+                          onChange={(e)=>!localDisabled&&onUpdate(row.id,"budgetLocal",Number(e.target.value))}
+                          className={`${BI} ${localDisabled?DIS:"text-ink"}`} />
                       </td>
                     )}
-
-                    {/* Budget IDR */}
                     <td className="px-2 py-2.5">
-                      <input type="number" value={row.budgetIDR || 0}
-                        readOnly={idrDisabled && !isIDR}
-                        onChange={(e) => (isIDR || !idrDisabled) && onUpdate(row.id, "budgetIDR", Number(e.target.value))}
-                        className={(idrDisabled && !isIDR) ? `${BI} ${DISABLED}` : `${BI} text-navy-500 font-semibold`} />
+                      <input type="number" value={row.budgetIDR||0} readOnly={idrDisabled&&!isIDR}
+                        onChange={(e)=>(isIDR||!idrDisabled)&&onUpdate(row.id,"budgetIDR",Number(e.target.value))}
+                        className={`${BI} ${idrDisabled&&!isIDR?DIS:"text-navy-500 font-semibold"}`} />
                     </td>
-
-                    {/* ✅ SMART LINKS */}
                     <td className="px-2 py-2.5">
                       <div className="flex flex-wrap gap-1">
                         {links.mapUrl    && <Chip href={links.mapUrl}    icon="📍" label="Map" />}
@@ -296,21 +246,18 @@ export default function ItineraryTable({
                         {links.hotelUrl  && <Chip href={links.hotelUrl}  icon="🏨" label="Hotel" />}
                       </div>
                     </td>
-
-                    {/* Move up/down */}
                     <td className="px-1 py-2.5">
                       <div className="flex flex-col gap-0.5">
-                        <MoveBtn onClick={() => onMoveUp?.(row.id)} disabled={idx === 0} dir="up" />
-                        <MoveBtn onClick={() => onMoveDown?.(row.id)} disabled={idx === rows.length - 1} dir="down" />
+                        <MoveBtn onClick={()=>onMoveUp?.(row.id)} disabled={idx===0} dir="up" />
+                        <MoveBtn onClick={()=>onMoveDown?.(row.id)} disabled={idx===rows.length-1} dir="down" />
                       </div>
                     </td>
-
-                    {/* 3-dot menu */}
                     <td className="pr-3 py-2.5">
+                      {/* ✅ RowActions with NO createPortal — uses inline fixed-position div */}
                       <RowActions
-                        onInsertAbove={() => onInsertAbove?.(row.id)}
-                        onInsertBelow={() => onInsertBelow?.(row.id)}
-                        onDelete={() => onDelete?.(row.id)}
+                        onInsertAbove={()=>onInsertAbove?.(row.id)}
+                        onInsertBelow={()=>onInsertBelow?.(row.id)}
+                        onDelete={()=>onDelete?.(row.id)}
                         t={t}
                       />
                     </td>
@@ -327,38 +274,26 @@ export default function ItineraryTable({
         {rows.length === 0 ? (
           <p className="px-5 py-12 text-center text-sm text-ink-muted">{t("noStops")}</p>
         ) : rows.map((row, idx) => {
-          const prevDate = idx > 0 ? (rows[idx - 1].date || "").trim() : null;
-          const thisDate = (row.date || "").trim();
+          const prevDate = idx > 0 ? (rows[idx-1].date||"").trim() : null;
+          const thisDate = (row.date||"").trim();
           const showSep  = idx > 0 && thisDate && prevDate && thisDate !== prevDate;
-          const dayNum   = thisDate ? (dayMap[thisDate] ?? null) : null;
+          const dayNum   = thisDate ? (dayMap[thisDate]??null) : null;
           const links    = buildLinks(row, region);
-
           return (
             <Fragment key={row.id}>
               {showSep && (
-                <div className="bg-paper-dim/60 py-1.5 px-4">
-                  <div className="flex items-center gap-2">
-                    <div className="h-px flex-1 bg-navy-100" />
-                    <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-navy-400">
-                      {t("day")} {dayMap[thisDate] ?? "?"}
-                    </span>
-                    <div className="h-px flex-1 bg-navy-100" />
-                  </div>
+                <div className="bg-paper-dim/60 py-1.5 px-4 flex items-center gap-2">
+                  <div className="h-px flex-1 bg-navy-100" />
+                  <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-navy-400">{t("day")} {dayMap[thisDate]??"?"}</span>
+                  <div className="h-px flex-1 bg-navy-100" />
                 </div>
               )}
-              <MobileCard
-                row={row} idx={idx} total={rows.length} dayNum={dayNum}
-                currency={currency} isIDR={isIDR}
-                localDisabled={localDisabled} idrDisabled={idrDisabled}
-                transportOpts={transportOpts} links={links}
-                onUpdate={onUpdate}
-                onMoveUp={() => onMoveUp?.(row.id)}
-                onMoveDown={() => onMoveDown?.(row.id)}
-                onInsertAbove={() => onInsertAbove?.(row.id)}
-                onInsertBelow={() => onInsertBelow?.(row.id)}
-                onDelete={() => onDelete?.(row.id)}
-                t={t}
-              />
+              <MobileCard row={row} idx={idx} total={rows.length} dayNum={dayNum}
+                currency={currency} isIDR={isIDR} localDisabled={localDisabled} idrDisabled={idrDisabled}
+                transportOpts={transportOpts} links={links} onUpdate={onUpdate}
+                onMoveUp={()=>onMoveUp?.(row.id)} onMoveDown={()=>onMoveDown?.(row.id)}
+                onInsertAbove={()=>onInsertAbove?.(row.id)} onInsertBelow={()=>onInsertBelow?.(row.id)}
+                onDelete={()=>onDelete?.(row.id)} t={t} />
             </Fragment>
           );
         })}
@@ -378,126 +313,68 @@ export default function ItineraryTable({
   );
 }
 
-// ── Shared style constants ────────────────────────────────────────────────────
-const CI = "w-full rounded-lg border border-transparent bg-transparent px-1.5 py-1 text-xs text-ink outline-none hover:border-paper-line focus:border-accent-300 focus:bg-white transition";
-const SI = "w-full rounded-lg border border-transparent bg-transparent px-1 py-1 text-xs text-ink outline-none hover:border-paper-line focus:border-accent-300 focus:bg-white transition";
-const BI = "w-full rounded-lg border border-transparent bg-transparent px-1.5 py-1 text-right text-xs font-mono outline-none transition hover:border-paper-line focus:border-accent-300 focus:bg-white";
-const DISABLED = "cursor-not-allowed bg-paper-dim/60 text-ink-muted opacity-50";
-
 // ── Mobile card ───────────────────────────────────────────────────────────────
-
-function MobileCard({
-  row, idx, total, dayNum, currency, isIDR, localDisabled, idrDisabled,
-  transportOpts, links, onUpdate, onMoveUp, onMoveDown,
-  onInsertAbove, onInsertBelow, onDelete, t,
-}) {
+function MobileCard({ row, idx, total, dayNum, currency, isIDR, localDisabled, idrDisabled,
+  transportOpts, links, onUpdate, onMoveUp, onMoveDown, onInsertAbove, onInsertBelow, onDelete, t }) {
   const inp = "w-full rounded-lg border border-paper-line bg-white px-2.5 py-2 text-xs text-ink outline-none focus:border-accent-300";
-
   return (
     <div className="px-4 py-4 space-y-3">
       <div className="flex items-start gap-2.5">
-        {dayNum !== null && (
-          <span className="flex-shrink-0 flex h-7 w-7 items-center justify-center rounded-full bg-navy-500 text-[10px] font-bold text-white mt-0.5">{dayNum}</span>
-        )}
+        {dayNum!==null&&<span className="flex-shrink-0 flex h-7 w-7 items-center justify-center rounded-full bg-navy-500 text-[10px] font-bold text-white mt-0.5">{dayNum}</span>}
         <div className="flex-1 min-w-0">
-          <input type="text" value={row.destination || ""} placeholder={t("destinationPlaceholder")}
-            onChange={(e) => onUpdate(row.id, "destination", e.target.value)}
-            className="w-full rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-sm font-semibold text-ink outline-none hover:border-paper-line focus:border-accent-300 focus:bg-white" />
-          <input type="text" value={row.city || ""} placeholder={t("city")}
-            onChange={(e) => onUpdate(row.id, "city", e.target.value)}
-            className="w-full mt-0.5 rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-xs text-ink-muted outline-none hover:border-paper-line focus:border-accent-300 focus:bg-white" />
+          <input type="text" value={row.destination||""} placeholder={t("destinationPlaceholder")} onChange={(e)=>onUpdate(row.id,"destination",e.target.value)} className="w-full rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-sm font-semibold text-ink outline-none hover:border-paper-line focus:border-accent-300 focus:bg-white" />
+          <input type="text" value={row.city||""} placeholder={t("city")} onChange={(e)=>onUpdate(row.id,"city",e.target.value)} className="w-full mt-0.5 rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-xs text-ink-muted outline-none hover:border-paper-line focus:border-accent-300 focus:bg-white" />
         </div>
         <div className="flex items-center gap-1">
-          <MoveBtn onClick={onMoveUp} disabled={idx === 0} dir="up" />
-          <MoveBtn onClick={onMoveDown} disabled={idx === total - 1} dir="down" />
+          <MoveBtn onClick={onMoveUp} disabled={idx===0} dir="up" />
+          <MoveBtn onClick={onMoveDown} disabled={idx===total-1} dir="down" />
           <RowActions onInsertAbove={onInsertAbove} onInsertBelow={onInsertBelow} onDelete={onDelete} t={t} />
         </div>
       </div>
-
       <div className="grid grid-cols-2 gap-2">
-        <div><p className="mlab">{t("date")}</p><input type="date" value={row.date||""} onChange={(e) => onUpdate(row.id,"date",e.target.value)} className={inp} /></div>
-        <div><p className="mlab">{t("time")}</p><input type="time" value={row.time||""} onChange={(e) => onUpdate(row.id,"time",e.target.value)} className={inp} /></div>
+        <div><p className="mlab">{t("date")}</p><input type="date" value={row.date||""} onChange={(e)=>onUpdate(row.id,"date",e.target.value)} className={inp} /></div>
+        <div><p className="mlab">{t("time")}</p><input type="time" value={row.time||""} onChange={(e)=>onUpdate(row.id,"time",e.target.value)} className={inp} /></div>
       </div>
       <div className="grid grid-cols-2 gap-2">
-        <div><p className="mlab">{t("from")}</p><input type="text" value={row.from||""} placeholder="—" onChange={(e) => onUpdate(row.id,"from",e.target.value)} className={inp} /></div>
-        <div><p className="mlab">{t("to")}</p><input type="text" value={row.to||""} placeholder="—" onChange={(e) => onUpdate(row.id,"to",e.target.value)} className={inp} /></div>
+        <div><p className="mlab">{t("from")}</p><input type="text" value={row.from||""} placeholder="—" onChange={(e)=>onUpdate(row.id,"from",e.target.value)} className={inp} /></div>
+        <div><p className="mlab">{t("to")}</p><input type="text" value={row.to||""} placeholder="—" onChange={(e)=>onUpdate(row.id,"to",e.target.value)} className={inp} /></div>
       </div>
       <div className="grid grid-cols-2 gap-2">
         <div><p className="mlab">{t("transport")}</p>
-          <select value={row.transport||""} onChange={(e) => onUpdate(row.id,"transport",e.target.value)} className={inp}>
+          <select value={row.transport||""} onChange={(e)=>onUpdate(row.id,"transport",e.target.value)} className={inp}>
             <option value="">—</option>
-            {transportOpts.map(o => <option key={o} value={o}>{o}</option>)}
+            {transportOpts.map(o=><option key={o} value={o}>{o}</option>)}
           </select>
         </div>
         <div><p className="mlab">{t("category")}</p>
-          <select value={row.category||""} onChange={(e) => onUpdate(row.id,"category",e.target.value)} className={inp}>
+          <select value={row.category||""} onChange={(e)=>onUpdate(row.id,"category",e.target.value)} className={inp}>
             <option value="">—</option>
-            {(CATEGORY_OPTIONS ?? ["Hotel","Food","Attraction","Activity","Transport"]).map(o => <option key={o} value={o}>{o}</option>)}
+            {(CATEGORY_OPTIONS??["Hotel","Food","Attraction","Activity","Transport"]).map(o=><option key={o} value={o}>{o}</option>)}
           </select>
         </div>
       </div>
-      <div><p className="mlab">{t("notes")}</p>
-        <input type="text" value={row.notes||""} placeholder="—" onChange={(e) => onUpdate(row.id,"notes",e.target.value)} className={inp} />
-      </div>
+      <div><p className="mlab">{t("notes")}</p><input type="text" value={row.notes||""} placeholder="—" onChange={(e)=>onUpdate(row.id,"notes",e.target.value)} className={inp} /></div>
       <div className="grid grid-cols-2 gap-2">
-        {!isIDR && (
-          <div><p className="mlab">{currency.code}{localDisabled ? " (auto)" : ""}</p>
-            <input type="number" value={row.budgetLocal||0} readOnly={localDisabled}
-              onChange={(e) => !localDisabled && onUpdate(row.id,"budgetLocal",Number(e.target.value))}
-              className={`${inp} text-right font-mono ${localDisabled ? "bg-paper-dim/60 opacity-60 cursor-not-allowed" : ""}`} />
-          </div>
-        )}
-        <div><p className="mlab">IDR{idrDisabled && !isIDR ? " (auto)" : ""}</p>
-          <input type="number" value={row.budgetIDR||0} readOnly={idrDisabled && !isIDR}
-            onChange={(e) => (isIDR||!idrDisabled) && onUpdate(row.id,"budgetIDR",Number(e.target.value))}
-            className={`${inp} text-right font-mono font-semibold text-navy-500 ${idrDisabled && !isIDR ? "bg-paper-dim/60 opacity-60 cursor-not-allowed" : ""}`} />
-        </div>
+        {!isIDR&&<div><p className="mlab">{currency.code}{localDisabled?" (auto)":""}</p><input type="number" value={row.budgetLocal||0} readOnly={localDisabled} onChange={(e)=>!localDisabled&&onUpdate(row.id,"budgetLocal",Number(e.target.value))} className={`${inp} text-right font-mono ${localDisabled?"bg-paper-dim/60 opacity-60 cursor-not-allowed":""}`} /></div>}
+        <div><p className="mlab">IDR{idrDisabled&&!isIDR?" (auto)":""}</p><input type="number" value={row.budgetIDR||0} readOnly={idrDisabled&&!isIDR} onChange={(e)=>(isIDR||!idrDisabled)&&onUpdate(row.id,"budgetIDR",Number(e.target.value))} className={`${inp} text-right font-mono font-semibold text-navy-500 ${idrDisabled&&!isIDR?"bg-paper-dim/60 opacity-60 cursor-not-allowed":""}`} /></div>
       </div>
       <div className="flex flex-wrap gap-1.5">
-        {links.mapUrl    && <Chip href={links.mapUrl}    icon="📍" label="Map" />}
-        {links.routeUrl  && <Chip href={links.routeUrl}  icon="🗺"  label="Route" />}
-        {links.flightUrl && <Chip href={links.flightUrl} icon="✈️" label="Flights" />}
-        {links.bookUrl   && <Chip href={links.bookUrl}   icon="🎫" label="Book" />}
-        {links.hotelUrl  && <Chip href={links.hotelUrl}  icon="🏨" label="Hotel" />}
+        {links.mapUrl&&<Chip href={links.mapUrl} icon="📍" label="Map" />}
+        {links.routeUrl&&<Chip href={links.routeUrl} icon="🗺" label="Route" />}
+        {links.flightUrl&&<Chip href={links.flightUrl} icon="✈️" label="Flights" />}
+        {links.bookUrl&&<Chip href={links.bookUrl} icon="🎫" label="Book" />}
+        {links.hotelUrl&&<Chip href={links.hotelUrl} icon="🏨" label="Hotel" />}
       </div>
     </div>
   );
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-function buildLinks(row, region) {
-  const enc    = encodeURIComponent;
-  const destQ  = enc([row.destination, row.city, row.to].filter(Boolean).join(" ") || "");
-  const mapUrl = `https://www.google.com/maps/search/?api=1&query=${destQ}`;
-
-  const routeUrl = row.from && row.to
-    ? `https://www.google.com/maps/dir/${enc(row.from)}/${enc(row.to)}`
-    : null;
-
-  const isFlightT    = (row.transport || "").toLowerCase().includes("flight");
-  // ✅ Flight link only when transport is Flight
-  const flightUrl = isFlightT && row.from && row.to
-    ? `https://www.google.com/flights?q=Flights+from+${enc(row.from)}+to+${enc(row.to)}`
-    : null;
-
-  // ✅ Book link: only for non-flight transport
-  const bookUrl = !isFlightT
-    ? getBookingUrl(row.transport, { from: row.from, to: row.to, destination: row.destination || row.city, region })
-    : null;
-
-  // ✅ Hotel link: only when category is Hotel
-  const hotelUrl = row.category === "Hotel" && (row.destination || row.city)
-    ? `https://www.booking.com/search.html?ss=${enc(row.destination || row.city)}`
-    : null;
-
-  return { mapUrl, routeUrl, flightUrl, bookUrl, hotelUrl };
-}
+// ── Shared small components ───────────────────────────────────────────────────
 
 function Chip({ href, icon, label }) {
   if (!href) return null;
   return (
-    <a href={href} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
+    <a href={href} target="_blank" rel="noopener noreferrer" onClick={(e)=>e.stopPropagation()}
       className="inline-flex items-center gap-1 rounded-full border border-paper-line bg-white px-2.5 py-0.5 text-[10px] font-semibold text-ink-soft shadow-sm transition hover:border-navy-200 hover:bg-navy-50 hover:text-navy-500 active:scale-95 whitespace-nowrap">
       <span className="text-[11px] leading-none">{icon}</span>{label}
     </a>
@@ -509,43 +386,84 @@ function MoveBtn({ onClick, disabled, dir }) {
     <button onClick={onClick} disabled={disabled}
       className="grid h-5 w-5 place-items-center rounded text-ink-muted hover:bg-paper-dim disabled:opacity-30 disabled:cursor-not-allowed">
       <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-        {dir === "up" ? <path d="M18 15l-6-6-6 6"/> : <path d="M6 9l6 6 6-6"/>}
+        {dir==="up"?<path d="M18 15l-6-6-6 6"/>:<path d="M6 9l6 6 6-6"/>}
       </svg>
     </button>
   );
 }
 
+/**
+ * RowActions — NO createPortal
+ *
+ * Uses position:fixed for the dropdown, computed from getBoundingClientRect.
+ * position:fixed escapes overflow:hidden on table cells.
+ * Backdrop is also a fixed div (no portal needed).
+ */
 function RowActions({ onInsertAbove, onInsertBelow, onDelete, t }) {
   const [open, setOpen] = useState(false);
-  const [style, setStyle] = useState({});
+  const [pos,  setPos]  = useState({ top: 0, right: 0 });
   const btnRef = useRef(null);
 
-  const handleOpen = () => {
-    if (btnRef.current) {
+  // Close on scroll (reposition would be complex)
+  useEffect(() => {
+    if (!open) return;
+    const close = () => setOpen(false);
+    window.addEventListener("scroll", close, true);
+    return () => window.removeEventListener("scroll", close, true);
+  }, [open]);
+
+  const handleClick = (e) => {
+    e.stopPropagation();
+    if (!open && btnRef.current) {
       const rect = btnRef.current.getBoundingClientRect();
-      setStyle({ position: "fixed", top: rect.bottom + 4, right: window.innerWidth - rect.right, zIndex: 9999, minWidth: "160px" });
+      setPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
     }
     setOpen(v => !v);
   };
 
   return (
     <>
-      <button ref={btnRef} onClick={handleOpen}
-        className="grid h-7 w-7 place-items-center rounded-lg text-ink-muted hover:bg-paper-dim">
+      <button
+        ref={btnRef}
+        onClick={handleClick}
+        className="grid h-7 w-7 place-items-center rounded-lg text-ink-muted hover:bg-paper-dim"
+        aria-label="Row actions"
+      >
         <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/>
         </svg>
       </button>
-      {open && typeof window !== "undefined" && createPortal(
+
+      {open && (
         <>
-          <div className="fixed inset-0" style={{ zIndex: 9998 }} onClick={() => setOpen(false)} />
-          <div className="rounded-xl border border-paper-line bg-white py-1 shadow-card" style={style}>
-            <RA label={`↑ ${t("insertAbove")}`} onClick={() => { onInsertAbove(); setOpen(false); }} />
-            <RA label={`↓ ${t("insertBelow")}`} onClick={() => { onInsertBelow(); setOpen(false); }} />
-            <RA label={`🗑 ${t("deleteRow")}`}   onClick={() => { onDelete();       setOpen(false); }} danger />
+          {/* Backdrop — inline fixed, no portal */}
+          <div
+            className="fixed inset-0"
+            style={{ zIndex: 9998 }}
+            onClick={(e) => { e.stopPropagation(); setOpen(false); }}
+          />
+          {/* Dropdown — inline fixed, no portal */}
+          <div
+            className="fixed rounded-xl border border-paper-line bg-white py-1.5 shadow-[0_8px_30px_rgba(11,60,93,0.14)]"
+            style={{ top: pos.top, right: pos.right, zIndex: 9999, minWidth: "164px" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <RA
+              label={`↑ ${t("insertAbove")}`}
+              onClick={() => { onInsertAbove(); setOpen(false); }}
+            />
+            <RA
+              label={`↓ ${t("insertBelow")}`}
+              onClick={() => { onInsertBelow(); setOpen(false); }}
+            />
+            <div className="my-1 border-t border-paper-line/60" />
+            <RA
+              label={`🗑 ${t("deleteRow")}`}
+              onClick={() => { onDelete(); setOpen(false); }}
+              danger
+            />
           </div>
-        </>,
-        document.body
+        </>
       )}
     </>
   );
@@ -553,8 +471,10 @@ function RowActions({ onInsertAbove, onInsertBelow, onDelete, t }) {
 
 function RA({ label, onClick, danger }) {
   return (
-    <button onClick={onClick}
-      className={`flex w-full items-center px-4 py-2.5 text-sm transition hover:bg-paper-dim whitespace-nowrap ${danger ? "text-red-500" : "text-ink-soft"}`}>
+    <button
+      onClick={(e) => { e.stopPropagation(); onClick(); }}
+      className={`flex w-full items-center px-4 py-2.5 text-sm transition hover:bg-paper-dim whitespace-nowrap ${danger ? "font-medium text-red-500 hover:bg-red-50" : "text-ink-soft"}`}
+    >
       {label}
     </button>
   );
