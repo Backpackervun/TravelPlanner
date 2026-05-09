@@ -39,7 +39,7 @@ export default function PreviewModal({
 
   if (!open) return null;
 
-  const handleExport = async () => {
+const handleExport = async () => {
   if (!canExportPDF) {
     onUpgradeNeeded?.("PDF export requires a Lite or Pro plan.");
     return;
@@ -52,7 +52,11 @@ export default function PreviewModal({
     return;
   }
 
-  const printWindow = window.open("", "_blank", "width=1400,height=900");
+  const printWindow = window.open(
+    "",
+    "_blank",
+    "width=1400,height=900"
+  );
 
   if (!printWindow) {
     alert("Please allow popups for PDF export.");
@@ -74,9 +78,15 @@ export default function PreviewModal({
   const html = `
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
+
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+<meta
+  name="viewport"
+  content="width=device-width, initial-scale=1.0"
+/>
 
 <title>Travel Planner PDF</title>
 
@@ -84,9 +94,10 @@ ${stylesheets}
 ${inlineStyles}
 
 <style>
+
 @page {
   size: A4 portrait;
-  margin: 0;
+  margin: 10mm;
 }
 
 html,
@@ -99,23 +110,54 @@ body {
   print-color-adjust: exact !important;
 }
 
-.pdf-shell {
-  width: 100%;
-  min-height: 100vh;
-  background: #0f172a;
+body {
   display: flex;
   justify-content: center;
   padding: 32px;
   box-sizing: border-box;
 }
 
-.preview-paper {
+.pdf-shell {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.print-doc {
   width: 794px !important;
   max-width: 794px !important;
   min-width: 794px !important;
   background: white !important;
-  overflow: hidden;
-  box-shadow: none !important;
+  overflow: hidden !important;
+  border-radius: 20px;
+  transform-origin: top center;
+}
+
+section {
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+
+.rounded-2xl {
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+
+section,
+.print-doc,
+.preview-paper {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+h1,
+h2,
+h3,
+h4,
+p,
+div {
+  orphans: 3;
+  widows: 3;
 }
 
 .no-print {
@@ -123,42 +165,69 @@ body {
 }
 
 @media print {
+
+  html,
   body {
     background: white !important;
+    padding: 0 !important;
+  }
+
+  body {
+    display: block !important;
   }
 
   .pdf-shell {
+    width: 100% !important;
     padding: 0 !important;
-    background: white !important;
   }
 
-  .preview-paper {
+  .print-doc {
     width: 100% !important;
     max-width: 100% !important;
     min-width: 100% !important;
     border-radius: 0 !important;
+    box-shadow: none !important;
   }
 
   a {
     color: inherit !important;
     text-decoration: none !important;
   }
+
 }
+
 </style>
+
 </head>
 
 <body>
+
 <div class="pdf-shell">
-${paperEl.outerHTML}
+  ${paperEl.outerHTML}
 </div>
 
 <script>
+
 window.onload = () => {
+
   setTimeout(() => {
+
     window.print();
-  }, 500);
+
+    setTimeout(() => {
+      window.close();
+    }, 500);
+
+  }, 700);
+
 };
+
+window.onafterprint = () => {
+  window.close();
+};
+
 </script>
+
 </body>
 </html>
 `;
@@ -166,7 +235,8 @@ window.onload = () => {
   printWindow.document.open();
   printWindow.document.write(html);
   printWindow.document.close();
-};
+}; 
+
  return (
   <div
     className="fixed inset-0 z-[500] flex flex-col"
