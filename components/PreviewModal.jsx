@@ -64,23 +64,42 @@ const handleExportPDF = async () => {
     return;
   }
 
-  try {
+   try {
 
-    localStorage.setItem(
-      "bpv-print-data",
-      JSON.stringify({
-        tripInfo,
-        rows,
-        dayMap,
-        region,
-        rate,
-        totalLocal,
-        totalIDR,
-      })
-    );
+    const response =
+      await fetch(
+        "/api/export-session",
+        {
+          method: "POST",
 
-const url =
-  `/api/export-pdf`;
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+
+          body: JSON.stringify({
+            tripInfo,
+            rows,
+            dayMap,
+            region,
+            rate,
+            totalLocal,
+            totalIDR,
+          }),
+        }
+      );
+
+    const result =
+      await response.json();
+
+    if (!result?.id) {
+      throw new Error(
+        "Failed to create export session"
+      );
+    }
+
+    const url =
+      `/api/export-pdf?id=${result.id}`;
 
     const isIOS =
       /iPad|iPhone|iPod/.test(

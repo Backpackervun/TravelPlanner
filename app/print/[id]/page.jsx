@@ -1,63 +1,64 @@
+import {
+  doc,
+  getDoc,
+} from "firebase/firestore";
+
+import { db } from "@/lib/firebase";
+
 import PrintHeader from "@/components/PrintHeader";
 import PrintLayout from "@/components/PrintLayout";
 
-export default function PrintPage() {
+export default async function PrintPage({
+  params,
+}) {
 
-  const tripInfo = {
-    id: "demo",
-    clientName: "Ervan",
-    duration: "5 Days 4 Nights",
-    destinations: "Tokyo",
-    travelDates: "2026-05-11 – 2026-05-15",
-  };
+  const id = params?.id;
 
-  const rows = [
-    {
-      date: "2026-05-11",
-      time: "05:35",
-      destination: "Narita Airport",
-      from: "Soekarno Hatta Airport",
-      to: "Narita Airport",
-      transportType: "Flight",
-      budgetLocal: 90090,
-    },
+  if (!id) {
+    return null;
+  }
 
-    {
-      date: "2026-05-12",
-      time: "06:38",
-      destination: "Asakusa Station",
-      from: "Narita Airport",
-      to: "Asakusa Station",
-      transportType: "Train",
-      budgetLocal: 1100,
-    },
-  ];
+  const ref = doc(
+    db,
+    "pdf_exports",
+    id
+  );
 
-  const dayMap = {
-    "2026-05-11": 1,
-    "2026-05-12": 2,
-  };
+  const snap =
+    await getDoc(ref);
+
+  if (!snap.exists()) {
+
+    return (
+      <div className="p-10 text-white">
+        Export session not found.
+      </div>
+    );
+  }
+
+  const data = snap.data();
 
   return (
 
     <main className="min-h-screen bg-[#0f172a] py-10">
 
-     <div className="preview-paper mx-auto w-full max-w-[210mm] overflow-hidden rounded-[28px] bg-white shadow-2xl">
+      <div className="preview-paper mx-auto w-full max-w-[210mm] overflow-hidden rounded-[28px] bg-white shadow-2xl">
 
         <PrintHeader
-          tripInfo={tripInfo}
-          region="Japan"
-          totalLocal={91190}
-          totalIDR={10121815}
+          tripInfo={data.tripInfo}
+          region={data.region}
+          totalLocal={data.totalLocal}
+          totalIDR={data.totalIDR}
         />
 
         <PrintLayout
-          tripInfo={tripInfo}
-          rows={rows}
-          dayMap={dayMap}
-          region="Japan"
-          totalLocal={91190}
-          totalIDR={10121815}
+          tripInfo={data.tripInfo}
+          rows={data.rows}
+          dayMap={data.dayMap}
+          region={data.region}
+          rate={data.rate}
+          totalLocal={data.totalLocal}
+          totalIDR={data.totalIDR}
         />
 
       </div>
