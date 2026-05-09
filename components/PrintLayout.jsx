@@ -13,6 +13,30 @@ import {
   transportIcon,
 } from "@/lib/utils";
 
+function bookingLabel(row) {
+  const transport = String(row.transport || "").toLowerCase();
+  const category = String(row.category || "").toLowerCase();
+
+  if (transport.includes("flight")) {
+    return {
+      icon: "✈️",
+      label: "Flights",
+    };
+  }
+
+  if (category.includes("hotel")) {
+    return {
+      icon: "🏨",
+      label: "Hotel",
+    };
+  }
+
+  return {
+    icon: "🎫",
+    label: "Book",
+  };
+}
+
 export default function PrintLayout({
   tripInfo,
   rows,
@@ -55,17 +79,19 @@ export default function PrintLayout({
   }, [meaningfulRows]);
 
   return (
-    <div className="print-doc">
+    <div className="print-doc bg-white text-slate-900">
 
       {/* =========================
           TRIP INFO
       ========================== */}
 
       <section className="px-8 pt-6 pb-4">
+
         <div className="rounded-2xl border border-[#E8EDF3] bg-[#F8FAFC] p-5">
 
           {tripInfo?.clientName && (
             <div className="mb-4">
+
               <p className="text-[9px] font-semibold uppercase tracking-[0.2em] text-slate-500">
                 PREPARED FOR CLIENT
               </p>
@@ -73,6 +99,7 @@ export default function PrintLayout({
               <h1 className="mt-1 text-2xl font-bold text-slate-900">
                 {tripInfo.clientName}
               </h1>
+
             </div>
           )}
 
@@ -104,7 +131,9 @@ export default function PrintLayout({
             />
 
           </div>
+
         </div>
+
       </section>
 
       {/* =========================
@@ -118,10 +147,13 @@ export default function PrintLayout({
         </h2>
 
         {grouped.length === 0 ? (
+
           <div className="rounded-xl border border-dashed border-slate-300 py-20 text-center text-slate-400">
             No itinerary entries yet.
           </div>
+
         ) : (
+
           grouped.map(([date, items], idx) => {
 
             const dayNumber =
@@ -130,244 +162,185 @@ export default function PrintLayout({
                 : null;
 
             return (
+
               <section
                 key={date + idx}
                 className="mb-8 overflow-hidden rounded-2xl border border-slate-200"
               >
 
                 {/* DAY HEADER */}
-                <div className="flex items-center gap-4 border-b border-slate-200 bg-slate-50 px-5 py-4">
 
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#0B3C5D] text-sm font-bold text-white">
-                    {dayNumber || "—"}
-                  </div>
+                <div className="border-b border-slate-200 bg-slate-50 px-6 py-5">
 
-                  <div>
-                    <h3 className="text-lg font-bold text-slate-900">
-                      DAY {dayNumber || "—"}
-                    </h3>
+                  <div className="flex items-center gap-4">
 
-                    <p className="text-sm text-slate-500">
-                      {date !== "__nodate__" ? date : "No Date"}
-                    </p>
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#0B3B6E] text-sm font-bold text-white">
+                      {dayNumber || idx + 1}
+                    </div>
+
+                    <div>
+
+                      <h3 className="text-2xl font-bold text-slate-900">
+                        DAY {dayNumber || idx + 1}
+                      </h3>
+
+                      <p className="text-sm text-slate-500">
+                        {date !== "__nodate__" ? date : "No Date"}
+                      </p>
+
+                    </div>
+
                   </div>
 
                 </div>
 
-                {/* ROWS */}
-                <div className="divide-y divide-slate-100">
+                {/* ITEMS */}
 
-                  {items.map((row) => {
+                <div>
 
-                    const mapUrl = buildMapUrl(
-                      row.destination
-                    );
+                  {items.map((row, rowIdx) => {
 
-                    const routeUrl =
-                      row.from && row.to
-                        ? buildRouteUrl(
-                            row.from,
-                            row.to
-                          )
-                        : null;
+                    const localBudget = Number(row.budgetLocal || 0);
+                    const idrBudget = Number(row.budgetIDR || 0);
 
-                    const bookingLink =
-                      getBookingLink(
-                        row,
-                        region
-                      );
+                    const booking = bookingLabel(row);
 
                     return (
+
                       <div
-                        key={row.id}
-                        className="grid grid-cols-[80px_1fr_140px] gap-5 px-5 py-5"
+                        key={row.id || rowIdx}
+                        className="border-b border-slate-100 px-6 py-6 last:border-b-0"
                       >
 
-                        {/* TIME */}
-                        <div>
-                          <p className="text-sm font-semibold text-slate-900">
-                            {row.time || "—"}
-                          </p>
-                        </div>
+                        <div className="flex items-start justify-between gap-6">
 
-                        {/* CONTENT */}
-                        <div>
+                          {/* LEFT */}
 
-                          <h4 className="text-base font-bold text-slate-900">
-                            {row.destination || "Untitled Stop"}
-                          </h4>
+                          <div className="flex-1">
 
-                          {(row.from || row.to) && (
-                            <p className="mt-1 text-sm text-slate-500">
-                              {row.from || "—"} → {row.to || "—"}
-                            </p>
-                          )}
+                            <div className="flex gap-5">
 
-                          {row.transport && (
-                            <p className="mt-1 text-sm text-slate-500">
-                              {transportIcon(row.transport)}{" "}
-                              {row.transport}
-                            </p>
-                          )}
+                              {/* TIME */}
 
-                          {row.notes && (
-                            <p className="mt-2 text-sm leading-relaxed text-slate-600">
-                              {row.notes}
-                            </p>
-                          )}
+                              <div className="min-w-[64px] text-sm font-semibold text-slate-900">
+                                {row.time || "—"}
+                              </div>
 
-                          {/* LINKS */}
-                          <div className="mt-3 flex flex-wrap gap-2">
+                              {/* CONTENT */}
 
-                            {mapUrl && (
-                              <a
-                                href={mapUrl}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="rounded-full border border-slate-200 px-3 py-1 text-xs font-medium text-slate-700"
-                              >
-                                📍 Map
-                              </a>
-                            )}
+                              <div className="flex-1">
 
-                            {routeUrl && (
-                              <a
-                                href={routeUrl}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="rounded-full border border-slate-200 px-3 py-1 text-xs font-medium text-slate-700"
-                              >
-                                🗺 Route
-                              </a>
-                            )}
+                                <h4 className="text-[28px] font-bold leading-tight text-slate-900">
+                                  {row.destination || "Untitled Stop"}
+                                </h4>
 
-                            {bookingLink && (
-                              <a
-                                href={bookingLink}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="rounded-full border border-slate-200 px-3 py-1 text-xs font-medium text-slate-700"
-                              >
-                                ✈ Booking
-                              </a>
+                                {(row.from || row.to) && (
+                                  <p className="mt-2 text-base text-slate-500">
+                                    {row.from || "—"} → {row.to || "—"}
+                                  </p>
+                                )}
+
+                                {row.transport && (
+                                  <div className="mt-2 text-base text-slate-500">
+                                    {transportIcon(row.transport)} {row.transport}
+                                  </div>
+                                )}
+
+                                {/* ACTION BUTTONS */}
+
+                                <div className="mt-4 flex flex-wrap gap-2">
+
+                                  {row.destination && (
+                                    <a
+                                      href={buildMapUrl(row.destination)}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700"
+                                    >
+                                      📍 Map
+                                    </a>
+                                  )}
+
+                                  {row.from && row.to && (
+                                    <a
+                                      href={buildRouteUrl(row.from, row.to)}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700"
+                                    >
+                                      🗺️ Route
+                                    </a>
+                                  )}
+
+                                  {row.destination && (
+                                    <a
+                                      href={getBookingLink(row.destination)}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700"
+                                    >
+                                      {booking.icon} {booking.label}
+                                    </a>
+                                  )}
+
+                                </div>
+
+                              </div>
+
+                            </div>
+
+                          </div>
+
+                          {/* RIGHT */}
+
+                          <div className="min-w-[180px] text-right">
+
+                            <div className="text-xl font-bold text-slate-900">
+                              {formatCurrency(localBudget, currency)}
+                            </div>
+
+                            {!isIDR && (
+                              <div className="mt-1 text-sm text-slate-500">
+                                {formatIDR(idrBudget)}
+                              </div>
                             )}
 
                           </div>
-                        </div>
-
-                        {/* BUDGET */}
-                        <div className="text-right">
-
-                          <p className="text-sm font-bold text-slate-900">
-                            {formatCurrency(
-                              Number(row.budgetLocal) || 0,
-                              currency.code
-                            )}
-                          </p>
-
-                          {!isIDR && (
-                            <p className="mt-1 text-xs text-slate-500">
-                              {formatIDR(
-                                Number(row.budgetIDR) || 0
-                              )}
-                            </p>
-                          )}
 
                         </div>
+
                       </div>
+
                     );
                   })}
 
                 </div>
 
               </section>
+
             );
           })
+
         )}
 
       </section>
 
-      {/* =========================
-          SUMMARY
-      ========================== */}
-
-      <section className="px-8 pb-10">
-
-        <div className="rounded-2xl border border-slate-200">
-
-          <div className="border-b border-slate-200 px-5 py-4">
-            <h2 className="text-lg font-bold text-slate-900">
-              Trip Summary
-            </h2>
-          </div>
-
-          <div className="divide-y divide-slate-100">
-
-            <SummaryRow
-              label="Total Stops"
-              value={meaningfulRows.length}
-            />
-
-            <SummaryRow
-              label={`Total (${currency.code})`}
-              value={formatCurrency(
-                totalLocal,
-                currency.code
-              )}
-            />
-
-            {!isIDR && (
-              <>
-                <SummaryRow
-                  label="Total (IDR)"
-                  value={formatIDR(totalIDR)}
-                />
-
-                <SummaryRow
-                  label="Exchange Rate"
-                  value={`1 ${currency.code} = ${rate} IDR`}
-                />
-              </>
-            )}
-
-          </div>
-        </div>
-
-        <p className="mt-6 text-center text-[10px] uppercase tracking-[0.18em] text-slate-400">
-          PREPARED WITH BACKPACKERVUN · BACKPACKERVUN.COM
-        </p>
-
-      </section>
     </div>
   );
 }
 
-/* ========================================= */
-
 function Info({ label, value }) {
   return (
     <div>
-      <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+
+      <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500">
         {label}
       </p>
 
       <p className="mt-1 text-sm font-medium text-slate-900">
         {value}
       </p>
-    </div>
-  );
-}
 
-function SummaryRow({ label, value }) {
-  return (
-    <div className="flex items-center justify-between px-5 py-4">
-      <span className="text-sm text-slate-500">
-        {label}
-      </span>
-
-      <span className="text-sm font-bold text-slate-900">
-        {value}
-      </span>
     </div>
   );
 }
