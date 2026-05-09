@@ -75,7 +75,7 @@ const handleExport = async () => {
     .map((style) => style.outerHTML)
     .join("\n");
 
-  const html = `
+const html = `
 <!DOCTYPE html>
 <html lang="en">
 
@@ -113,7 +113,7 @@ body {
 body {
   display: flex;
   justify-content: center;
-  padding: 32px;
+  padding: 12px;
   box-sizing: border-box;
 }
 
@@ -124,40 +124,40 @@ body {
 }
 
 .print-doc {
-  width: 794px !important;
-  max-width: 794px !important;
-  min-width: 794px !important;
+  width: 210mm !important;
+  max-width: 210mm !important;
+  min-width: 210mm !important;
   background: white !important;
   overflow: hidden !important;
   border-radius: 20px;
   transform-origin: top center;
 }
 
-section {
-  page-break-inside: avoid;
-  break-inside: avoid;
-}
-
 .rounded-2xl {
-  page-break-inside: avoid;
   break-inside: avoid;
 }
 
-section,
-.print-doc,
-.preview-paper {
+.day-card {
   break-inside: avoid;
-  page-break-inside: avoid;
 }
 
-h1,
-h2,
-h3,
-h4,
-p,
-div {
-  orphans: 3;
-  widows: 3;
+button,
+a {
+  -webkit-print-color-adjust: exact !important;
+  print-color-adjust: exact !important;
+}
+
+a {
+  color: inherit !important;
+  text-decoration: none !important;
+  pointer-events: auto !important;
+  cursor: pointer !important;
+  position: relative;
+  z-index: 9999;
+}
+
+a[href]::after {
+  content: "";
 }
 
 .no-print {
@@ -189,11 +189,6 @@ div {
     box-shadow: none !important;
   }
 
-  a {
-    color: inherit !important;
-    text-decoration: none !important;
-  }
-
 }
 
 </style>
@@ -212,6 +207,7 @@ window.onload = () => {
 
   setTimeout(() => {
 
+    window.focus();
     window.print();
 
     setTimeout(() => {
