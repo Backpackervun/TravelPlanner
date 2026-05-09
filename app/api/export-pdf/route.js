@@ -3,50 +3,64 @@ import chromium from "@sparticuz/chromium";
 
 export const dynamic = "force-dynamic";
 
-export async function POST(req) {
+export async function GET(req) {
 
   try {
 
-    const { html } = await req.json();
+    const { searchParams } =
+      new URL(req.url);
 
-    const browser = await puppeteer.launch({
+    const id =
+      searchParams.get("id") ||
+      "demo";
 
-      args: chromium.args,
+    const baseUrl =
+      process.env
+        .NEXT_PUBLIC_SITE_URL ||
+      "http://localhost:3000";
 
-      defaultViewport:
-        chromium.defaultViewport,
+    const browser =
+      await puppeteer.launch({
 
-      executablePath:
-        await chromium.executablePath(),
+        args: chromium.args,
 
-      headless: chromium.headless,
+        defaultViewport:
+          chromium.defaultViewport,
 
-    });
+        executablePath:
+          await chromium.executablePath(),
 
-    const page = await browser.newPage();
+        headless: chromium.headless,
 
-    await page.setContent(html, {
+      });
 
-      waitUntil: "networkidle0",
+    const page =
+      await browser.newPage();
 
-    });
+    await page.goto(
+      `${baseUrl}/print/${id}?export=true`,
+      {
+        waitUntil: "networkidle0",
+      }
+    );
 
-    const pdf = await page.pdf({
+    const pdf =
+      await page.pdf({
 
-      format: "A4",
+        format: "A4",
 
-      printBackground: true,
+        printBackground: true,
 
-      preferCSSPageSize: true,
+        preferCSSPageSize: true,
 
-      margin: {
-        top: "0px",
-        right: "0px",
-        bottom: "0px",
-        left: "0px",
-      },
+        margin: {
+          top: "0px",
+          right: "0px",
+          bottom: "0px",
+          left: "0px",
+        },
 
-    });
+      });
 
     await browser.close();
 

@@ -53,89 +53,24 @@ export default function PreviewModal({
 
   if (!open) return null;
 
-
-     const handleExportPDF = async () => {
+const handleExportPDF = async () => {
 
   if (!canExportPDF) {
+
     onUpgradeNeeded?.(
       "PDF export requires a Lite or Pro plan."
     );
+
     return;
   }
 
   try {
 
-    const paperEl = paperRef.current;
-
-    if (!paperEl) return;
-
-    const html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="UTF-8" />
-
-        <style>
-          * {
-            box-sizing: border-box;
-          }
-
-          body {
-            margin: 0;
-            background: white;
-            font-family: Inter, sans-serif;
-          }
-
-          @page {
-            size: A4;
-            margin: 0;
-          }
-
-          .preview-paper {
-            width: 210mm;
-            background: white;
-          }
-
-          a {
-            color: inherit !important;
-            text-decoration: none !important;
-          }
-        </style>
-      </head>
-
-      <body>
-        ${paperEl.outerHTML}
-      </body>
-      </html>
-    `;
-
-    const response = await fetch(
-      "/api/export-pdf",
-      {
-        method: "POST",
-
-        headers: {
-          "Content-Type":
-            "application/json",
-        },
-
-        body: JSON.stringify({
-          html,
-        }),
-      }
-    );
-
-    if (!response.ok) {
-      throw new Error(
-        "Failed to export PDF"
-      );
-    }
-
-    const blob =
-      await response.blob();
+    const tripId =
+      tripInfo?.id || "demo";
 
     const url =
-      URL.createObjectURL(blob);
+      `/api/export-pdf?id=${tripId}`;
 
     const isIOS =
       /iPad|iPhone|iPod/.test(
@@ -166,10 +101,6 @@ export default function PreviewModal({
         link
       );
     }
-
-    setTimeout(() => {
-      URL.revokeObjectURL(url);
-    }, 10000);
 
   } catch (err) {
 
