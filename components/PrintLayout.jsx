@@ -136,113 +136,238 @@ export default function PrintLayout({
 
       </section>
 
-      {/* =========================
-          SUMMARY
-      ========================== */}
+{/* =========================
+    SUMMARY
+========================= */}
 
-      <section className="px-8 pb-6">
+<section className="px-8 pb-8">
 
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+  <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
 
-          {/* TOTAL BUDGET */}
+    {/* QUICK OVERVIEW */}
 
-          <div className="rounded-2xl border border-[#E8EDF3] bg-[#F8FAFC] p-5">
+    <div className="rounded-2xl border border-[#E8EDF3] bg-[#F8FAFC] p-5">
 
-            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">
-              TOTAL BUDGET
-            </p>
+      <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+        QUICK OVERVIEW
+      </p>
 
-            <div className="mt-3 text-3xl font-bold text-slate-900">
-              {formatCurrency(Number(totalLocal || 0), currency)}
-            </div>
+      <div className="mt-5 grid grid-cols-2 gap-4">
 
-            {!isIDR && (
-              <div className="mt-2 text-sm text-slate-500">
-                ≈ {formatIDR(Number(totalIDR || 0))}
-              </div>
-            )}
+        <div>
+          <p className="text-3xl font-bold text-slate-900">
+            {meaningfulRows.length}
+          </p>
 
-          </div>
+          <p className="mt-1 text-sm text-slate-500">
+            Stops
+          </p>
+        </div>
 
-          {/* TRAVEL STATS */}
+        <div>
+          <p className="text-3xl font-bold text-slate-900">
+            {grouped.length}
+          </p>
 
-          <div className="rounded-2xl border border-[#E8EDF3] bg-[#F8FAFC] p-5">
+          <p className="mt-1 text-sm text-slate-500">
+            Days
+          </p>
+        </div>
 
-            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">
-              TRAVEL STATS
-            </p>
+      </div>
 
-            <div className="mt-3 space-y-2 text-sm text-slate-700">
+      <div className="mt-5 border-t border-slate-200 pt-4">
 
-              <div className="flex items-center justify-between">
-                <span>Total Stops</span>
+        <div className="flex items-center justify-between text-sm">
 
-                <span className="font-semibold">
-                  {meaningfulRows.length}
-                </span>
-              </div>
+          <span className="text-slate-500">
+            Region
+          </span>
 
-              <div className="flex items-center justify-between">
-                <span>Total Days</span>
-
-                <span className="font-semibold">
-                  {grouped.length}
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <span>Region</span>
-
-                <span className="font-semibold">
-                  {region || "—"}
-                </span>
-              </div>
-
-            </div>
-
-          </div>
-
-          {/* TRANSPORT USAGE */}
-
-          <div className="rounded-2xl border border-[#E8EDF3] bg-[#F8FAFC] p-5">
-
-            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">
-              TRANSPORT USAGE
-            </p>
-
-            <div className="mt-3 space-y-2 text-sm text-slate-700">
-
-              {["Flight", "Train", "Bus", "Walk"].map((type) => {
-
-                const count = meaningfulRows.filter((r) =>
-                  String(r.transport || "")
-                    .toLowerCase()
-                    .includes(type.toLowerCase())
-                ).length;
-
-                if (!count) return null;
-
-                return (
-                  <div
-                    key={type}
-                    className="flex items-center justify-between"
-                  >
-                    <span>{type}</span>
-
-                    <span className="font-semibold">
-                      {count}
-                    </span>
-                  </div>
-                );
-              })}
-
-            </div>
-
-          </div>
+          <span className="font-semibold text-slate-900">
+            {region || "—"}
+          </span>
 
         </div>
 
-      </section>
+      </div>
+
+    </div>
+
+    {/* TRANSPORT USAGE */}
+
+    <div className="rounded-2xl border border-[#E8EDF3] bg-[#F8FAFC] p-5">
+
+      <div className="flex items-center justify-between">
+
+        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+          TRANSPORT USAGE
+        </p>
+
+        <span className="text-xs text-slate-400">
+          {
+            meaningfulRows.filter((r) => r.transport).length
+          } legs
+        </span>
+
+      </div>
+
+      <div className="mt-5 space-y-4">
+
+        {["Flight", "Train", "Bus", "Walk"].map((type) => {
+
+          const count = meaningfulRows.filter((r) =>
+            String(r.transport || "")
+              .toLowerCase()
+              .includes(type.toLowerCase())
+          ).length;
+
+          if (!count) return null;
+
+          const totalTransport =
+            meaningfulRows.filter((r) => r.transport).length || 1;
+
+          const percentage =
+            Math.round((count / totalTransport) * 100);
+
+          return (
+
+            <div key={type}>
+
+              <div className="mb-1 flex items-center justify-between text-sm">
+
+                <span className="font-medium text-slate-700">
+                  {type}
+                </span>
+
+                <span className="text-slate-500">
+                  {count}
+                </span>
+
+              </div>
+
+              <div className="h-2 overflow-hidden rounded-full bg-slate-200">
+
+                <div
+                  className="h-full rounded-full bg-[#2563EB]"
+                  style={{
+                    width: `${percentage}%`,
+                  }}
+                />
+
+              </div>
+
+            </div>
+
+          );
+        })}
+
+      </div>
+
+    </div>
+
+    {/* BUDGET BREAKDOWN */}
+
+    <div className="rounded-2xl border border-[#E8EDF3] bg-[#F8FAFC] p-5">
+
+      <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+        BUDGET BREAKDOWN
+      </p>
+
+      <div className="mt-5 space-y-4">
+
+        {[
+          {
+            name: "Transport",
+            color: "#EF4444",
+          },
+          {
+            name: "Hotel",
+            color: "#2563EB",
+          },
+          {
+            name: "Food",
+            color: "#F59E0B",
+          },
+          {
+            name: "Activity",
+            color: "#10B981",
+          },
+          {
+            name: "Attraction",
+            color: "#8B5CF6",
+          },
+        ].map((category) => {
+
+          const amount = meaningfulRows
+            .filter(
+              (r) =>
+                String(r.category || "").toLowerCase() ===
+                category.name.toLowerCase()
+            )
+            .reduce(
+              (sum, r) =>
+                sum + Number(r.budgetLocal || 0),
+              0
+            );
+
+          if (!amount) return null;
+
+          const percentage =
+            totalLocal > 0
+              ? Math.round((amount / totalLocal) * 100)
+              : 0;
+
+          return (
+
+            <div key={category.name}>
+
+              <div className="mb-1 flex items-center justify-between text-sm">
+
+                <span className="font-medium text-slate-700">
+                  {category.name}
+                </span>
+
+                <span className="text-slate-500">
+                  {percentage}%
+                </span>
+
+              </div>
+
+              <div className="h-2 overflow-hidden rounded-full bg-slate-200">
+
+                <div
+                  className="h-full rounded-full"
+                  style={{
+                    width: `${percentage}%`,
+                    background: category.color,
+                  }}
+                />
+
+              </div>
+
+              <div className="mt-1 text-xs text-slate-500">
+
+                {formatCurrency(
+                  amount,
+                  currency
+                )}
+
+              </div>
+
+            </div>
+
+          );
+        })}
+
+      </div>
+
+    </div>
+
+  </div>
+
+</section>
+    
 
       {/* =========================
           ITINERARY
