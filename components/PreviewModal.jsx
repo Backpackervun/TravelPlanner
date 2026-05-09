@@ -6,19 +6,10 @@ import PrintHeader from "./PrintHeader";
 import PrintLayout from "./PrintLayout";
 
 /**
- * PreviewModal — Patch 14d
+ * PreviewModal — Patch 14e
  *
- * PDF FIX: Instead of relying on @media print CSS (which always had
- * the 2-page duplicate bug), we use a JavaScript-based print approach:
- *
- * 1. Get the HTML of .preview-paper
- * 2. Open a new blank window
- * 3. Write only the paper HTML + extracted stylesheets
- * 4. window.print() from that clean window
- * 5. Close the window after print
- *
- * This guarantees only the itinerary document is in the PDF.
- * No background, no action bar, no duplicate pages.
+ * FIX: Print window now includes the Montserrat Google Font so the
+ * exported PDF matches the web app typography exactly.
  */
 export default function PreviewModal({
   open, onClose, tripInfo, rows, dayMap,
@@ -53,20 +44,15 @@ export default function PreviewModal({
     const paperEl = paperRef.current;
     if (!paperEl) { window.print(); return; }
 
-    // ── JS-BASED PRINT: Open clean window with only the paper HTML ──
     const printWin = window.open("", "_blank", "width=900,height=700");
-    if (!printWin) {
-      // Popup blocked — fall back to CSS print
-      window.print();
-      return;
-    }
+    if (!printWin) { window.print(); return; }
 
-    // Collect all stylesheets from the current page
+    // Collect all stylesheet links from the current page
     const styleLinks = Array.from(document.querySelectorAll('link[rel="stylesheet"]'))
       .map(l => `<link rel="stylesheet" href="${l.href}">`)
       .join("\n");
 
-    // Also collect inline <style> tags
+    // Collect inline style tags
     const inlineStyles = Array.from(document.querySelectorAll("style"))
       .map(s => `<style>${s.textContent}</style>`)
       .join("\n");
@@ -77,25 +63,60 @@ export default function PreviewModal({
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Backpackervun Travel Planner</title>
+
+  <!-- ✅ Montserrat font — matches web app typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
   ${styleLinks}
   ${inlineStyles}
+
   <style>
-    @page { size: A4 portrait; margin: 10mm 12mm; }
-    html, body { background: white !important; margin: 0; padding: 0; }
-    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-    .preview-paper { box-shadow: none !important; border-radius: 0 !important; border: none !important; }
+    @page {
+      size: A4 portrait;
+      margin: 10mm 12mm;
+    }
+    html, body {
+      background: white !important;
+      margin: 0;
+      padding: 0;
+      /* ✅ Use Montserrat as primary font */
+      font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, sans-serif !important;
+    }
+    * {
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+      color-adjust: exact !important;
+    }
+    .preview-paper {
+      box-shadow: none !important;
+      border-radius: 0 !important;
+      border: none !important;
+      max-width: 100% !important;
+      width: 100% !important;
+    }
   </style>
 </head>
-<body class="bg-white font-sans">
+<body class="bg-white" style="font-family: 'Montserrat', sans-serif;">
   ${paperEl.outerHTML}
   <script>
-    // Wait for fonts/images to load then print
-    window.addEventListener('load', function() {
-      setTimeout(function() {
-        window.print();
-        setTimeout(function() { window.close(); }, 500);
-      }, 400);
-    });
+    // Print after fonts and styles load
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(function() {
+        setTimeout(function() {
+          window.print();
+          setTimeout(function() { window.close(); }, 500);
+        }, 200);
+      });
+    } else {
+      window.addEventListener('load', function() {
+        setTimeout(function() {
+          window.print();
+          setTimeout(function() { window.close(); }, 500);
+        }, 400);
+      });
+    }
   </script>
 </body>
 </html>`;
@@ -111,7 +132,6 @@ export default function PreviewModal({
       role="dialog"
       aria-modal="true"
     >
-      {/* Backdrop */}
       <div className="absolute inset-0 bg-[#0f172a]/90 backdrop-blur-md" />
 
       {/* Action bar */}
@@ -144,12 +164,11 @@ export default function PreviewModal({
         </button>
       </div>
 
-      {/* Paper area */}
+      {/* Scrollable paper area */}
       <div
         className="preview-paper-area relative flex-1 overflow-y-auto py-8 px-3 sm:px-6"
         style={{ WebkitOverflowScrolling: "touch" }}
       >
-        {/* ✅ This is the ONLY thing that gets printed */}
         <div
           ref={paperRef}
           className="preview-paper mx-auto max-w-[860px] rounded-2xl bg-white overflow-hidden"
