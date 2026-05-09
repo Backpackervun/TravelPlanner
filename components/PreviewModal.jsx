@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { PDFDownloadLink } from "@react-pdf/renderer";
+import { pdf } from "@react-pdf/renderer";
 import { useT } from "@/context/TranslationContext";
 
 import PrintHeader from "./PrintHeader";
@@ -21,6 +21,7 @@ export default function PreviewModal({
   canExportPDF,
   onUpgradeNeeded,
 }) {
+
   const { t } = useT();
   const paperRef = useRef(null);
 
@@ -44,6 +45,7 @@ export default function PreviewModal({
     if (!open) return;
 
     const prev = document.body.style.overflow;
+
     document.body.style.overflow = "hidden";
 
     return () => {
@@ -53,19 +55,86 @@ export default function PreviewModal({
 
   if (!open) return null;
 
+  const handleExportPDF = async () => {
+
+    if (!canExportPDF) {
+      onUpgradeNeeded?.(
+        "PDF export requires a Lite or Pro plan."
+      );
+      return;
+    }
+
+    try {
+
+      const blob = await pdf(
+        <TravelPdfDocument
+          tripInfo={tripInfo}
+          rows={rows}
+          dayMap={dayMap}
+          region={region}
+          totalLocal={totalLocal}
+          totalIDR={totalIDR}
+          rate={rate}
+        />
+      ).toBlob();
+
+      const url = URL.createObjectURL(blob);
+
+      const isIOS =
+        /iPad|iPhone|iPod/.test(
+          navigator.userAgent
+        );
+
+      const link =
+        document.createElement("a");
+
+      link.href = url;
+      link.download =
+        "backpackervun-itinerary.pdf";
+
+      document.body.appendChild(link);
+
+      // iPhone fallback
+      if (isIOS) {
+
+        window.open(url, "_blank");
+
+      } else {
+
+        link.click();
+
+      }
+
+      document.body.removeChild(link);
+
+      setTimeout(() => {
+        URL.revokeObjectURL(url);
+      }, 10000);
+
+    } catch (err) {
+
+      console.error(err);
+
+      alert("Failed to generate PDF.");
+
+    }
+  };
+
   return (
+
     <div
       className="fixed inset-0 z-[500] flex flex-col"
       role="dialog"
       aria-modal="true"
     >
+
       {/* Backdrop */}
       <div className="absolute inset-0 bg-[#0f172a]/90 backdrop-blur-md" />
 
-      {/* Top Action Bar */}
-      <div className="no-print relative z-10 flex items-center justify-between border-b border-white/10 bg-[#0f172a]/95 px-4 py-3 sm:px-6">
+      {/* Top Bar */}
+      <div className="relative z-10 flex items-center justify-between border-b border-white/10 bg-[#0f172a]/95 px-4 py-3 sm:px-6">
 
-        {/* Back Button */}
+        {/* Back */}
         <button
           onClick={onClose}
           className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/20"
@@ -97,67 +166,31 @@ export default function PreviewModal({
           {t("previewTitle")}
         </div>
 
-        {/* Export Button */}
-        {!canExportPDF ? (
-
-          <button
-            onClick={() =>
-              onUpgradeNeeded?.(
-                "PDF export requires a Lite or Pro plan."
-              )
-            }
-            className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2 text-sm font-semibold text-[#0f172a] shadow-lg transition hover:bg-white/90"
+        {/* Export */}
+        <button
+          onClick={handleExportPDF}
+          className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2 text-sm font-semibold text-[#0f172a] shadow-lg transition hover:bg-white/90 active:scale-[0.98]"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            className="h-4 w-4"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
           >
-            {t("exportPDF")}
-          </button>
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="7 10 12 15 17 10" />
+            <line x1="12" y1="15" x2="12" y2="3" />
+          </svg>
 
-        ) : (
+          {t("exportPDF")}
+        </button>
 
-          <PDFDownloadLink
-            document={
-              <TravelPdfDocument
-                tripInfo={tripInfo}
-                rows={rows}
-                dayMap={dayMap}
-                region={region}
-                totalLocal={totalLocal}
-                totalIDR={totalIDR}
-                rate={rate}
-              />
-            }
-            fileName="backpackervun-itinerary.pdf"
-          >
-            {({ loading }) => (
-
-              <button
-                className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2 text-sm font-semibold text-[#0f172a] shadow-lg transition hover:bg-white/90 active:scale-[0.98]"
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  className="h-4 w-4"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                  <polyline points="7 10 12 15 17 10" />
-                  <line x1="12" y1="15" x2="12" y2="3" />
-                </svg>
-
-                {loading
-                  ? "Generating PDF..."
-                  : t("exportPDF")}
-              </button>
-
-            )}
-          </PDFDownloadLink>
-
-        )}
       </div>
 
-      {/* Preview Area */}
+      {/* Preview */}
       <div className="relative z-10 flex-1 overflow-auto bg-[#0f172a] p-6">
 
         <div
@@ -183,7 +216,9 @@ export default function PreviewModal({
           />
 
         </div>
+
       </div>
+
     </div>
   );
 }

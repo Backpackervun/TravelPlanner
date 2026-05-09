@@ -1,419 +1,643 @@
-"use client";
-
-import React from "react";
-
 import {
   Document,
   Page,
   Text,
   View,
-  Link,
   StyleSheet,
+  Link,
 } from "@react-pdf/renderer";
 
 const styles = StyleSheet.create({
   page: {
-    paddingTop: 28,
+    backgroundColor: "#f8fafc",
     paddingBottom: 28,
-    paddingHorizontal: 28,
-    backgroundColor: "#F8FAFC",
-    fontFamily: "Helvetica",
-    color: "#0F172A",
+    color: "#0f172a",
     fontSize: 11,
   },
 
-  // ───────────────── HEADER ─────────────────
-
-  header: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 18,
-    padding: 22,
-    marginBottom: 22,
-    border: "1 solid #E2E8F0",
+  /* HERO */
+  hero: {
+    backgroundColor: "#0f172a",
+    paddingTop: 26,
+    paddingHorizontal: 28,
+    paddingBottom: 24,
+    borderBottomLeftRadius: 22,
+    borderBottomRightRadius: 22,
   },
 
-  eyebrow: {
-    fontSize: 9,
-    color: "#64748B",
-    textTransform: "uppercase",
-    letterSpacing: 1.5,
+  heroBadge: {
+    alignSelf: "flex-start",
+    backgroundColor: "rgba(255,255,255,0.12)",
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    marginBottom: 16,
+  },
+
+  heroBadgeText: {
+    color: "#cbd5e1",
+    fontSize: 8,
+    letterSpacing: 1.2,
+  },
+
+  heroTitle: {
+    color: "#ffffff",
+    fontSize: 28,
+    fontWeight: 700,
     marginBottom: 8,
   },
 
-  title: {
-    fontSize: 26,
-    fontWeight: 700,
-    marginBottom: 16,
-    color: "#0F172A",
+  heroSubtitle: {
+    color: "#cbd5e1",
+    fontSize: 11,
+    marginBottom: 20,
   },
 
-  metaRow: {
+  heroGrid: {
     flexDirection: "row",
+    gap: 12,
+  },
+
+  statCard: {
+    flex: 1,
+    backgroundColor: "#ffffff",
+    borderRadius: 16,
+    padding: 14,
+  },
+
+  statLabel: {
+    fontSize: 8,
+    color: "#64748b",
+    textTransform: "uppercase",
     marginBottom: 6,
   },
 
-  metaLabel: {
-    width: 90,
-    fontSize: 10,
-    color: "#64748B",
+  statValue: {
+    fontSize: 12,
+    fontWeight: 700,
+    color: "#0f172a",
   },
 
-  metaValue: {
-    fontSize: 10,
-    fontWeight: 600,
-    color: "#0F172A",
+  /* BODY */
+  body: {
+    paddingHorizontal: 24,
+    paddingTop: 24,
   },
-
-  // ───────────────── DAY SECTION ─────────────────
 
   sectionTitle: {
     fontSize: 18,
     fontWeight: 700,
-    color: "#0F172A",
     marginBottom: 16,
+    color: "#0f172a",
   },
 
-  // ───────────────── STOP CARD ─────────────────
-
-  card: {
-    backgroundColor: "#FFFFFF",
-    border: "1 solid #E2E8F0",
-    borderRadius: 18,
-    padding: 18,
-    marginBottom: 16,
+  /* DAY CARD */
+  dayCard: {
+    backgroundColor: "#ffffff",
+    border: "1 solid #e2e8f0",
+    borderRadius: 16,
+    overflow: "hidden",
+    marginBottom: 18,
   },
 
-  cardTop: {
+  dayHeader: {
+    backgroundColor: "#f8fafc",
+    borderBottom: "1 solid #e2e8f0",
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+  },
+
+  dayBadge: {
+    backgroundColor: "#1e293b",
+    color: "#ffffff",
+    borderRadius: 999,
+    fontSize: 9,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    alignSelf: "flex-start",
+    marginBottom: 8,
+  },
+
+  dayDate: {
+    fontSize: 11,
+    color: "#475569",
+  },
+
+  /* ITEM */
+  item: {
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+    borderBottom: "1 solid #f1f5f9",
+  },
+
+  itemTop: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "flex-start",
+    gap: 14,
   },
 
-  cardLeft: {
+  itemLeft: {
     flex: 1,
-    paddingRight: 12,
   },
 
-  cardRight: {
+  itemTitle: {
+    fontSize: 15,
+    fontWeight: 700,
+    marginBottom: 6,
+    color: "#0f172a",
+  },
+
+  itemRoute: {
+    fontSize: 10,
+    color: "#64748b",
+    lineHeight: 1.5,
+    marginBottom: 10,
+  },
+
+  transportBadge: {
+    alignSelf: "flex-start",
+    backgroundColor: "#eef2ff",
+    color: "#3730a3",
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    fontSize: 8,
+    marginBottom: 12,
+  },
+
+  budgetWrap: {
     alignItems: "flex-end",
   },
 
-  destination: {
-    fontSize: 17,
-    fontWeight: 700,
-    marginBottom: 6,
-    color: "#0F172A",
-  },
-
-  route: {
-    fontSize: 10,
-    color: "#64748B",
+  budgetLabel: {
+    fontSize: 8,
+    color: "#94a3b8",
     marginBottom: 4,
+    textTransform: "uppercase",
   },
 
-  transport: {
-    fontSize: 10,
-    color: "#334155",
-    marginBottom: 4,
-  },
-
-  notes: {
-    fontSize: 9,
-    color: "#64748B",
-    marginTop: 6,
-    lineHeight: 1.4,
-  },
-
-  // ───────────────── BUDGET ─────────────────
-
-  budgetPill: {
-    backgroundColor: "#EFF6FF",
-    borderRadius: 999,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-  },
-
-  budgetText: {
-    fontSize: 11,
+  budgetValue: {
+    fontSize: 13,
     fontWeight: 700,
-    color: "#2563EB",
+    color: "#0f172a",
   },
 
-  // ───────────────── LINKS ─────────────────
-
+  /* LINKS */
   linksWrap: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 8,
-    marginTop: 14,
+    marginTop: 6,
   },
 
   linkPill: {
-    border: "1 solid #CBD5E1",
+    border: "1 solid #cbd5e1",
     borderRadius: 999,
-    paddingVertical: 5,
     paddingHorizontal: 10,
-    textDecoration: "none",
+    paddingVertical: 5,
   },
 
   linkText: {
     fontSize: 9,
-    color: "#0F172A",
-    fontWeight: 600,
+    color: "#0f172a",
   },
 
-  // ───────────────── SUMMARY ─────────────────
-
+  /* SUMMARY */
   summaryCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 18,
-    border: "1 solid #E2E8F0",
+    backgroundColor: "#ffffff",
+    border: "1 solid #e2e8f0",
+    borderRadius: 16,
     padding: 18,
-    marginTop: 12,
+    marginTop: 10,
   },
 
-  summaryRow: {
+  summaryTitle: {
+    fontSize: 15,
+    fontWeight: 700,
+    marginBottom: 16,
+  },
+
+  progressRow: {
+    marginBottom: 14,
+  },
+
+  progressTop: {
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingVertical: 8,
-    borderBottom: "1 solid #E2E8F0",
+    marginBottom: 6,
   },
 
-  summaryLabel: {
+  progressLabel: {
     fontSize: 10,
-    color: "#64748B",
+    color: "#475569",
   },
 
-  summaryValue: {
+  progressValue: {
     fontSize: 10,
     fontWeight: 700,
-    color: "#0F172A",
   },
 
-  summaryStrong: {
-    fontSize: 14,
-    fontWeight: 700,
-    color: "#0F172A",
+  progressTrack: {
+    height: 6,
+    backgroundColor: "#e2e8f0",
+    borderRadius: 999,
+    overflow: "hidden",
   },
 
-  // ───────────────── FOOTER ─────────────────
+  progressFill: {
+    height: 6,
+    borderRadius: 999,
+    backgroundColor: "#0f172a",
+  },
 
+  /* FOOTER */
   footer: {
     marginTop: 24,
+    paddingTop: 18,
+    borderTop: "1 solid #e2e8f0",
     textAlign: "center",
+    color: "#94a3b8",
     fontSize: 8,
-    color: "#94A3B8",
   },
 });
 
 export default function TravelPdfDocument({
-  tripInfo = {},
+  tripInfo,
   rows = [],
-  currency = {
-    code: "JPY",
-    symbol: "¥",
-    locale: "ja-JP",
-  },
-  totals = {},
+  dayMap = {},
+  region,
+  totalLocal = 0,
+  totalIDR = 0,
 }) {
-  const safeCurrency = currency || {
-    code: "JPY",
-    symbol: "¥",
-    locale: "ja-JP",
-  };
+
+  const validRows = rows.filter(
+    (row) =>
+      row.destination ||
+      row.from ||
+      row.to
+  );
+
+  const grouped = {};
+
+  validRows.forEach((row) => {
+    const key = row.date || "No Date";
+
+    if (!grouped[key]) {
+      grouped[key] = [];
+    }
+
+    grouped[key].push(row);
+  });
+
+  const totalStops = validRows.length;
+
+  const transportSummary = {};
+
+  validRows.forEach((row) => {
+    const type =
+      row.transportType || "Other";
+
+    transportSummary[type] =
+      (transportSummary[type] || 0) +
+      Number(row.budgetLocal || 0);
+  });
+
+  const maxTransport = Math.max(
+    ...Object.values(transportSummary),
+    1
+  );
 
   return (
     <Document>
-      <Page size="A4" style={styles.page}>
 
-        {/* ───────────────── HEADER ───────────────── */}
+      <Page size="A4" style={styles.page} wrap>
 
-        <View style={styles.header}>
+        {/* HERO */}
+        <View style={styles.hero}>
 
-          <Text style={styles.eyebrow}>
-            BACKPACKERVUN TRAVEL PLANNER
-          </Text>
+          <View style={styles.heroBadge}>
+            <Text style={styles.heroBadgeText}>
+              BACKPACKERVUN TRAVEL PLANNER
+            </Text>
+          </View>
 
-          <Text style={styles.title}>
+          <Text style={styles.heroTitle}>
             Travel Itinerary
           </Text>
 
-          <View style={styles.metaRow}>
-            <Text style={styles.metaLabel}>Prepared For</Text>
-            <Text style={styles.metaValue}>
-              {tripInfo?.clientName || "Client"}
-            </Text>
-          </View>
+          <Text style={styles.heroSubtitle}>
+            Prepared for{" "}
+            {tripInfo?.clientName || "Guest"}
+          </Text>
 
-          <View style={styles.metaRow}>
-            <Text style={styles.metaLabel}>Destination</Text>
-            <Text style={styles.metaValue}>
-              {tripInfo?.destinations || "-"}
-            </Text>
-          </View>
+          <View style={styles.heroGrid}>
 
-          <View style={styles.metaRow}>
-            <Text style={styles.metaLabel}>Duration</Text>
-            <Text style={styles.metaValue}>
-              {tripInfo?.duration || "-"}
-            </Text>
-          </View>
+            <View style={styles.statCard}>
+              <Text style={styles.statLabel}>
+                Destination
+              </Text>
 
-          <View style={styles.metaRow}>
-            <Text style={styles.metaLabel}>Travel Dates</Text>
-            <Text style={styles.metaValue}>
-              {tripInfo?.travelDates || "-"}
-            </Text>
+              <Text style={styles.statValue}>
+                {region || "-"}
+              </Text>
+            </View>
+
+            <View style={styles.statCard}>
+              <Text style={styles.statLabel}>
+                Total Stops
+              </Text>
+
+              <Text style={styles.statValue}>
+                {totalStops}
+              </Text>
+            </View>
+
+            <View style={styles.statCard}>
+              <Text style={styles.statLabel}>
+                Total Budget
+              </Text>
+
+              <Text style={styles.statValue}>
+                JPY{" "}
+                {Number(
+                  totalLocal
+                ).toLocaleString()}
+              </Text>
+            </View>
+
           </View>
 
         </View>
 
-        {/* ───────────────── ITINERARY ───────────────── */}
+        {/* BODY */}
+        <View style={styles.body}>
 
-        <Text style={styles.sectionTitle}>
-          Itinerary
-        </Text>
+          <Text style={styles.sectionTitle}>
+            Itinerary
+          </Text>
 
-        {rows.map((row, index) => {
+          {Object.entries(grouped).map(
+            ([date, items], idx) => {
 
-          const mapUrl = row.destination
-            ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(row.destination)}`
-            : null;
+              const dayNumber =
+                dayMap?.[date] || idx + 1;
 
-          const routeUrl =
-            row.from && row.to
-              ? `https://www.google.com/maps/dir/${encodeURIComponent(row.from)}/${encodeURIComponent(row.to)}`
-              : null;
+              return (
 
-          const bookingUrl =
-            row.destination
-              ? `https://www.booking.com/searchresults.html?ss=${encodeURIComponent(row.destination)}`
-              : null;
+                <View
+                  key={date}
+                  style={styles.dayCard}
+                  wrap={false}
+                >
 
-          return (
-            <View key={index} style={styles.card} wrap={false}>
+                  <View style={styles.dayHeader}>
 
-              <View style={styles.cardTop}>
-
-                <View style={styles.cardLeft}>
-
-                  <Text style={styles.destination}>
-                    {row.destination || "Untitled Stop"}
-                  </Text>
-
-                  <Text style={styles.route}>
-                    {row.from || "-"} → {row.to || "-"}
-                  </Text>
-
-                  <Text style={styles.transport}>
-                    {row.transport || "-"}
-                  </Text>
-
-                  {row.notes ? (
-                    <Text style={styles.notes}>
-                      {row.notes}
+                    <Text style={styles.dayBadge}>
+                      DAY {dayNumber}
                     </Text>
-                  ) : null}
+
+                    <Text style={styles.dayDate}>
+                      {date}
+                    </Text>
+
+                  </View>
+
+                  {items.map((row, i) => {
+
+                    const mapUrl =
+                      row.destination
+                        ? `https://www.google.com/maps/search/${encodeURIComponent(
+                            row.destination
+                          )}`
+                        : null;
+
+                    const routeUrl =
+                      row.from && row.to
+                        ? `https://www.google.com/maps/dir/${encodeURIComponent(
+                            row.from
+                          )}/${encodeURIComponent(
+                            row.to
+                          )}`
+                        : null;
+
+                    const bookingUrl =
+                      row.bookingLink ||
+                      row.bookingUrl;
+
+                    return (
+
+                      <View
+                        key={i}
+                        style={styles.item}
+                        wrap={false}
+                      >
+
+                        <View style={styles.itemTop}>
+
+                          <View style={styles.itemLeft}>
+
+                            <Text style={styles.itemTitle}>
+                              {row.destination ||
+                                "Untitled Stop"}
+                            </Text>
+
+                            <Text style={styles.itemRoute}>
+                              {row.from || "-"} →{" "}
+                              {row.to || "-"}
+                            </Text>
+
+                            {row.transportType && (
+                              <Text
+                                style={
+                                  styles.transportBadge
+                                }
+                              >
+                                {row.transportType}
+                              </Text>
+                            )}
+
+                            <View style={styles.linksWrap}>
+
+                              {mapUrl && (
+                                <Link
+                                  src={mapUrl}
+                                  style={
+                                    styles.linkPill
+                                  }
+                                >
+                                  <Text
+                                    style={
+                                      styles.linkText
+                                    }
+                                  >
+                                    MAP
+                                  </Text>
+                                </Link>
+                              )}
+
+                              {routeUrl && (
+                                <Link
+                                  src={routeUrl}
+                                  style={
+                                    styles.linkPill
+                                  }
+                                >
+                                  <Text
+                                    style={
+                                      styles.linkText
+                                    }
+                                  >
+                                    ROUTE
+                                  </Text>
+                                </Link>
+                              )}
+
+                              {bookingUrl && (
+                                <Link
+                                  src={bookingUrl}
+                                  style={
+                                    styles.linkPill
+                                  }
+                                >
+                                  <Text
+                                    style={
+                                      styles.linkText
+                                    }
+                                  >
+                                    BOOK
+                                  </Text>
+                                </Link>
+                              )}
+
+                            </View>
+
+                          </View>
+
+                          <View
+                            style={
+                              styles.budgetWrap
+                            }
+                          >
+
+                            <Text
+                              style={
+                                styles.budgetLabel
+                              }
+                            >
+                              Budget
+                            </Text>
+
+                            <Text
+                              style={
+                                styles.budgetValue
+                              }
+                            >
+                              JPY{" "}
+                              {Number(
+                                row.budgetLocal ||
+                                  0
+                              ).toLocaleString()}
+                            </Text>
+
+                          </View>
+
+                        </View>
+
+                      </View>
+
+                    );
+                  })}
 
                 </View>
 
-                <View style={styles.cardRight}>
+              );
+            }
+          )}
 
-                  <View style={styles.budgetPill}>
-                    <Text style={styles.budgetText}>
-                      {new Intl.NumberFormat(
-                        safeCurrency.locale,
-                        {
-                          style: "currency",
-                          currency: safeCurrency.code,
-                          maximumFractionDigits:
-                            ["IDR", "VND", "KRW"].includes(safeCurrency.code)
-                              ? 0
-                              : 2,
-                        }
-                      ).format(Number(row.budgetLocal || 0))}
+          {/* SUMMARY */}
+          <View style={styles.summaryCard}>
+
+            <Text style={styles.summaryTitle}>
+              Spending Overview
+            </Text>
+
+            {Object.entries(
+              transportSummary
+            ).map(([label, value]) => {
+
+              const width =
+                (value / maxTransport) *
+                100;
+
+              return (
+
+                <View
+                  key={label}
+                  style={styles.progressRow}
+                >
+
+                  <View
+                    style={styles.progressTop}
+                  >
+
+                    <Text
+                      style={
+                        styles.progressLabel
+                      }
+                    >
+                      {label}
                     </Text>
+
+                    <Text
+                      style={
+                        styles.progressValue
+                      }
+                    >
+                      JPY{" "}
+                      {Number(
+                        value
+                      ).toLocaleString()}
+                    </Text>
+
+                  </View>
+
+                  <View
+                    style={
+                      styles.progressTrack
+                    }
+                  >
+
+                    <View
+                      style={{
+                        ...styles.progressFill,
+                        width: `${width}%`,
+                      }}
+                    />
+
                   </View>
 
                 </View>
 
-              </View>
+              );
+            })}
 
-              <View style={styles.linksWrap}>
-
-                {mapUrl && (
-                  <Link src={mapUrl} style={styles.linkPill}>
-                    <Text style={styles.linkText}>
-                      📍 Map
-                    </Text>
-                  </Link>
-                )}
-
-                {routeUrl && (
-                  <Link src={routeUrl} style={styles.linkPill}>
-                    <Text style={styles.linkText}>
-                      🗺 Route
-                    </Text>
-                  </Link>
-                )}
-
-                {bookingUrl && (
-                  <Link src={bookingUrl} style={styles.linkPill}>
-                    <Text style={styles.linkText}>
-                      ✈ Booking
-                    </Text>
-                  </Link>
-                )}
-
-              </View>
-
-            </View>
-          );
-        })}
-
-        {/* ───────────────── SUMMARY ───────────────── */}
-
-        <View style={styles.summaryCard}>
-
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>
-              Total Stops
-            </Text>
-
-            <Text style={styles.summaryValue}>
-              {rows.length}
-            </Text>
           </View>
 
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>
-              Total Budget
+          {/* FOOTER */}
+          <View style={styles.footer}>
+
+            <Text>
+              PREPARED WITH
+              BACKPACKERVUN ·
+              WWW.BACKPACKERVUN.COM
             </Text>
 
-            <Text style={styles.summaryStrong}>
-              {new Intl.NumberFormat(
-                safeCurrency.locale,
-                {
-                  style: "currency",
-                  currency: safeCurrency.code,
-                  maximumFractionDigits:
-                    ["IDR", "VND", "KRW"].includes(safeCurrency.code)
-                      ? 0
-                      : 2,
-                }
-              ).format(Number(totals?.local || 0))}
-            </Text>
           </View>
 
         </View>
 
-        {/* ───────────────── FOOTER ───────────────── */}
-
-        <Text style={styles.footer}>
-          PREPARED WITH BACKPACKERVUN · BACKPACKERVUN.COM
-        </Text>
-
       </Page>
+
     </Document>
   );
 }
