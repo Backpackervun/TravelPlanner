@@ -74,7 +74,7 @@ export default function PreviewModal({
   if (!open) return null;
 
   /* ========================================================
-     FINAL PDF EXPORT SYSTEM
+     FINAL PDF EXPORT
   ======================================================== */
 
   const handleExportPDF = async () => {
@@ -94,110 +94,46 @@ export default function PreviewModal({
 
       setExporting(true);
 
-      /* ========================================
-         CREATE EXPORT SESSION
-      ======================================== */
+      const currentUrl =
+        `${window.location.origin}/print/${tripInfo?.id}`;
 
-      const sessionRes =
+      console.log(
+        "EXPORT URL:",
+        currentUrl
+      );
+
+      const response =
         await fetch(
 
-          "/api/export-session",
+          `/api/export-pdf?url=${encodeURIComponent(currentUrl)}`
 
-          {
-
-            method: "POST",
-
-            headers: {
-              "Content-Type":
-                "application/json",
-            },
-
-            body: JSON.stringify({
-
-              tripInfo,
-              rows,
-              dayMap,
-              region,
-              rate,
-              totalLocal,
-              totalIDR,
-            }),
-          }
         );
 
-      if (!sessionRes.ok) {
+      console.log(
+        "EXPORT STATUS:",
+        response.status
+      );
 
-        const err =
-          await sessionRes.text();
+      if (!response.ok) {
 
-        console.error(err);
+        const text =
+          await response.text();
 
-        throw new Error(
-          "Failed to create export session"
+        console.error(
+          "EXPORT ERROR:",
+          text
         );
+
+        alert(text);
+
+        return;
       }
-
-      const sessionData =
-        await sessionRes.json();
-
-console.log(
-  "SESSION DATA:",
-  sessionData
-);
-
-      const exportId =
-  sessionData?.id;
-
-console.log(
-  "EXPORT ID:",
-  exportId
-);
-
-if (!exportId) {
-
-  alert(
-    "Export ID missing"
-  );
-
-  return;
-}
-
-      /* ========================================
-         GENERATE PDF
-      ======================================== */
-
-     const response =
-  await fetch(
-    `/api/export-pdf?id=${exportId}`
-  );
-
-console.log(
-  "EXPORT STATUS:",
-  response.status
-);
-
-if (!response.ok) {
-
-  const text =
-    await response.text();
-
-  console.error(
-    "EXPORT ERROR:",
-    text
-  );
-
-  alert(text);
-
-  throw new Error(
-    "Failed to export PDF"
-  );
-}
 
       const blob =
         await response.blob();
 
-      const url =
-        URL.createObjectURL(
+      const blobUrl =
+        window.URL.createObjectURL(
           blob
         );
 
@@ -209,7 +145,7 @@ if (!response.ok) {
       if (isMobile) {
 
         window.open(
-          url,
+          blobUrl,
           "_blank"
         );
 
@@ -218,7 +154,7 @@ if (!response.ok) {
         const link =
           document.createElement("a");
 
-        link.href = url;
+        link.href = blobUrl;
 
         link.download =
           "backpackervun-itinerary.pdf";
@@ -234,8 +170,8 @@ if (!response.ok) {
 
       setTimeout(() => {
 
-        URL.revokeObjectURL(
-          url
+        window.URL.revokeObjectURL(
+          blobUrl
         );
 
       }, 10000);
