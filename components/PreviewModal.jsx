@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useT } from "@/context/TranslationContext";
 
 import PrintHeader from "./PrintHeader";
@@ -23,6 +23,9 @@ export default function PreviewModal({
   const { t } = useT();
 
   const paperRef = useRef(null);
+
+  const [exporting, setExporting] =
+    useState(false);
 
   useEffect(() => {
 
@@ -70,7 +73,14 @@ export default function PreviewModal({
 
   if (!open) return null;
 
+  /* ========================================================
+     FINAL PDF EXPORT
+     PUPPETEER SERVER PDF
+  ======================================================== */
+
   const handleExportPDF = async () => {
+
+    if (exporting) return;
 
     if (!canExportPDF) {
 
@@ -83,124 +93,97 @@ export default function PreviewModal({
 
     try {
 
-      const html2pdf =
-        (
-          await import(
-            "html2pdf.js/dist/html2pdf.min.js"
-          )
-        ).default;
-
-      const element =
-        paperRef.current;
-
-      if (!element) {
-
-        throw new Error(
-          "Preview paper not found"
-        );
-      }
+      setExporting(true);
 
       const isMobile =
         /Android|iPhone|iPad|iPod/i.test(
           navigator.userAgent
         );
 
-      const opt = {
+      /* ========================================
+         CREATE EXPORT SESSION
+      ======================================== */
 
-        margin: [0, 0, 0, 0],
+      const sessionResponse =
+        await fetch(
+          "/api/export-session",
+          {
+            method: "POST",
 
-        filename:
-          "backpackervun-itinerary.pdf",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
 
-        image: {
+            body: JSON.stringify({
+              tripInfo,
+              rows,
+              dayMap,
+              region,
+              rate,
+              totalLocal,
+              totalIDR,
+            }),
+          }
+        );
 
-          type: "jpeg",
+      if (!sessionResponse.ok) {
 
-          quality: 1,
-        },
+        throw new Error(
+          "Failed to create export session"
+        );
+      }
 
-        html2canvas: {
+      const session =
+        await sessionResponse.json();
 
-          scale: isMobile
-            ? 0.75
-            : 0.9,
+      if (!session?.id) {
 
-          useCORS: true,
+        throw new Error(
+          "Missing export session ID"
+        );
+      }
 
-          letterRendering: true,
+      /* ========================================
+         FINAL PDF URL
+      ======================================== */
 
-          scrollY: 0,
+      const pdfUrl =
+        `/api/export-pdf?id=${session.id}`;
 
-          backgroundColor:
-            "#ffffff",
-        },
-
-        jsPDF: {
-
-          unit: "mm",
-
-          format: "a4",
-
-          orientation:
-            "portrait",
-        },
-
-        pagebreak: {
-
-          mode: [
-            "css",
-            "legacy",
-          ],
-        },
-      };
-
-      /* =========================
+      /* ========================================
          MOBILE
-      ========================= */
+      ======================================== */
 
       if (isMobile) {
 
-        const worker =
-          html2pdf()
-            .set(opt)
-            .from(element);
+        window.location.href =
+          pdfUrl;
 
-        const pdfBlob =
-          await worker.outputPdf(
-            "blob"
-          );
-
-        const blobUrl =
-          URL.createObjectURL(
-            pdfBlob
-          );
-
-        window.open(
-          blobUrl,
-          "_blank"
-        );
-
-        setTimeout(() => {
-
-          URL.revokeObjectURL(
-            blobUrl
-          );
-
-        }, 10000);
-
+        return;
       }
 
-      /* =========================
+      /* ========================================
          DESKTOP
-      ========================= */
+      ======================================== */
 
-      else {
+      const link =
+        document.createElement("a");
 
-        await html2pdf()
-          .set(opt)
-          .from(element)
-          .save();
-      }
+      link.href = pdfUrl;
+
+      link.setAttribute(
+        "download",
+        "backpackervun-itinerary.pdf"
+      );
+
+      document.body.appendChild(
+        link
+      );
+
+      link.click();
+
+      link.remove();
 
     } catch (err) {
 
@@ -209,6 +192,10 @@ export default function PreviewModal({
       alert(
         "Failed to export PDF."
       );
+
+    } finally {
+
+      setExporting(false);
     }
   };
 
@@ -271,7 +258,8 @@ export default function PreviewModal({
 
         <button
           onClick={handleExportPDF}
-          className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2 text-sm font-semibold text-[#0f172a] shadow-lg transition hover:bg-white/90 active:scale-[0.98]"
+          disabled={exporting}
+          className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2 text-sm font-semibold text-[#0f172a] shadow-lg transition hover:bg-white/90 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
         >
 
           <svg
@@ -292,7 +280,9 @@ export default function PreviewModal({
 
           </svg>
 
-          {t("exportPDF")}
+          {exporting
+            ? "Exporting..."
+            : t("exportPDF")}
 
         </button>
 
