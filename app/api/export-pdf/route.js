@@ -1,5 +1,4 @@
 import puppeteer from "puppeteer-core";
-
 import chromium from "@sparticuz/chromium";
 
 export const dynamic =
@@ -11,45 +10,30 @@ export const runtime =
 export const maxDuration =
   60;
 
-export async function GET(req) {
+export async function POST(req) {
 
   let browser;
 
   try {
 
-    const { searchParams } =
-      new URL(req.url);
+    const body =
+      await req.json();
 
-    const id =
-      searchParams.get("id");
+    const html =
+      body?.html;
 
-    if (!id) {
+    if (!html) {
 
       return Response.json(
         {
           error:
-            "Missing export ID",
+            "Missing HTML content",
         },
         {
           status: 400,
         }
       );
     }
-
-    const baseUrl =
-      process.env
-        .NEXT_PUBLIC_SITE_URL;
-
-    if (!baseUrl) {
-
-      throw new Error(
-        "NEXT_PUBLIC_SITE_URL missing"
-      );
-    }
-
-    /* ========================================
-       IMPORTANT FIX
-    ======================================== */
 
     browser =
       await puppeteer.launch({
@@ -58,6 +42,7 @@ export async function GET(req) {
           ...chromium.args,
           "--hide-scrollbars",
           "--disable-web-security",
+          "--no-sandbox",
         ],
 
         defaultViewport: {
@@ -76,22 +61,13 @@ export async function GET(req) {
     const page =
       await browser.newPage();
 
-    await page.goto(
-
-      `${baseUrl}/print/${id}`,
-
+    await page.setContent(
+      html,
       {
-
         waitUntil:
-          "domcontentloaded",
-
-        timeout: 60000,
+          "networkidle0",
       }
     );
-
-    /* ========================================
-       WAIT FULL RENDER
-    ======================================== */
 
     await page.waitForSelector(
       ".preview-paper",
@@ -104,13 +80,9 @@ export async function GET(req) {
       (resolve) =>
         setTimeout(
           resolve,
-          3000
+          1500
         )
     );
-
-    /* ========================================
-       PDF
-    ======================================== */
 
     const pdf =
       await page.pdf({

@@ -73,10 +73,6 @@ export default function PreviewModal({
 
   if (!open) return null;
 
-  /* ========================================================
-     FINAL PDF EXPORT
-  ======================================================== */
-
   const handleExportPDF = async () => {
 
     if (exporting) return;
@@ -94,46 +90,97 @@ export default function PreviewModal({
 
       setExporting(true);
 
-      const currentUrl =
-        `${window.location.origin}/print/${tripInfo?.id}`;
+      const paperEl =
+        paperRef.current;
 
-      console.log(
-        "EXPORT URL:",
-        currentUrl
-      );
+      if (!paperEl) {
+
+        throw new Error(
+          "Preview paper not found"
+        );
+      }
+
+      const html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+
+          <meta charset="UTF-8" />
+
+          <style>
+
+            * {
+              box-sizing: border-box;
+            }
+
+            body {
+              margin: 0;
+              background: white;
+              font-family: Inter, sans-serif;
+            }
+
+            @page {
+              size: A4;
+              margin: 0;
+            }
+
+            .preview-paper {
+              width: 210mm;
+              background: white;
+            }
+
+            a {
+              color: inherit !important;
+              text-decoration: none !important;
+            }
+
+          </style>
+
+        </head>
+
+        <body>
+
+          ${paperEl.outerHTML}
+
+        </body>
+        </html>
+      `;
 
       const response =
         await fetch(
+          "/api/export-pdf",
+          {
 
-          `/api/export-pdf?url=${encodeURIComponent(currentUrl)}`
+            method: "POST",
 
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+
+            body: JSON.stringify({
+              html,
+            }),
+          }
         );
-
-      console.log(
-        "EXPORT STATUS:",
-        response.status
-      );
 
       if (!response.ok) {
 
         const text =
           await response.text();
 
-        console.error(
-          "EXPORT ERROR:",
-          text
+        console.error(text);
+
+        throw new Error(
+          "Failed to export PDF"
         );
-
-        alert(text);
-
-        return;
       }
 
       const blob =
         await response.blob();
 
-      const blobUrl =
-        window.URL.createObjectURL(
+      const url =
+        URL.createObjectURL(
           blob
         );
 
@@ -145,7 +192,7 @@ export default function PreviewModal({
       if (isMobile) {
 
         window.open(
-          blobUrl,
+          url,
           "_blank"
         );
 
@@ -154,7 +201,7 @@ export default function PreviewModal({
         const link =
           document.createElement("a");
 
-        link.href = blobUrl;
+        link.href = url;
 
         link.download =
           "backpackervun-itinerary.pdf";
@@ -165,14 +212,14 @@ export default function PreviewModal({
 
         link.click();
 
-        link.remove();
+        document.body.removeChild(
+          link
+        );
       }
 
       setTimeout(() => {
 
-        window.URL.revokeObjectURL(
-          blobUrl
-        );
+        URL.revokeObjectURL(url);
 
       }, 10000);
 
@@ -207,29 +254,7 @@ export default function PreviewModal({
           className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/20"
         >
 
-          <svg
-            viewBox="0 0 24 24"
-            className="h-4 w-4"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-
-            <path d="M19 12H5" />
-
-            <path d="M12 5l-7 7 7 7" />
-
-          </svg>
-
-          <span className="hidden sm:inline">
-            {t("backToEdit")}
-          </span>
-
-          <span className="sm:hidden">
-            {t("back")}
-          </span>
+          ← {t("backToEdit")}
 
         </button>
 
@@ -242,31 +267,8 @@ export default function PreviewModal({
         <button
           onClick={handleExportPDF}
           disabled={exporting}
-          className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2 text-sm font-semibold text-[#0f172a] shadow-lg transition hover:bg-white/90 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2 text-sm font-semibold text-[#0f172a] shadow-lg transition hover:bg-white/90 disabled:opacity-50"
         >
-
-          <svg
-            viewBox="0 0 24 24"
-            className="h-4 w-4"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-
-            <polyline points="7 10 12 15 17 10" />
-
-            <line
-              x1="12"
-              y1="15"
-              x2="12"
-              y2="3"
-            />
-
-          </svg>
 
           {exporting
             ? "Exporting..."
