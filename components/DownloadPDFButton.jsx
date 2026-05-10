@@ -28,29 +28,10 @@ export default function DownloadPDFButton() {
           return;
         }
 
-        // =================================================
-        // MOBILE
-        // =================================================
-
         const isMobile =
           /Android|iPhone|iPad|iPod/i.test(
             navigator.userAgent
           );
-
-        // =================================================
-        // MOBILE → NATIVE PRINT
-        // =================================================
-
-        if (isMobile) {
-
-          window.print();
-
-          return;
-        }
-
-        // =================================================
-        // DESKTOP PDF EXPORT
-        // =================================================
 
         const html2canvas =
           (await import("html2canvas"))
@@ -94,14 +75,17 @@ export default function DownloadPDFButton() {
           )
         );
 
-        // SCREENSHOT
+        // CANVAS
 
         const canvas =
           await html2canvas(
             element,
             {
 
-              scale: 3,
+              scale:
+                isMobile
+                  ? 1.5
+                  : 3,
 
               useCORS: true,
 
@@ -111,17 +95,6 @@ export default function DownloadPDFButton() {
                 "#ffffff",
 
               logging: false,
-
-              scrollX: 0,
-
-              scrollY:
-                -window.scrollY,
-
-              windowWidth:
-                element.scrollWidth,
-
-              windowHeight:
-                element.scrollHeight,
             }
           );
 
@@ -168,8 +141,6 @@ export default function DownloadPDFButton() {
 
         let position = 0;
 
-        // FIRST PAGE
-
         pdf.addImage(
           imgData,
           "JPEG",
@@ -181,8 +152,6 @@ export default function DownloadPDFButton() {
 
         heightLeft -=
           pdfHeight;
-
-        // NEXT PAGES
 
         while (
           heightLeft > 0
@@ -207,7 +176,65 @@ export default function DownloadPDFButton() {
             pdfHeight;
         }
 
-        // SAVE DESKTOP
+        // =================================================
+        // MOBILE SHARE PDF
+        // =================================================
+
+        if (isMobile) {
+
+          const pdfBlob =
+            pdf.output(
+              "blob"
+            );
+
+          const file =
+            new File(
+              [pdfBlob],
+              "travel-itinerary.pdf",
+              {
+                type:
+                  "application/pdf",
+              }
+            );
+
+          // IOS + ANDROID SHARE SHEET
+
+          if (
+            navigator.canShare &&
+            navigator.canShare({
+              files: [file],
+            })
+          ) {
+
+            await navigator.share({
+
+              files: [file],
+
+              title:
+                "Travel Itinerary PDF",
+            });
+
+          } else {
+
+            // FALLBACK
+
+            const blobUrl =
+              URL.createObjectURL(
+                pdfBlob
+              );
+
+            window.open(
+              blobUrl,
+              "_blank"
+            );
+          }
+
+          return;
+        }
+
+        // =================================================
+        // DESKTOP DOWNLOAD
+        // =================================================
 
         pdf.save(
           "travel-itinerary.pdf"
