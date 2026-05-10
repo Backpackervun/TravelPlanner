@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
+
 import { useT } from "@/context/TranslationContext";
 
 import PrintHeader from "./PrintHeader";
@@ -26,6 +29,10 @@ export default function PreviewModal({
 
   const [exporting, setExporting] =
     useState(false);
+
+  /* =======================================================
+     ESC CLOSE
+  ======================================================= */
 
   useEffect(() => {
 
@@ -53,6 +60,10 @@ export default function PreviewModal({
 
   }, [open, onClose]);
 
+  /* =======================================================
+     LOCK BODY SCROLL
+  ======================================================= */
+
   useEffect(() => {
 
     if (!open) return;
@@ -73,9 +84,9 @@ export default function PreviewModal({
 
   if (!open) return null;
 
-  /* ========================================================
-     FINAL PDF EXPORT
-  ======================================================== */
+  /* =======================================================
+     PDF EXPORT
+  ======================================================= */
 
   const handleExportPDF = async () => {
 
@@ -94,185 +105,144 @@ export default function PreviewModal({
 
       setExporting(true);
 
-      const paperEl =
+      const input =
         paperRef.current;
 
-      if (!paperEl) {
+      if (!input) {
 
         throw new Error(
-          "Preview paper missing"
+          "Preview paper not found"
         );
       }
 
-      /* ========================================================
-         BUILD LIVE HTML
-      ======================================================== */
+      /* ===================================================
+         HIGH QUALITY SCREENSHOT
+      =================================================== */
 
-      const html = `
-<!DOCTYPE html>
-
-<html>
-
-<head>
-
-<meta charset="UTF-8" />
-
-<meta
-  name="viewport"
-  content="width=device-width, initial-scale=1.0"
-/>
-
-<style>
-
-* {
-
-  box-sizing: border-box;
-
-  -webkit-print-color-adjust: exact !important;
-
-  print-color-adjust: exact !important;
-
-  color-adjust: exact !important;
-}
-
-html,
-body {
-
-  margin: 0;
-
-  padding: 0;
-
-  background: #ffffff;
-
-  font-family:
-    Inter,
-    Arial,
-    sans-serif;
-}
-
-@page {
-
-  size: A4;
-
-  margin: 0;
-}
-
-body {
-
-  display: flex;
-
-  justify-content: center;
-
-  padding: 24px;
-}
-
-.preview-paper {
-
-  width: 794px !important;
-
-  max-width: 794px !important;
-
-  min-width: 794px !important;
-
-  background: white !important;
-
-  overflow: visible !important;
-
-  border-radius: 24px !important;
-
-  box-shadow: none !important;
-}
-
-img {
-
-  max-width: 100%;
-
-  display: block;
-}
-
-a {
-
-  color: inherit !important;
-
-  text-decoration: none !important;
-}
-
-.rounded-2xl,
-.rounded-3xl,
-.day-block,
-.itinerary-card,
-.stop,
-.print-card,
-section,
-article {
-
-  page-break-inside: avoid !important;
-
-  break-inside: avoid !important;
-}
-
-</style>
-
-</head>
-
-<body>
-
-${paperEl.outerHTML}
-
-</body>
-
-</html>
-`;
-
-      /* ========================================================
-         CALL PDF API
-      ======================================================== */
-
-      const response =
-        await fetch(
-          "/api/export-pdf",
+      const canvas =
+        await html2canvas(
+          input,
           {
 
-            method: "POST",
+            scale:
+              Math.max(
+                window.devicePixelRatio,
+                3
+              ),
 
-            headers: {
-              "Content-Type":
-                "application/json",
-            },
+            useCORS: true,
 
-            body: JSON.stringify({
-              html,
-            }),
+            allowTaint: true,
+
+            backgroundColor:
+              "#ffffff",
+
+            logging: false,
+
+            letterRendering: true,
+
+            imageTimeout: 0,
+
+            scrollX: 0,
+
+            scrollY:
+              -window.scrollY,
+
+            windowWidth:
+              document.documentElement
+                .scrollWidth,
+
+            windowHeight:
+              document.documentElement
+                .scrollHeight,
           }
         );
 
-      if (!response.ok) {
+      /* ===================================================
+         PDF SETUP
+      =================================================== */
 
-        const errorText =
-          await response.text();
+      const pdf =
+        new jsPDF({
+          orientation:
+            "portrait",
+          unit: "mm",
+          format: "a4",
+          compress: false,
+        });
 
-        console.error(
-          "PDF API ERROR:",
-          errorText
+      const pdfWidth = 210;
+      const pdfHeight = 297;
+
+      const canvasWidth =
+        canvas.width;
+
+      const canvasHeight =
+        canvas.height;
+
+      const imgWidth =
+        pdfWidth;
+
+      const imgHeight =
+        (canvasHeight *
+          imgWidth) /
+        canvasWidth;
+
+      const imgData =
+        canvas.toDataURL(
+          "image/jpeg",
+          1.0
         );
 
-        throw new Error(
-          errorText ||
-          "Failed to export PDF"
+      /* ===================================================
+         MULTI PAGE SUPPORT
+      =================================================== */
+
+      let heightLeft =
+        imgHeight;
+
+      let position = 0;
+
+      pdf.addImage(
+        imgData,
+        "JPEG",
+        0,
+        position,
+        imgWidth,
+        imgHeight,
+        undefined,
+        "FAST"
+      );
+
+      heightLeft -=
+        pdfHeight;
+
+      while (heightLeft > 0) {
+
+        position =
+          heightLeft -
+          imgHeight;
+
+        pdf.addPage();
+
+        pdf.addImage(
+          imgData,
+          "JPEG",
+          0,
+          position,
+          imgWidth,
+          imgHeight,
+          undefined,
+          "FAST"
         );
+
+        heightLeft -=
+          pdfHeight;
       }
 
-      /* ========================================================
-         CREATE PDF DOWNLOAD
-      ======================================================== */
-
-      const blob =
-        await response.blob();
-
-      const url =
-        URL.createObjectURL(
-          blob
-        );
+      /* ===================================================
+         DOWNLOAD
+      =================================================== */
 
       const isMobile =
         /Android|iPhone|iPad|iPod/i.test(
@@ -281,37 +251,22 @@ ${paperEl.outerHTML}
 
       if (isMobile) {
 
+        const blobUrl =
+          pdf.output(
+            "bloburl"
+          );
+
         window.open(
-          url,
+          blobUrl,
           "_blank"
         );
 
       } else {
 
-        const link =
-          document.createElement("a");
-
-        link.href = url;
-
-        link.download =
-          "backpackervun-itinerary.pdf";
-
-        document.body.appendChild(
-          link
+        pdf.save(
+          "backpackervun-itinerary.pdf"
         );
-
-        link.click();
-
-        link.remove();
       }
-
-      setTimeout(() => {
-
-        URL.revokeObjectURL(
-          url
-        );
-
-      }, 10000);
 
     } catch (err) {
 
@@ -326,6 +281,10 @@ ${paperEl.outerHTML}
       setExporting(false);
     }
   };
+
+  /* =======================================================
+     RENDER
+  ======================================================= */
 
   return (
 
@@ -343,7 +302,7 @@ ${paperEl.outerHTML}
 
       <div className="relative z-10 flex items-center justify-between border-b border-white/10 bg-[#0f172a]/95 px-4 py-3 sm:px-6">
 
-        {/* BACK BUTTON */}
+        {/* BACK */}
 
         <button
           onClick={onClose}
@@ -362,7 +321,7 @@ ${paperEl.outerHTML}
 
         </div>
 
-        {/* EXPORT BUTTON */}
+        {/* EXPORT */}
 
         <button
           onClick={handleExportPDF}
@@ -378,7 +337,7 @@ ${paperEl.outerHTML}
 
       </div>
 
-      {/* PREVIEW */}
+      {/* CONTENT */}
 
       <div className="relative z-10 flex-1 overflow-auto bg-[#0f172a] p-6">
 
