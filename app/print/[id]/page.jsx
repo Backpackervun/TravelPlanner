@@ -4,36 +4,49 @@ import { useEffect, useState } from "react";
 
 export default function PrintPage({ params }) {
 
+  const [mounted, setMounted] =
+    useState(false);
+
   const [data, setData] =
     useState(null);
 
   useEffect(() => {
 
-    const raw =
-      localStorage.getItem(
-        `bpv-export-${params.id}`
+    setMounted(true);
+
+    try {
+
+      const raw =
+        localStorage.getItem(
+          `bpv-export-${params.id}`
+        );
+
+      console.log(
+        "RAW EXPORT:",
+        raw
       );
 
-    if (!raw) {
-      return;
-    }
+      if (!raw) return;
 
-    setData(JSON.parse(raw));
+      const parsed =
+        JSON.parse(raw);
+
+      console.log(
+        "PARSED:",
+        parsed
+      );
+
+      setData(parsed);
+
+    } catch (err) {
+
+      console.error(err);
+    }
 
   }, [params.id]);
 
-  if (!data) {
-
-    return (
-      <div
-        style={{
-          color: "white",
-          padding: 40,
-        }}
-      >
-        Loading export...
-      </div>
-    );
+  if (!mounted) {
+    return null;
   }
 
   return (
@@ -42,7 +55,7 @@ export default function PrintPage({ params }) {
       style={{
         background: "#0f172a",
         minHeight: "100vh",
-        padding: "40px",
+        padding: 40,
       }}
     >
 
@@ -52,81 +65,81 @@ export default function PrintPage({ params }) {
           width: "210mm",
           margin: "0 auto",
           background: "white",
-          borderRadius: "28px",
-          overflow: "hidden",
-          padding: "40px",
+          borderRadius: 24,
+          padding: 40,
         }}
       >
 
         <h1
           style={{
-            fontSize: "42px",
+            fontSize: 42,
             fontWeight: 800,
-            marginBottom: "20px",
+            marginBottom: 20,
           }}
         >
           Backpackervun
         </h1>
 
-        <h2
-          style={{
-            fontSize: "28px",
-            marginBottom: "20px",
-          }}
-        >
-          {data.tripInfo?.clientName}
-        </h2>
+        {!data ? (
 
-        <div
-          style={{
-            marginBottom: "40px",
-          }}
-        >
-          {data.tripInfo?.duration}
-        </div>
-
-        {data.rows?.map((row, index) => (
-
-          <div
-            key={index}
-            style={{
-              border: "1px solid #ddd",
-              borderRadius: "20px",
-              padding: "20px",
-              marginBottom: "20px",
-            }}
-          >
-
-            <div
-              style={{
-                fontSize: "14px",
-                opacity: 0.6,
-              }}
-            >
-              {row.time}
-            </div>
-
-            <div
-              style={{
-                fontSize: "28px",
-                fontWeight: 700,
-              }}
-            >
-              {row.title}
-            </div>
-
-            <div
-              style={{
-                marginTop: "8px",
-                opacity: 0.7,
-              }}
-            >
-              {row.description}
-            </div>
-
+          <div>
+            Loading export...
           </div>
 
-        ))}
+        ) : (
+
+          <>
+            <h2
+              style={{
+                fontSize: 28,
+                marginBottom: 20,
+              }}
+            >
+              {data.tripInfo?.clientName}
+            </h2>
+
+            <div
+              style={{
+                marginBottom: 30,
+              }}
+            >
+              {data.tripInfo?.duration}
+            </div>
+
+            {data.rows?.map(
+              (row, index) => (
+
+                <div
+                  key={index}
+                  style={{
+                    border:
+                      "1px solid #ddd",
+                    borderRadius: 20,
+                    padding: 20,
+                    marginBottom: 20,
+                  }}
+                >
+
+                  <div>
+                    {row.time}
+                  </div>
+
+                  <div
+                    style={{
+                      fontSize: 24,
+                      fontWeight: 700,
+                    }}
+                  >
+                    {row.title}
+                  </div>
+
+                </div>
+
+              )
+            )}
+          </>
+
+        )}
 
       </div>
 
