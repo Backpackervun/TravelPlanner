@@ -64,9 +64,12 @@ const handleExportPDF = async () => {
     return;
   }
 
-   try {
+  try {
 
-    const response =
+    // STEP 1
+    // create export session
+
+    const sessionResponse =
       await fetch(
         "/api/export-session",
         {
@@ -89,47 +92,62 @@ const handleExportPDF = async () => {
         }
       );
 
-    const result =
-      await response.json();
-
-    if (!result?.id) {
+    if (!sessionResponse.ok) {
       throw new Error(
         "Failed to create export session"
       );
     }
 
-    const url =
-      `/api/export-pdf?id=${result.id}`;
+    const result =
+      await sessionResponse.json();
 
-    const isIOS =
-      /iPad|iPhone|iPod/.test(
-        navigator.userAgent
-      );
-
-    if (isIOS) {
-
-      window.open(url, "_blank");
-
-    } else {
-
-      const link =
-        document.createElement("a");
-
-      link.href = url;
-
-      link.download =
-        "backpackervun-itinerary.pdf";
-
-      document.body.appendChild(
-        link
-      );
-
-      link.click();
-
-      document.body.removeChild(
-        link
+    if (!result?.id) {
+      throw new Error(
+        "Export session missing ID"
       );
     }
+
+    // STEP 2
+    // request PDF
+
+    const pdfUrl =
+      `/api/export-pdf?id=${result.id}`;
+
+    const pdfResponse =
+      await fetch(pdfUrl);
+
+    if (!pdfResponse.ok) {
+      throw new Error(
+        "Failed to generate PDF"
+      );
+    }
+
+    // STEP 3
+    // download blob
+
+    const blob =
+      await pdfResponse.blob();
+
+    const downloadUrl =
+      window.URL.createObjectURL(blob);
+
+    const link =
+      document.createElement("a");
+
+    link.href = downloadUrl;
+
+    link.download =
+      "backpackervun-itinerary.pdf";
+
+    document.body.appendChild(link);
+
+    link.click();
+
+    link.remove();
+
+    window.URL.revokeObjectURL(
+      downloadUrl
+    );
 
   } catch (err) {
 
