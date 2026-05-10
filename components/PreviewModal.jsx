@@ -80,168 +80,147 @@ export default function PreviewModal({
 
 const handleExportPDF = async () => {
 
-    if (exporting) return;
+  if (exporting) return;
 
-    if (!canExportPDF) {
+  if (!canExportPDF) {
 
-      onUpgradeNeeded?.(
-        "PDF export requires a Lite or Pro plan."
+    onUpgradeNeeded?.(
+      "PDF export requires a Lite or Pro plan."
+    );
+
+    return;
+  }
+
+  try {
+
+    setExporting(true);
+
+    // GENERATE UNIQUE EXPORT ID
+    const exportId =
+      crypto.randomUUID();
+
+    // SAVE LIVE PREVIEW DATA
+    localStorage.setItem(
+      `bpv-export-${exportId}`,
+      JSON.stringify({
+        tripInfo,
+        rows,
+        dayMap,
+        region,
+        rate,
+        totalLocal,
+        totalIDR,
+      })
+    );
+
+    // BUILD LIVE PRINT URL
+    const currentUrl =
+      `${window.location.origin}/print/${exportId}`;
+
+    console.log(
+      "EXPORT URL:",
+      currentUrl
+    );
+
+    // CALL EXPORT API
+    const response =
+      await fetch(
+        `/api/export-pdf?url=${encodeURIComponent(currentUrl)}`,
+        {
+          method: "GET",
+        }
       );
 
-      return;
-    }
+    // HANDLE ERROR
+    if (!response.ok) {
 
-    try {
+      const errorText =
+        await response.text();
 
-      setExporting(true);
-
-      const paperEl =
-        paperRef.current;
-
-      if (!paperEl) {
-
-        throw new Error(
-          "Preview paper not found"
-        );
-      }
-
-      const html = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-
-          <meta charset="UTF-8" />
-
-          <style>
-
-            * {
-              box-sizing: border-box;
-            }
-
-            body {
-              margin: 0;
-              background: white;
-              font-family: Inter, sans-serif;
-            }
-
-            @page {
-              size: A4;
-              margin: 0;
-            }
-
-            .preview-paper {
-              width: 210mm;
-              background: white;
-            }
-
-            a {
-              color: inherit !important;
-              text-decoration: none !important;
-            }
-
-          </style>
-
-        </head>
-
-        <body>
-
-          ${paperEl.outerHTML}
-
-        </body>
-        </html>
-      `;
-
-      const response =
-        await fetch(
-          "/api/export-pdf",
-          {
-
-            method: "POST",
-
-            headers: {
-              "Content-Type":
-                "application/json",
-            },
-
-            body: JSON.stringify({
-              html,
-            }),
-          }
-        );
-
-      if (!response.ok) {
-
-        const text =
-          await response.text();
-
-        console.error(text);
-
-        throw new Error(
-          "Failed to export PDF"
-        );
-      }
-
-      const blob =
-        await response.blob();
-
-      const url =
-        URL.createObjectURL(
-          blob
-        );
-
-      const isMobile =
-        /Android|iPhone|iPad|iPod/i.test(
-          navigator.userAgent
-        );
-
-      if (isMobile) {
-
-        window.open(
-          url,
-          "_blank"
-        );
-
-      } else {
-
-        const link =
-          document.createElement("a");
-
-        link.href = url;
-
-        link.download =
-          "backpackervun-itinerary.pdf";
-
-        document.body.appendChild(
-          link
-        );
-
-        link.click();
-
-        document.body.removeChild(
-          link
-        );
-      }
-
-      setTimeout(() => {
-
-        URL.revokeObjectURL(url);
-
-      }, 10000);
-
-    } catch (err) {
-
-      console.error(err);
-
-      alert(
-        "Failed to export PDF."
+      console.error(
+        "EXPORT ERROR:",
+        errorText
       );
 
-    } finally {
-
-      setExporting(false);
+      throw new Error(
+        errorText ||
+        "Failed to export PDF"
+      );
     }
-  };
 
+    // GET PDF FILE
+    const blob =
+      await response.blob();
+
+    // CREATE TEMP URL
+    const pdfUrl =
+      URL.createObjectURL(blob);
+
+    // MOBILE DETECTION
+    const isMobile =
+      /Android|iPhone|iPad|iPod/i.test(
+        navigator.userAgent
+      );
+
+    // DOWNLOAD
+    if (isMobile) {
+
+      window.open(
+        pdfUrl,
+        "_blank"
+      );
+
+    } else {
+
+      const link =
+        document.createElement("a");
+
+      link.href =
+        pdfUrl;
+
+      link.download =
+        "backpackervun-itinerary.pdf";
+
+      document.body.appendChild(
+        link
+      );
+
+      link.click();
+
+      document.body.removeChild(
+        link
+      );
+    }
+
+    // CLEANUP
+    setTimeout(() => {
+
+      URL.revokeObjectURL(
+        pdfUrl
+      );
+
+      localStorage.removeItem(
+        `bpv-export-${exportId}`
+      );
+
+    }, 10000);
+
+  } catch (error) {
+
+    console.error(
+      "EXPORT FAILED:",
+      error
+    );
+
+    alert(
+      "Failed to export PDF."
+    );
+
+  } finally {
+
+    setExporting(false);
+  }
+};
   return (
 
     <div
