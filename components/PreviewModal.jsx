@@ -31,7 +31,7 @@ export default function PreviewModal({
 
     if (!open) return;
 
-    const fn = (e) => {
+    const handleKeyDown = (e) => {
 
       if (e.key === "Escape") {
         onClose?.();
@@ -40,14 +40,14 @@ export default function PreviewModal({
 
     document.addEventListener(
       "keydown",
-      fn
+      handleKeyDown
     );
 
     return () => {
 
       document.removeEventListener(
         "keydown",
-        fn
+        handleKeyDown
       );
     };
 
@@ -57,7 +57,7 @@ export default function PreviewModal({
 
     if (!open) return;
 
-    const prev =
+    const prevOverflow =
       document.body.style.overflow;
 
     document.body.style.overflow =
@@ -66,161 +66,267 @@ export default function PreviewModal({
     return () => {
 
       document.body.style.overflow =
-        prev;
+        prevOverflow;
     };
 
   }, [open]);
 
   if (!open) return null;
 
- console.log(
-  "TRIP INFO:",
-  tripInfo
-);
+  /* ========================================================
+     FINAL PDF EXPORT
+  ======================================================== */
 
-const handleExportPDF = async () => {
+  const handleExportPDF = async () => {
 
-  if (exporting) return;
+    if (exporting) return;
 
-  if (!canExportPDF) {
+    if (!canExportPDF) {
 
-    onUpgradeNeeded?.(
-      "PDF export requires a Lite or Pro plan."
-    );
-
-    return;
-  }
-
-  try {
-
-    setExporting(true);
-
-    // GENERATE UNIQUE EXPORT ID
-    const exportId =
-      crypto.randomUUID();
-
-    // SAVE LIVE PREVIEW DATA
-    localStorage.setItem(
-      `bpv-export-${exportId}`,
-      JSON.stringify({
-        tripInfo,
-        rows,
-        dayMap,
-        region,
-        rate,
-        totalLocal,
-        totalIDR,
-      })
-    );
-
-    // BUILD LIVE PRINT URL
-    const currentUrl =
-      `${window.location.origin}/print/${exportId}`;
-
-    console.log(
-      "EXPORT URL:",
-      currentUrl
-    );
-
-    // CALL EXPORT API
-    const response =
-      await fetch(
-        `/api/export-pdf?url=${encodeURIComponent(currentUrl)}`,
-        {
-          method: "GET",
-        }
+      onUpgradeNeeded?.(
+        "PDF export requires a Lite or Pro plan."
       );
 
-    // HANDLE ERROR
-    if (!response.ok) {
-
-      const errorText =
-        await response.text();
-
-      console.error(
-        "EXPORT ERROR:",
-        errorText
-      );
-
-      throw new Error(
-        errorText ||
-        "Failed to export PDF"
-      );
+      return;
     }
 
-    // GET PDF FILE
-    const blob =
-      await response.blob();
+    try {
 
-    // CREATE TEMP URL
-    const pdfUrl =
-      URL.createObjectURL(blob);
+      setExporting(true);
 
-    // MOBILE DETECTION
-    const isMobile =
-      /Android|iPhone|iPad|iPod/i.test(
-        navigator.userAgent
+      const paperEl =
+        paperRef.current;
+
+      if (!paperEl) {
+
+        throw new Error(
+          "Preview paper missing"
+        );
+      }
+
+      /* ========================================================
+         BUILD LIVE HTML
+      ======================================================== */
+
+      const html = `
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="UTF-8" />
+
+<meta
+  name="viewport"
+  content="width=device-width, initial-scale=1.0"
+/>
+
+<style>
+
+* {
+
+  box-sizing: border-box;
+
+  -webkit-print-color-adjust: exact !important;
+
+  print-color-adjust: exact !important;
+
+  color-adjust: exact !important;
+}
+
+html,
+body {
+
+  margin: 0;
+
+  padding: 0;
+
+  background: #ffffff;
+
+  font-family:
+    Inter,
+    Arial,
+    sans-serif;
+}
+
+@page {
+
+  size: A4;
+
+  margin: 0;
+}
+
+body {
+
+  display: flex;
+
+  justify-content: center;
+
+  padding: 24px;
+}
+
+.preview-paper {
+
+  width: 794px !important;
+
+  max-width: 794px !important;
+
+  min-width: 794px !important;
+
+  background: white !important;
+
+  overflow: visible !important;
+
+  border-radius: 24px !important;
+
+  box-shadow: none !important;
+}
+
+img {
+
+  max-width: 100%;
+
+  display: block;
+}
+
+a {
+
+  color: inherit !important;
+
+  text-decoration: none !important;
+}
+
+.rounded-2xl,
+.rounded-3xl,
+.day-block,
+.itinerary-card,
+.stop,
+.print-card,
+section,
+article {
+
+  page-break-inside: avoid !important;
+
+  break-inside: avoid !important;
+}
+
+</style>
+
+</head>
+
+<body>
+
+${paperEl.outerHTML}
+
+</body>
+
+</html>
+`;
+
+      /* ========================================================
+         CALL PDF API
+      ======================================================== */
+
+      const response =
+        await fetch(
+          "/api/export-pdf",
+          {
+
+            method: "POST",
+
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+
+            body: JSON.stringify({
+              html,
+            }),
+          }
+        );
+
+      if (!response.ok) {
+
+        const errorText =
+          await response.text();
+
+        console.error(
+          "PDF API ERROR:",
+          errorText
+        );
+
+        throw new Error(
+          errorText ||
+          "Failed to export PDF"
+        );
+      }
+
+      /* ========================================================
+         CREATE PDF DOWNLOAD
+      ======================================================== */
+
+      const blob =
+        await response.blob();
+
+      const url =
+        URL.createObjectURL(
+          blob
+        );
+
+      const isMobile =
+        /Android|iPhone|iPad|iPod/i.test(
+          navigator.userAgent
+        );
+
+      if (isMobile) {
+
+        window.open(
+          url,
+          "_blank"
+        );
+
+      } else {
+
+        const link =
+          document.createElement("a");
+
+        link.href = url;
+
+        link.download =
+          "backpackervun-itinerary.pdf";
+
+        document.body.appendChild(
+          link
+        );
+
+        link.click();
+
+        link.remove();
+      }
+
+      setTimeout(() => {
+
+        URL.revokeObjectURL(
+          url
+        );
+
+      }, 10000);
+
+    } catch (err) {
+
+      console.error(err);
+
+      alert(
+        "Failed to export PDF."
       );
 
-    // DOWNLOAD
-    if (isMobile) {
+    } finally {
 
-      window.open(
-        pdfUrl,
-        "_blank"
-      );
-
-    } else {
-
-      const link =
-        document.createElement("a");
-
-      link.href =
-        pdfUrl;
-
-      link.download =
-        "backpackervun-itinerary.pdf";
-
-      document.body.appendChild(
-        link
-      );
-
-      link.click();
-
-      document.body.removeChild(
-        link
-      );
+      setExporting(false);
     }
+  };
 
-    // CLEANUP
-    setTimeout(() => {
-
-      URL.revokeObjectURL(
-        pdfUrl
-      );
-
-      localStorage.removeItem(
-        `bpv-export-${exportId}`
-      );
-
-    }, 10000);
-
-  } catch (error) {
-
-    console.error(
-      "EXPORT FAILED:",
-      error
-    );
-
-    alert(
-      "Failed to export PDF."
-    );
-
-  } finally {
-
-    setExporting(false);
-  }
-};
   return (
 
     <div
@@ -229,9 +335,15 @@ const handleExportPDF = async () => {
       aria-modal="true"
     >
 
+      {/* BACKDROP */}
+
       <div className="absolute inset-0 bg-[#0f172a]/90 backdrop-blur-md" />
 
+      {/* TOP BAR */}
+
       <div className="relative z-10 flex items-center justify-between border-b border-white/10 bg-[#0f172a]/95 px-4 py-3 sm:px-6">
+
+        {/* BACK BUTTON */}
 
         <button
           onClick={onClose}
@@ -242,11 +354,15 @@ const handleExportPDF = async () => {
 
         </button>
 
+        {/* TITLE */}
+
         <div className="rounded-full bg-white/10 px-4 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-white/70">
 
           {t("previewTitle")}
 
         </div>
+
+        {/* EXPORT BUTTON */}
 
         <button
           onClick={handleExportPDF}
@@ -261,6 +377,8 @@ const handleExportPDF = async () => {
         </button>
 
       </div>
+
+      {/* PREVIEW */}
 
       <div className="relative z-10 flex-1 overflow-auto bg-[#0f172a] p-6">
 
