@@ -1,4 +1,12 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+/* =========================================================
+BASE
+========================================================= */
 
 html,
 body {
@@ -6,14 +14,41 @@ body {
   margin: 0;
   padding: 0;
 
+  min-height: 100%;
+
   background: #f3f4f6;
 
   font-family: 'Inter', sans-serif;
+
+  color: #111827;
+
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 * {
+
   box-sizing: border-box;
 }
+
+a {
+
+  text-decoration: none;
+
+  color: inherit;
+}
+
+button,
+input,
+textarea,
+select {
+
+  font: inherit;
+}
+
+/* =========================================================
+APP ROOT
+========================================================= */
 
 .page-wrapper {
 
@@ -23,7 +58,6 @@ body {
 
   padding: 40px 20px;
 }
-
 
 /* =========================================================
 BUTTON
@@ -44,9 +78,17 @@ BUTTON
 
   cursor: pointer;
 
+  transition: all 0.2s ease;
+
   margin-bottom: 30px;
 }
 
+.download-btn:hover {
+
+  opacity: 0.92;
+
+  transform: translateY(-1px);
+}
 
 /* =========================================================
 PDF ROOT
@@ -59,8 +101,9 @@ PDF ROOT
   border-radius: 24px;
 
   padding: 40px;
-}
 
+  overflow: hidden;
+}
 
 /* =========================================================
 COVER
@@ -80,6 +123,8 @@ COVER
   line-height: 1.1;
 
   margin-bottom: 12px;
+
+  color: #111827;
 }
 
 .trip-subtitle {
@@ -88,7 +133,6 @@ COVER
 
   color: #6b7280;
 }
-
 
 /* =========================================================
 SMART PDF FLOW SYSTEM
@@ -103,7 +147,6 @@ SMART PDF FLOW SYSTEM
   margin-bottom: 34px;
 }
 
-
 /* HEADER DAY JANGAN SENDIRIAN */
 
 .day-header {
@@ -114,7 +157,6 @@ SMART PDF FLOW SYSTEM
 
   margin-bottom: 16px;
 }
-
 
 /* CARD TIDAK BOLEH KE POTONG */
 
@@ -129,7 +171,6 @@ SMART PDF FLOW SYSTEM
   margin-top: -1px;
 }
 
-
 /* SUMMARY SELALU FULL */
 
 .summary-section,
@@ -140,7 +181,6 @@ SMART PDF FLOW SYSTEM
 
   page-break-inside: avoid;
 }
-
 
 /* =========================================================
 DAY HEADER
@@ -158,6 +198,7 @@ DAY HEADER
   border-radius: 999px;
 
   font-size: 12px;
+
   font-weight: 700;
 
   margin-bottom: 10px;
@@ -170,6 +211,8 @@ DAY HEADER
   font-size: 30px;
 
   font-weight: 800;
+
+  color: #111827;
 }
 
 .day-header p {
@@ -178,7 +221,6 @@ DAY HEADER
 
   color: #6b7280;
 }
-
 
 /* =========================================================
 CARD
@@ -206,6 +248,8 @@ CARD
   display: flex;
 
   justify-content: space-between;
+
+  align-items: center;
 
   margin-bottom: 14px;
 }
@@ -238,9 +282,13 @@ CARD
 
   margin-top: 0;
 
+  margin-bottom: 10px;
+
   font-size: 22px;
 
-  margin-bottom: 10px;
+  font-weight: 800;
+
+  color: #111827;
 }
 
 .itinerary-card p {
@@ -249,7 +297,6 @@ CARD
 
   color: #4b5563;
 }
-
 
 /* =========================================================
 IMAGE
@@ -266,8 +313,9 @@ IMAGE
   border-radius: 16px;
 
   margin-top: 18px;
-}
 
+  display: block;
+}
 
 /* =========================================================
 SUMMARY
@@ -285,8 +333,9 @@ SUMMARY
   border-radius: 20px;
 
   padding: 24px;
-}
 
+  border: 1px solid #e5e7eb;
+}
 
 /* =========================================================
 PRINT FIX
@@ -295,6 +344,8 @@ PRINT FIX
 @media print {
 
   body {
+
+    background: white;
 
     -webkit-print-color-adjust: exact;
 
