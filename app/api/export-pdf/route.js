@@ -40,13 +40,18 @@ export async function GET(req) {
     }
 
     /* ========================================
-       LAUNCH BROWSER
+       LAUNCH CHROMIUM
     ======================================== */
 
     const browser =
       await puppeteer.launch({
 
         args: chromium.args,
+
+        executablePath:
+          await chromium.executablePath(),
+
+        headless: chromium.headless,
 
         defaultViewport: {
 
@@ -56,11 +61,6 @@ export async function GET(req) {
 
           deviceScaleFactor: 2,
         },
-
-        executablePath:
-          await chromium.executablePath(),
-
-        headless: chromium.headless,
       });
 
     const page =
@@ -70,9 +70,18 @@ export async function GET(req) {
        OPEN PRINT PAGE
     ======================================== */
 
+    const printUrl =
+      `${baseUrl}/print/${id}?export=true`;
+
+    console.log(
+      "OPENING:",
+      printUrl
+    );
+
     await page.goto(
-      `${baseUrl}/print/${id}?export=true`,
+      printUrl,
       {
+
         waitUntil:
           "networkidle0",
 
@@ -81,30 +90,38 @@ export async function GET(req) {
     );
 
     /* ========================================
-       WAIT FOR CONTENT
+       WAIT FOR FULL RENDER
     ======================================== */
 
     await page.waitForSelector(
-      ".preview-paper",
+      "body",
       {
         timeout: 15000,
       }
     );
 
-    await page.emulateMediaType(
-      "screen"
-    );
+    /* ========================================
+       EXTRA WAIT FOR FIRESTORE
+    ======================================== */
 
     await new Promise(
       (resolve) =>
         setTimeout(
           resolve,
-          1200
+          2500
         )
     );
 
     /* ========================================
-       GENERATE PDF
+       SCREEN MODE
+    ======================================== */
+
+    await page.emulateMediaType(
+      "screen"
+    );
+
+    /* ========================================
+       PDF GENERATION
     ======================================== */
 
     const pdf =
@@ -121,9 +138,13 @@ export async function GET(req) {
         scale: 1,
 
         margin: {
+
           top: "0px",
+
           right: "0px",
+
           bottom: "0px",
+
           left: "0px",
         },
       });
