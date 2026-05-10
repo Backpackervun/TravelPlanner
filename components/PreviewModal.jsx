@@ -74,7 +74,7 @@ export default function PreviewModal({
   if (!open) return null;
 
   /* ========================================================
-     FINAL PREMIUM PDF EXPORT
+     PDF EXPORT
   ======================================================== */
 
   const handleExportPDF = async () => {
@@ -105,7 +105,7 @@ export default function PreviewModal({
       }
 
       /* ========================================
-         COLLECT WEBSITE STYLES
+         GET WEBSITE STYLES
       ======================================== */
 
       const styleLinks =
@@ -115,7 +115,7 @@ export default function PreviewModal({
           )
         )
         .map(
-          (link) => link.outerHTML
+          (s) => s.outerHTML
         )
         .join("\n");
 
@@ -126,12 +126,13 @@ export default function PreviewModal({
           )
         )
         .map(
-          (style) => style.outerHTML
+          (s) =>
+            `<style>${s.textContent}</style>`
         )
         .join("\n");
 
       /* ========================================
-         FULL HTML DOCUMENT
+         BUILD HTML
       ======================================== */
 
       const html = `
@@ -152,6 +153,22 @@ export default function PreviewModal({
   Backpackervun Travel Planner
 </title>
 
+<link
+  rel="preconnect"
+  href="https://fonts.googleapis.com"
+/>
+
+<link
+  rel="preconnect"
+  href="https://fonts.gstatic.com"
+  crossorigin
+/>
+
+<link
+  href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+  rel="stylesheet"
+/>
+
 ${styleLinks}
 
 ${inlineStyles}
@@ -159,7 +176,7 @@ ${inlineStyles}
 <style>
 
 @page {
-  size: A4;
+  size: A4 portrait;
   margin: 0;
 }
 
@@ -173,12 +190,25 @@ body {
   background: #0f172a !important;
 
   font-family:
-    Inter,
+    'Inter',
     sans-serif !important;
 
   -webkit-print-color-adjust: exact !important;
 
   print-color-adjust: exact !important;
+
+  color-adjust: exact !important;
+}
+
+* {
+
+  box-sizing: border-box;
+
+  -webkit-print-color-adjust: exact !important;
+
+  print-color-adjust: exact !important;
+
+  color-adjust: exact !important;
 }
 
 body {
@@ -188,17 +218,6 @@ body {
   justify-content: center;
 
   padding: 24px;
-
-  box-sizing: border-box;
-}
-
-.pdf-shell {
-
-  width: 100%;
-
-  display: flex;
-
-  justify-content: center;
 }
 
 .preview-paper {
@@ -211,26 +230,11 @@ body {
 
   background: white !important;
 
-  overflow: hidden !important;
+  overflow: visible !important;
 
   border-radius: 24px !important;
 
   box-shadow: none !important;
-}
-
-/* Prevent broken cards */
-
-section,
-article,
-.rounded-2xl,
-.day-block,
-.itinerary-card,
-.stop,
-.print-card {
-
-  page-break-inside: avoid !important;
-
-  break-inside: avoid !important;
 }
 
 img {
@@ -247,43 +251,18 @@ a {
   text-decoration: none !important;
 }
 
-.no-print {
+.rounded-2xl,
+.rounded-3xl,
+.day-block,
+.itinerary-card,
+.stop,
+.print-card,
+section,
+article {
 
-  display: none !important;
-}
+  page-break-inside: avoid !important;
 
-@media print {
-
-  html,
-  body {
-
-    background: white !important;
-
-    padding: 0 !important;
-  }
-
-  body {
-
-    display: block !important;
-  }
-
-  .pdf-shell {
-
-    width: 100% !important;
-
-    padding: 0 !important;
-  }
-
-  .preview-paper {
-
-    width: 100% !important;
-
-    max-width: 100% !important;
-
-    min-width: 100% !important;
-
-    border-radius: 0 !important;
-  }
+  break-inside: avoid !important;
 }
 
 </style>
@@ -292,11 +271,7 @@ a {
 
 <body>
 
-<div class="pdf-shell">
-
 ${paperEl.outerHTML}
-
-</div>
 
 </body>
 
