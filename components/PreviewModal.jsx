@@ -73,7 +73,12 @@ export default function PreviewModal({
 
   if (!open) return null;
 
-  const handleExportPDF = async () => {
+ console.log(
+  "TRIP INFO:",
+  tripInfo
+);
+
+const handleExportPDF = async () => {
 
     if (exporting) return;
 
