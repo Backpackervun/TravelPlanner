@@ -140,30 +140,58 @@ export default function PreviewModal({
       const sessionData =
         await sessionRes.json();
 
+console.log(
+  "SESSION DATA:",
+  sessionData
+);
+
       const exportId =
-        sessionData.id;
+  sessionData?.id;
+
+console.log(
+  "EXPORT ID:",
+  exportId
+);
+
+if (!exportId) {
+
+  alert(
+    "Export ID missing"
+  );
+
+  return;
+}
 
       /* ========================================
          GENERATE PDF
       ======================================== */
 
-      const response =
-        await fetch(
+     const response =
+  await fetch(
+    `/api/export-pdf?id=${exportId}`
+  );
 
-          `/api/export-pdf?id=${exportId}`
-        );
+console.log(
+  "EXPORT STATUS:",
+  response.status
+);
 
-      if (!response.ok) {
+if (!response.ok) {
 
-        const err =
-          await response.text();
+  const text =
+    await response.text();
 
-        console.error(err);
+  console.error(
+    "EXPORT ERROR:",
+    text
+  );
 
-        throw new Error(
-          "Failed to export PDF"
-        );
-      }
+  alert(text);
+
+  throw new Error(
+    "Failed to export PDF"
+  );
+}
 
       const blob =
         await response.blob();
