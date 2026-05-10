@@ -86,35 +86,48 @@ export default function DownloadPDFButton() {
           const blob =
             await response.blob();
 
-          const url =
+          const blobUrl =
             URL.createObjectURL(
               blob
             );
 
-          const link =
-            document.createElement(
-              "a"
+          // =================================================
+          // IOS SAFARI FIX
+          // =================================================
+
+          const isIOS =
+            /iPad|iPhone|iPod/.test(
+              navigator.userAgent
             );
 
-          link.href =
-            url;
+          if (isIOS) {
 
-          link.download =
-            "travel-itinerary.pdf";
+            window.location.href =
+              blobUrl;
 
-          document.body.appendChild(
-            link
-          );
+          } else {
 
-          link.click();
+            const link =
+              document.createElement(
+                "a"
+              );
 
-          document.body.removeChild(
-            link
-          );
+            link.href =
+              blobUrl;
 
-          URL.revokeObjectURL(
-            url
-          );
+            link.download =
+              "travel-itinerary.pdf";
+
+            document.body.appendChild(
+              link
+            );
+
+            link.click();
+
+            document.body.removeChild(
+              link
+            );
+          }
 
           return;
         }
