@@ -1,17 +1,8 @@
 "use client";
 
-import { useEffect, useState }
-  from "react";
+import { useEffect, useState } from "react";
 
-import PrintHeader
-  from "@/components/PrintHeader";
-
-import PrintLayout
-  from "@/components/PrintLayout";
-
-export default function PrintPage({
-  params,
-}) {
+export default function PrintPage({ params }) {
 
   const [data, setData] =
     useState(null);
@@ -24,38 +15,20 @@ export default function PrintPage({
       );
 
     if (!raw) {
-
-      console.error(
-        "EXPORT DATA NOT FOUND"
-      );
-
       return;
     }
 
-    try {
-
-      const parsed =
-        JSON.parse(raw);
-
-      setData(parsed);
-
-    } catch (err) {
-
-      console.error(err);
-    }
+    setData(JSON.parse(raw));
 
   }, [params.id]);
 
   if (!data) {
 
     return (
-
       <div
         style={{
+          color: "white",
           padding: 40,
-          color: "#fff",
-          background: "#0f172a",
-          minHeight: "100vh",
         }}
       >
         Loading export...
@@ -65,26 +38,95 @@ export default function PrintPage({
 
   return (
 
-    <main className="min-h-screen bg-[#0f172a] p-10">
+    <main
+      style={{
+        background: "#0f172a",
+        minHeight: "100vh",
+        padding: "40px",
+      }}
+    >
 
-      <div className="preview-paper mx-auto w-full max-w-[210mm] overflow-hidden rounded-[28px] bg-white shadow-2xl">
+      <div
+        className="preview-paper"
+        style={{
+          width: "210mm",
+          margin: "0 auto",
+          background: "white",
+          borderRadius: "28px",
+          overflow: "hidden",
+          padding: "40px",
+        }}
+      >
 
-        <PrintHeader
-          tripInfo={data.tripInfo}
-          region={data.region}
-          totalLocal={data.totalLocal}
-          totalIDR={data.totalIDR}
-        />
+        <h1
+          style={{
+            fontSize: "42px",
+            fontWeight: 800,
+            marginBottom: "20px",
+          }}
+        >
+          Backpackervun
+        </h1>
 
-        <PrintLayout
-          tripInfo={data.tripInfo}
-          rows={data.rows}
-          dayMap={data.dayMap}
-          region={data.region}
-          rate={data.rate}
-          totalLocal={data.totalLocal}
-          totalIDR={data.totalIDR}
-        />
+        <h2
+          style={{
+            fontSize: "28px",
+            marginBottom: "20px",
+          }}
+        >
+          {data.tripInfo?.clientName}
+        </h2>
+
+        <div
+          style={{
+            marginBottom: "40px",
+          }}
+        >
+          {data.tripInfo?.duration}
+        </div>
+
+        {data.rows?.map((row, index) => (
+
+          <div
+            key={index}
+            style={{
+              border: "1px solid #ddd",
+              borderRadius: "20px",
+              padding: "20px",
+              marginBottom: "20px",
+            }}
+          >
+
+            <div
+              style={{
+                fontSize: "14px",
+                opacity: 0.6,
+              }}
+            >
+              {row.time}
+            </div>
+
+            <div
+              style={{
+                fontSize: "28px",
+                fontWeight: 700,
+              }}
+            >
+              {row.title}
+            </div>
+
+            <div
+              style={{
+                marginTop: "8px",
+                opacity: 0.7,
+              }}
+            >
+              {row.description}
+            </div>
+
+          </div>
+
+        ))}
 
       </div>
 
