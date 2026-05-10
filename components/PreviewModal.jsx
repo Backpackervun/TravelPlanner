@@ -74,7 +74,7 @@ export default function PreviewModal({
   if (!open) return null;
 
   /* ========================================================
-     PDF EXPORT
+     FINAL PDF EXPORT SYSTEM
   ======================================================== */
 
   const handleExportPDF = async () => {
@@ -94,197 +94,15 @@ export default function PreviewModal({
 
       setExporting(true);
 
-      const paperEl =
-        paperRef.current;
-
-      if (!paperEl) {
-
-        throw new Error(
-          "Preview paper missing"
-        );
-      }
-
       /* ========================================
-         GET WEBSITE STYLES
+         CREATE EXPORT SESSION
       ======================================== */
 
-      const styleLinks =
-        Array.from(
-          document.querySelectorAll(
-            'link[rel="stylesheet"]'
-          )
-        )
-        .map(
-          (s) => s.outerHTML
-        )
-        .join("\n");
-
-      const inlineStyles =
-        Array.from(
-          document.querySelectorAll(
-            "style"
-          )
-        )
-        .map(
-          (s) =>
-            `<style>${s.textContent}</style>`
-        )
-        .join("\n");
-
-      /* ========================================
-         BUILD HTML
-      ======================================== */
-
-      const html = `
-<!DOCTYPE html>
-
-<html lang="en">
-
-<head>
-
-<meta charset="UTF-8" />
-
-<meta
-  name="viewport"
-  content="width=device-width, initial-scale=1.0"
-/>
-
-<title>
-  Backpackervun Travel Planner
-</title>
-
-<link
-  rel="preconnect"
-  href="https://fonts.googleapis.com"
-/>
-
-<link
-  rel="preconnect"
-  href="https://fonts.gstatic.com"
-  crossorigin
-/>
-
-<link
-  href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
-  rel="stylesheet"
-/>
-
-${styleLinks}
-
-${inlineStyles}
-
-<style>
-
-@page {
-  size: A4 portrait;
-  margin: 0;
-}
-
-html,
-body {
-
-  margin: 0 !important;
-
-  padding: 0 !important;
-
-  background: #0f172a !important;
-
-  font-family:
-    'Inter',
-    sans-serif !important;
-
-  -webkit-print-color-adjust: exact !important;
-
-  print-color-adjust: exact !important;
-
-  color-adjust: exact !important;
-}
-
-* {
-
-  box-sizing: border-box;
-
-  -webkit-print-color-adjust: exact !important;
-
-  print-color-adjust: exact !important;
-
-  color-adjust: exact !important;
-}
-
-body {
-
-  display: flex;
-
-  justify-content: center;
-
-  padding: 24px;
-}
-
-.preview-paper {
-
-  width: 794px !important;
-
-  max-width: 794px !important;
-
-  min-width: 794px !important;
-
-  background: white !important;
-
-  overflow: visible !important;
-
-  border-radius: 24px !important;
-
-  box-shadow: none !important;
-}
-
-img {
-
-  max-width: 100%;
-
-  display: block;
-}
-
-a {
-
-  color: inherit !important;
-
-  text-decoration: none !important;
-}
-
-.rounded-2xl,
-.rounded-3xl,
-.day-block,
-.itinerary-card,
-.stop,
-.print-card,
-section,
-article {
-
-  page-break-inside: avoid !important;
-
-  break-inside: avoid !important;
-}
-
-</style>
-
-</head>
-
-<body>
-
-${paperEl.outerHTML}
-
-</body>
-
-</html>
-`;
-
-      /* ========================================
-         CALL PDF API
-      ======================================== */
-
-      const response =
+      const sessionRes =
         await fetch(
-          "/api/export-pdf",
+
+          "/api/export-session",
+
           {
 
             method: "POST",
@@ -295,20 +113,55 @@ ${paperEl.outerHTML}
             },
 
             body: JSON.stringify({
-              html,
+
+              tripInfo,
+              rows,
+              dayMap,
+              region,
+              rate,
+              totalLocal,
+              totalIDR,
             }),
           }
         );
 
-      if (!response.ok) {
+      if (!sessionRes.ok) {
 
-        const errText =
-          await response.text();
+        const err =
+          await sessionRes.text();
 
-        console.error(errText);
+        console.error(err);
 
         throw new Error(
-          "Failed to generate PDF"
+          "Failed to create export session"
+        );
+      }
+
+      const sessionData =
+        await sessionRes.json();
+
+      const exportId =
+        sessionData.id;
+
+      /* ========================================
+         GENERATE PDF
+      ======================================== */
+
+      const response =
+        await fetch(
+
+          `/api/export-pdf?id=${exportId}`
+        );
+
+      if (!response.ok) {
+
+        const err =
+          await response.text();
+
+        console.error(err);
+
+        throw new Error(
+          "Failed to export PDF"
         );
       }
 
@@ -325,10 +178,6 @@ ${paperEl.outerHTML}
           navigator.userAgent
         );
 
-      /* ========================================
-         MOBILE
-      ======================================== */
-
       if (isMobile) {
 
         window.open(
@@ -337,10 +186,6 @@ ${paperEl.outerHTML}
         );
 
       } else {
-
-        /* ========================================
-           DESKTOP
-        ======================================== */
 
         const link =
           document.createElement("a");
@@ -389,15 +234,9 @@ ${paperEl.outerHTML}
       aria-modal="true"
     >
 
-      {/* Backdrop */}
-
       <div className="absolute inset-0 bg-[#0f172a]/90 backdrop-blur-md" />
 
-      {/* Top Bar */}
-
       <div className="relative z-10 flex items-center justify-between border-b border-white/10 bg-[#0f172a]/95 px-4 py-3 sm:px-6">
-
-        {/* Back */}
 
         <button
           onClick={onClose}
@@ -430,13 +269,11 @@ ${paperEl.outerHTML}
 
         </button>
 
-        {/* Title */}
-
         <div className="rounded-full bg-white/10 px-4 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-white/70">
-          {t("previewTitle")}
-        </div>
 
-        {/* Export */}
+          {t("previewTitle")}
+
+        </div>
 
         <button
           onClick={handleExportPDF}
@@ -458,7 +295,12 @@ ${paperEl.outerHTML}
 
             <polyline points="7 10 12 15 17 10" />
 
-            <line x1="12" y1="15" x2="12" y2="3" />
+            <line
+              x1="12"
+              y1="15"
+              x2="12"
+              y2="3"
+            />
 
           </svg>
 
@@ -470,13 +312,11 @@ ${paperEl.outerHTML}
 
       </div>
 
-      {/* Preview */}
-
       <div className="relative z-10 flex-1 overflow-auto bg-[#0f172a] p-6">
 
         <div
           ref={paperRef}
-          className="preview-paper mx-auto w-full max-w-[210mm] overflow-visible rounded-[28px] bg-white shadow-2xl"
+          className="preview-paper mx-auto w-full max-w-[210mm] overflow-hidden rounded-[28px] bg-white shadow-2xl"
         >
 
           <PrintHeader

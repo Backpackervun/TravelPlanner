@@ -1,32 +1,50 @@
 import puppeteer from "puppeteer-core";
+
 import chromium from "@sparticuz/chromium";
 
 export const dynamic =
   "force-dynamic";
 
-export const maxDuration = 60;
+export const maxDuration =
+  60;
 
-export async function POST(req) {
+export async function GET(req) {
 
   try {
 
-    const body =
-      await req.json();
+    const { searchParams } =
+      new URL(req.url);
 
-    const html =
-      body.html;
+    const id =
+      searchParams.get("id");
 
-    if (!html) {
+    if (!id) {
 
       return Response.json(
         {
-          error: "Missing HTML",
+          error:
+            "Missing export ID",
         },
         {
           status: 400,
         }
       );
     }
+
+    const baseUrl =
+      process.env
+        .NEXT_PUBLIC_SITE_URL;
+
+    if (!baseUrl) {
+
+      throw new Error(
+        "NEXT_PUBLIC_SITE_URL is missing"
+      );
+    }
+
+    /* ========================================
+       LAUNCH CHROMIUM
+    ======================================== */
 
     const browser =
       await puppeteer.launch({
@@ -37,39 +55,37 @@ export async function POST(req) {
           await chromium.executablePath(),
 
         headless: true,
-
-        defaultViewport: {
-
-          width: 1440,
-
-          height: 2200,
-
-          deviceScaleFactor: 2,
-        },
       });
 
     const page =
       await browser.newPage();
 
-    await page.setViewport({
+    /* ========================================
+       OPEN LIVE PREVIEW PAGE
+    ======================================== */
 
-      width: 1440,
+    await page.goto(
 
-      height: 2200,
+      `${baseUrl}/print/${id}`,
 
-      deviceScaleFactor: 2,
-    });
-
-    await page.setContent(
-      html,
       {
+
         waitUntil:
           "networkidle0",
+
+        timeout: 60000,
       }
     );
 
-    await page.emulateMediaType(
-      "screen"
+    /* ========================================
+       WAIT RENDER
+    ======================================== */
+
+    await page.waitForSelector(
+      ".preview-paper",
+      {
+        timeout: 30000,
+      }
     );
 
     await new Promise(
@@ -80,6 +96,10 @@ export async function POST(req) {
         )
     );
 
+    /* ========================================
+       GENERATE PDF
+    ======================================== */
+
     const pdf =
       await page.pdf({
 
@@ -89,23 +109,20 @@ export async function POST(req) {
 
         preferCSSPageSize: true,
 
-        displayHeaderFooter: false,
-
-        scale: 1,
-
         margin: {
 
           top: "0px",
-
           right: "0px",
-
           bottom: "0px",
-
           left: "0px",
         },
       });
 
     await browser.close();
+
+    /* ========================================
+       RETURN PDF
+    ======================================== */
 
     return new Response(
       pdf,
@@ -118,9 +135,6 @@ export async function POST(req) {
 
           "Content-Disposition":
             'attachment; filename="backpackervun-itinerary.pdf"',
-
-          "Cache-Control":
-            "no-store",
         },
       }
     );
@@ -128,7 +142,7 @@ export async function POST(req) {
   } catch (err) {
 
     console.error(
-      "PDF ERROR:",
+      "EXPORT PDF ERROR:",
       err
     );
 
