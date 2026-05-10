@@ -74,8 +74,7 @@ export default function PreviewModal({
   if (!open) return null;
 
   /* ========================================================
-     FINAL PDF EXPORT
-     PUPPETEER HTML PDF
+     FINAL PREMIUM PDF EXPORT
   ======================================================== */
 
   const handleExportPDF = async () => {
@@ -105,92 +104,208 @@ export default function PreviewModal({
         );
       }
 
+      /* ========================================
+         COLLECT WEBSITE STYLES
+      ======================================== */
+
+      const styleLinks =
+        Array.from(
+          document.querySelectorAll(
+            'link[rel="stylesheet"]'
+          )
+        )
+        .map(
+          (link) => link.outerHTML
+        )
+        .join("\n");
+
+      const inlineStyles =
+        Array.from(
+          document.querySelectorAll(
+            "style"
+          )
+        )
+        .map(
+          (style) => style.outerHTML
+        )
+        .join("\n");
+
+      /* ========================================
+         FULL HTML DOCUMENT
+      ======================================== */
+
       const html = `
-        <!DOCTYPE html>
+<!DOCTYPE html>
 
-        <html>
+<html lang="en">
 
-        <head>
+<head>
 
-          <meta charset="UTF-8" />
+<meta charset="UTF-8" />
 
-          <meta
-            name="viewport"
-            content="width=device-width, initial-scale=1.0"
-          />
+<meta
+  name="viewport"
+  content="width=device-width, initial-scale=1.0"
+/>
 
-          <style>
+<title>
+  Backpackervun Travel Planner
+</title>
 
-            * {
-              box-sizing: border-box;
-            }
+${styleLinks}
 
-            html,
-            body {
+${inlineStyles}
 
-              margin: 0;
+<style>
 
-              padding: 0;
+@page {
+  size: A4;
+  margin: 0;
+}
 
-              background: #ffffff;
+html,
+body {
 
-              font-family:
-                Inter,
-                Arial,
-                sans-serif;
+  margin: 0 !important;
 
-              -webkit-print-color-adjust: exact;
+  padding: 0 !important;
 
-              print-color-adjust: exact;
-            }
+  background: #0f172a !important;
 
-            @page {
+  font-family:
+    Inter,
+    sans-serif !important;
 
-              size: A4;
+  -webkit-print-color-adjust: exact !important;
 
-              margin: 0;
-            }
+  print-color-adjust: exact !important;
+}
 
-            .preview-paper {
+body {
 
-              width: 210mm;
+  display: flex;
 
-              background: white;
+  justify-content: center;
 
-              overflow: visible !important;
-            }
+  padding: 24px;
 
-            img {
+  box-sizing: border-box;
+}
 
-              max-width: 100%;
+.pdf-shell {
 
-              display: block;
-            }
+  width: 100%;
 
-            a {
+  display: flex;
 
-              color: inherit !important;
+  justify-content: center;
+}
 
-              text-decoration: none !important;
-            }
+.preview-paper {
 
-            * {
+  width: 794px !important;
 
-              page-break-inside: avoid;
-            }
+  max-width: 794px !important;
 
-          </style>
+  min-width: 794px !important;
 
-        </head>
+  background: white !important;
 
-        <body>
+  overflow: hidden !important;
 
-          ${paperEl.outerHTML}
+  border-radius: 24px !important;
 
-        </body>
+  box-shadow: none !important;
+}
 
-        </html>
-      `;
+/* Prevent broken cards */
+
+section,
+article,
+.rounded-2xl,
+.day-block,
+.itinerary-card,
+.stop,
+.print-card {
+
+  page-break-inside: avoid !important;
+
+  break-inside: avoid !important;
+}
+
+img {
+
+  max-width: 100%;
+
+  display: block;
+}
+
+a {
+
+  color: inherit !important;
+
+  text-decoration: none !important;
+}
+
+.no-print {
+
+  display: none !important;
+}
+
+@media print {
+
+  html,
+  body {
+
+    background: white !important;
+
+    padding: 0 !important;
+  }
+
+  body {
+
+    display: block !important;
+  }
+
+  .pdf-shell {
+
+    width: 100% !important;
+
+    padding: 0 !important;
+  }
+
+  .preview-paper {
+
+    width: 100% !important;
+
+    max-width: 100% !important;
+
+    min-width: 100% !important;
+
+    border-radius: 0 !important;
+  }
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="pdf-shell">
+
+${paperEl.outerHTML}
+
+</div>
+
+</body>
+
+</html>
+`;
+
+      /* ========================================
+         CALL PDF API
+      ======================================== */
 
       const response =
         await fetch(
@@ -212,16 +327,13 @@ export default function PreviewModal({
 
       if (!response.ok) {
 
-        const errorText =
+        const errText =
           await response.text();
 
-        console.error(
-          "PDF API ERROR:",
-          errorText
-        );
+        console.error(errText);
 
         throw new Error(
-          "PDF generation failed"
+          "Failed to generate PDF"
         );
       }
 
@@ -238,6 +350,10 @@ export default function PreviewModal({
           navigator.userAgent
         );
 
+      /* ========================================
+         MOBILE
+      ======================================== */
+
       if (isMobile) {
 
         window.open(
@@ -246,6 +362,10 @@ export default function PreviewModal({
         );
 
       } else {
+
+        /* ========================================
+           DESKTOP
+        ======================================== */
 
         const link =
           document.createElement("a");
