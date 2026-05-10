@@ -1,9 +1,5 @@
-import {
-  doc,
-  getDoc,
-} from "firebase/firestore";
-
-import { db } from "@/lib/firebase";
+import { adminDb }
+  from "@/lib/firebase-admin";
 
 import PrintHeader
   from "@/components/PrintHeader";
@@ -20,25 +16,23 @@ export default async function Page({
 
   try {
 
-    const ref =
-      doc(
-        db,
-        "pdf_exports",
-        params.id
-      );
-
     const snap =
-      await getDoc(ref);
+      await adminDb
 
-    if (!snap.exists()) {
+        .collection(
+          "pdf_exports"
+        )
+
+        .doc(params.id)
+
+        .get();
+
+    if (!snap.exists) {
 
       return (
-
         <div
           style={{
             padding: 40,
-            fontFamily:
-              "sans-serif",
           }}
         >
           Export not found
@@ -104,12 +98,9 @@ export default async function Page({
     console.error(err);
 
     return (
-
       <div
         style={{
           padding: 40,
-          fontFamily:
-            "sans-serif",
         }}
       >
         Failed to load export

@@ -5,10 +5,15 @@ import chromium from "@sparticuz/chromium";
 export const dynamic =
   "force-dynamic";
 
+export const runtime =
+  "nodejs";
+
 export const maxDuration =
   60;
 
 export async function GET(req) {
+
+  let browser;
 
   try {
 
@@ -38,31 +43,38 @@ export async function GET(req) {
     if (!baseUrl) {
 
       throw new Error(
-        "NEXT_PUBLIC_SITE_URL is missing"
+        "NEXT_PUBLIC_SITE_URL missing"
       );
     }
 
     /* ========================================
-       LAUNCH CHROMIUM
+       IMPORTANT FIX
     ======================================== */
 
-    const browser =
+    browser =
       await puppeteer.launch({
 
-        args: chromium.args,
+        args: [
+          ...chromium.args,
+          "--hide-scrollbars",
+          "--disable-web-security",
+        ],
+
+        defaultViewport: {
+          width: 1440,
+          height: 2200,
+        },
 
         executablePath:
           await chromium.executablePath(),
 
-        headless: true,
+        headless: chromium.headless,
+
+        ignoreHTTPSErrors: true,
       });
 
     const page =
       await browser.newPage();
-
-    /* ========================================
-       OPEN LIVE PREVIEW PAGE
-    ======================================== */
 
     await page.goto(
 
@@ -71,14 +83,14 @@ export async function GET(req) {
       {
 
         waitUntil:
-          "networkidle0",
+          "domcontentloaded",
 
         timeout: 60000,
       }
     );
 
     /* ========================================
-       WAIT RENDER
+       WAIT FULL RENDER
     ======================================== */
 
     await page.waitForSelector(
@@ -92,12 +104,12 @@ export async function GET(req) {
       (resolve) =>
         setTimeout(
           resolve,
-          1500
+          3000
         )
     );
 
     /* ========================================
-       GENERATE PDF
+       PDF
     ======================================== */
 
     const pdf =
@@ -111,18 +123,14 @@ export async function GET(req) {
 
         margin: {
 
-          top: "0px",
-          right: "0px",
-          bottom: "0px",
-          left: "0px",
+          top: "0mm",
+          right: "0mm",
+          bottom: "0mm",
+          left: "0mm",
         },
       });
 
     await browser.close();
-
-    /* ========================================
-       RETURN PDF
-    ======================================== */
 
     return new Response(
       pdf,
@@ -142,9 +150,14 @@ export async function GET(req) {
   } catch (err) {
 
     console.error(
-      "EXPORT PDF ERROR:",
+      "PDF EXPORT ERROR:",
       err
     );
+
+    if (browser) {
+
+      await browser.close();
+    }
 
     return Response.json(
       {
