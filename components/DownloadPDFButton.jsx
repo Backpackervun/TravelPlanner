@@ -14,7 +14,10 @@ export default function DownloadPDFButton() {
 
         setLoading(true);
 
-        // ✅ SAFE FOR NEXT.JS SSR
+        // =================================================
+        // SAFE DYNAMIC IMPORTS
+        // =================================================
+
         const html2canvas =
           (await import("html2canvas"))
             .default;
@@ -22,15 +25,68 @@ export default function DownloadPDFButton() {
         const { jsPDF } =
           await import("jspdf");
 
+        // =================================================
+        // ELEMENT
+        // =================================================
+
         const element =
           document.getElementById(
             "pdf-content"
           );
 
         if (!element) {
-          alert("PDF content not found");
+
+          alert(
+            "PDF content not found"
+          );
+
           return;
         }
+
+        // =================================================
+        // MOBILE DETECTION
+        // =================================================
+
+        const isMobile =
+          /Android|iPhone|iPad|iPod/i.test(
+            navigator.userAgent
+          );
+
+        // =================================================
+        // WAIT ALL IMAGES LOADED
+        // =================================================
+
+        const images =
+          element.querySelectorAll(
+            "img"
+          );
+
+        await Promise.all(
+
+          [...images].map(
+            (img) => {
+
+              if (
+                img.complete
+              ) {
+                return Promise.resolve();
+              }
+
+              return new Promise(
+                (
+                  resolve
+                ) => {
+
+                  img.onload =
+                    resolve;
+
+                  img.onerror =
+                    resolve;
+                }
+              );
+            }
+          )
+        );
 
         // =================================================
         // HIGH QUALITY SCREENSHOT
@@ -40,7 +96,11 @@ export default function DownloadPDFButton() {
           await html2canvas(
             element,
             {
-              scale: 3,
+
+              scale:
+                isMobile
+                  ? 1.5
+                  : 3,
 
               useCORS: true,
 
@@ -57,12 +117,10 @@ export default function DownloadPDFButton() {
                 -window.scrollY,
 
               windowWidth:
-                document.documentElement
-                  .scrollWidth,
+                element.scrollWidth,
 
               windowHeight:
-                document.documentElement
-                  .scrollHeight,
+                element.scrollHeight,
             }
           );
 
@@ -155,12 +213,29 @@ export default function DownloadPDFButton() {
         }
 
         // =================================================
-        // SAVE
+        // SAVE / OPEN PDF
         // =================================================
 
-        pdf.save(
-          "travel-itinerary.pdf"
-        );
+        if (
+          isMobile
+        ) {
+
+          const blobUrl =
+            pdf.output(
+              "bloburl"
+            );
+
+          window.open(
+            blobUrl,
+            "_blank"
+          );
+
+        } else {
+
+          pdf.save(
+            "travel-itinerary.pdf"
+          );
+        }
 
       } catch (err) {
 
