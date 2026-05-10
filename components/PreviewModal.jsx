@@ -2,7 +2,6 @@
 
 import { useEffect, useRef } from "react";
 import { useT } from "@/context/TranslationContext";
-
 import PrintHeader from "./PrintHeader";
 import PrintLayout from "./PrintLayout";
 
@@ -64,97 +63,74 @@ const handleExportPDF = async () => {
     return;
   }
 
-  try {
+ try {
 
-    // STEP 1
-    // create export session
+  const html2pdf =
+    (
+      await import(
+        "html2pdf.js/dist/html2pdf.min.js"
+      )
+    ).default;
 
-    const sessionResponse =
-      await fetch(
-        "/api/export-session",
-        {
-          method: "POST",
+  const element =
+    paperRef.current;
 
-          headers: {
-            "Content-Type":
-              "application/json",
-          },
-
-          body: JSON.stringify({
-            tripInfo,
-            rows,
-            dayMap,
-            region,
-            rate,
-            totalLocal,
-            totalIDR,
-          }),
-        }
-      );
-
-    if (!sessionResponse.ok) {
-      throw new Error(
-        "Failed to create export session"
-      );
-    }
-
-    const result =
-      await sessionResponse.json();
-
-    if (!result?.id) {
-      throw new Error(
-        "Export session missing ID"
-      );
-    }
-
-    // STEP 2
-    // request PDF
-
-    const pdfUrl =
-      `/api/export-pdf?id=${result.id}`;
-
-    const pdfResponse =
-      await fetch(pdfUrl);
-
-    if (!pdfResponse.ok) {
-      throw new Error(
-        "Failed to generate PDF"
-      );
-    }
-
-    // STEP 3
-    // download blob
-
-    const blob =
-      await pdfResponse.blob();
-
-    const downloadUrl =
-      window.URL.createObjectURL(blob);
-
-    const link =
-      document.createElement("a");
-
-    link.href = downloadUrl;
-
-    link.download =
-      "backpackervun-itinerary.pdf";
-
-    document.body.appendChild(link);
-
-    link.click();
-
-    link.remove();
-
-    window.URL.revokeObjectURL(
-      downloadUrl
+  if (!element) {
+    throw new Error(
+      "Preview paper not found"
     );
+  }
 
-  } catch (err) {
+  const opt = {
 
+    margin: [0, 0, 0, 0],
+
+    filename:
+      "backpackervun-itinerary.pdf",
+
+    image: {
+      type: "jpeg",
+      quality: 1,
+    },
+
+    html2canvas: {
+
+      scale: 2,
+
+      useCORS: true,
+
+      letterRendering: true,
+
+      scrollY: 0,
+    },
+
+    jsPDF: {
+
+      unit: "mm",
+
+      format: "a4",
+
+      orientation:
+        "portrait",
+    },
+
+    pagebreak: {
+      mode: [
+        "css",
+        "legacy",
+      ],
+    },
+  };
+
+  await html2pdf()
+    .set(opt)
+    .from(element)
+    .save();
+
+} catch (err) {
     console.error(err);
 
     alert("Failed to export PDF.");
-
   }
 };
 

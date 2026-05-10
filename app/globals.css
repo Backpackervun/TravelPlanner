@@ -280,3 +280,40 @@ PATCH 14D
 .scrollbar-hide::-webkit-scrollbar {
   display: none !important;
 }
+
+/* =========================================================
+FINAL PDF EXPORT FIX
+========================================================= */
+
+.preview-paper {
+  width: 210mm;
+  min-height: 297mm;
+  background: white;
+}
+
+@media print {
+
+  html,
+  body {
+    background: white !important;
+  }
+
+  .preview-paper {
+    width: 210mm !important;
+    min-height: 297mm !important;
+
+    border-radius: 0 !important;
+
+    overflow: visible !important;
+
+    box-shadow: none !important;
+  }
+
+  .print-card,
+  .itinerary-card,
+  .day-block,
+  .stop {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+}
