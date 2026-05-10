@@ -3,15 +3,21 @@ import { NextResponse } from "next/server";
 import chromium from "@sparticuz/chromium";
 import puppeteer from "puppeteer-core";
 
-export async function POST(request) {
+export const runtime =
+  "nodejs";
+
+export const dynamic =
+  "force-dynamic";
+
+export async function GET(request) {
 
   try {
 
-    const body =
-      await request.json();
+    const { searchParams } =
+      new URL(request.url);
 
     const html =
-      body.html;
+      searchParams.get("html");
 
     if (!html) {
 
@@ -32,11 +38,6 @@ export async function POST(request) {
         args:
           chromium.args,
 
-        defaultViewport: {
-          width: 1440,
-          height: 2000,
-        },
-
         executablePath:
           await chromium.executablePath(),
 
@@ -46,8 +47,36 @@ export async function POST(request) {
     const page =
       await browser.newPage();
 
+    await page.setViewport({
+      width: 1440,
+      height: 2000,
+    });
+
     await page.setContent(
-      html,
+      `
+      <html>
+        <head>
+          <style>
+
+            body{
+              margin:0;
+              padding:20px;
+              font-family:Arial,sans-serif;
+              background:white;
+            }
+
+            img{
+              max-width:100%;
+            }
+
+          </style>
+        </head>
+
+        <body>
+          ${decodeURIComponent(html)}
+        </body>
+      </html>
+      `,
       {
         waitUntil:
           "networkidle0",
@@ -61,16 +90,7 @@ export async function POST(request) {
 
         printBackground: true,
 
-        margin: {
-
-          top: "12mm",
-
-          right: "12mm",
-
-          bottom: "12mm",
-
-          left: "12mm",
-        },
+        preferCSSPageSize: true,
       });
 
     await browser.close();
@@ -85,7 +105,7 @@ export async function POST(request) {
             "application/pdf",
 
           "Content-Disposition":
-            'attachment; filename="travel-itinerary.pdf"',
+            'inline; filename="travel-itinerary.pdf"',
         },
       }
     );
@@ -97,7 +117,7 @@ export async function POST(request) {
     return NextResponse.json(
       {
         error:
-          "Failed to generate PDF",
+          err.message,
       },
       {
         status: 500,

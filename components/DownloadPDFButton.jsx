@@ -58,76 +58,13 @@ export default function DownloadPDFButton() {
 
         if (isMobile) {
 
-          const response =
-            await fetch(
-              "/api/export-pdf",
-              {
-                method: "POST",
-
-                headers: {
-                  "Content-Type":
-                    "application/json",
-                },
-
-                body: JSON.stringify({
-                  html:
-                    element.outerHTML,
-                }),
-              }
+          const html =
+            encodeURIComponent(
+              element.outerHTML
             );
 
-          if (!response.ok) {
-
-            throw new Error(
-              "Failed to export mobile PDF"
-            );
-          }
-
-          const blob =
-            await response.blob();
-
-          const blobUrl =
-            URL.createObjectURL(
-              blob
-            );
-
-          // =================================================
-          // IOS SAFARI FIX
-          // =================================================
-
-          const isIOS =
-            /iPad|iPhone|iPod/.test(
-              navigator.userAgent
-            );
-
-          if (isIOS) {
-
-            window.location.href =
-              blobUrl;
-
-          } else {
-
-            const link =
-              document.createElement(
-                "a"
-              );
-
-            link.href =
-              blobUrl;
-
-            link.download =
-              "travel-itinerary.pdf";
-
-            document.body.appendChild(
-              link
-            );
-
-            link.click();
-
-            document.body.removeChild(
-              link
-            );
-          }
+          window.location.href =
+            `/api/export-pdf?html=${html}`;
 
           return;
         }
@@ -149,6 +86,7 @@ export default function DownloadPDFButton() {
               if (
                 img.complete
               ) {
+
                 return Promise.resolve();
               }
 
