@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { useT } from "@/context/TranslationContext";
+
 import PrintHeader from "./PrintHeader";
 import PrintLayout from "./PrintLayout";
 
@@ -20,119 +21,185 @@ export default function PreviewModal({
 }) {
 
   const { t } = useT();
+
   const paperRef = useRef(null);
 
   useEffect(() => {
+
     if (!open) return;
 
     const fn = (e) => {
+
       if (e.key === "Escape") {
         onClose?.();
       }
     };
 
-    document.addEventListener("keydown", fn);
+    document.addEventListener(
+      "keydown",
+      fn
+    );
 
     return () => {
-      document.removeEventListener("keydown", fn);
+
+      document.removeEventListener(
+        "keydown",
+        fn
+      );
     };
+
   }, [open, onClose]);
 
   useEffect(() => {
+
     if (!open) return;
 
-    const prev = document.body.style.overflow;
+    const prev =
+      document.body.style.overflow;
 
-    document.body.style.overflow = "hidden";
+    document.body.style.overflow =
+      "hidden";
 
     return () => {
-      document.body.style.overflow = prev;
+
+      document.body.style.overflow =
+        prev;
     };
+
   }, [open]);
 
   if (!open) return null;
 
-const handleExportPDF = async () => {
+  const handleExportPDF = async () => {
 
-  if (!canExportPDF) {
+    if (!canExportPDF) {
 
-    onUpgradeNeeded?.(
-      "PDF export requires a Lite or Pro plan."
-    );
+      onUpgradeNeeded?.(
+        "PDF export requires a Lite or Pro plan."
+      );
 
-    return;
-  }
+      return;
+    }
 
- try {
+    try {
 
-  const html2pdf =
-    (
-      await import(
-        "html2pdf.js/dist/html2pdf.min.js"
-      )
-    ).default;
+      const html2pdf =
+        (
+          await import(
+            "html2pdf.js/dist/html2pdf.min.js"
+          )
+        ).default;
 
-  const element =
-    paperRef.current;
+      const element =
+        paperRef.current;
 
-  if (!element) {
-    throw new Error(
-      "Preview paper not found"
-    );
-  }
+      if (!element) {
 
-  const opt = {
+        throw new Error(
+          "Preview paper not found"
+        );
+      }
 
-    margin: [0, 0, 0, 0],
+      const opt = {
 
-    filename:
-      "backpackervun-itinerary.pdf",
+        margin: [0, 0, 0, 0],
 
-    image: {
-      type: "jpeg",
-      quality: 1,
-    },
+        filename:
+          "backpackervun-itinerary.pdf",
 
-    html2canvas: {
+        image: {
+          type: "jpeg",
+          quality: 1,
+        },
 
-      scale: 2,
+        html2canvas: {
 
-      useCORS: true,
+          scale: 1.35,
 
-      letterRendering: true,
+          useCORS: true,
 
-      scrollY: 0,
-    },
+          letterRendering: true,
 
-    jsPDF: {
+          scrollY: 0,
+        },
 
-      unit: "mm",
+        jsPDF: {
 
-      format: "a4",
+          unit: "mm",
 
-      orientation:
-        "portrait",
-    },
+          format: "a4",
 
-    pagebreak: {
-      mode: [
-        "css",
-        "legacy",
-      ],
-    },
+          orientation:
+            "portrait",
+        },
+
+        pagebreak: {
+          mode: [
+            "css",
+            "legacy",
+          ],
+        },
+      };
+
+      const pdfBlob =
+        await html2pdf()
+          .set(opt)
+          .from(element)
+          .outputPdf("blob");
+
+      const blobUrl =
+        URL.createObjectURL(
+          pdfBlob
+        );
+
+      const isMobile =
+        /Android|iPhone|iPad|iPod/i.test(
+          navigator.userAgent
+        );
+
+      if (isMobile) {
+
+        window.open(
+          blobUrl,
+          "_blank"
+        );
+
+      } else {
+
+        const link =
+          document.createElement("a");
+
+        link.href = blobUrl;
+
+        link.download =
+          "backpackervun-itinerary.pdf";
+
+        document.body.appendChild(
+          link
+        );
+
+        link.click();
+
+        link.remove();
+      }
+
+      setTimeout(() => {
+
+        URL.revokeObjectURL(
+          blobUrl
+        );
+
+      }, 10000);
+
+    } catch (err) {
+
+      console.error(err);
+
+      alert(
+        "Failed to export PDF."
+      );
+    }
   };
-
-  await html2pdf()
-    .set(opt)
-    .from(element)
-    .save();
-
-} catch (err) {
-    console.error(err);
-
-    alert("Failed to export PDF.");
-  }
-};
 
   return (
 
@@ -143,16 +210,20 @@ const handleExportPDF = async () => {
     >
 
       {/* Backdrop */}
+
       <div className="absolute inset-0 bg-[#0f172a]/90 backdrop-blur-md" />
 
       {/* Top Bar */}
+
       <div className="relative z-10 flex items-center justify-between border-b border-white/10 bg-[#0f172a]/95 px-4 py-3 sm:px-6">
 
         {/* Back */}
+
         <button
           onClick={onClose}
           className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/20"
         >
+
           <svg
             viewBox="0 0 24 24"
             className="h-4 w-4"
@@ -162,8 +233,11 @@ const handleExportPDF = async () => {
             strokeLinecap="round"
             strokeLinejoin="round"
           >
+
             <path d="M19 12H5" />
+
             <path d="M12 5l-7 7 7 7" />
+
           </svg>
 
           <span className="hidden sm:inline">
@@ -173,18 +247,22 @@ const handleExportPDF = async () => {
           <span className="sm:hidden">
             {t("back")}
           </span>
+
         </button>
 
         {/* Title */}
+
         <div className="rounded-full bg-white/10 px-4 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-white/70">
           {t("previewTitle")}
         </div>
 
         {/* Export */}
+
         <button
           onClick={handleExportPDF}
           className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2 text-sm font-semibold text-[#0f172a] shadow-lg transition hover:bg-white/90 active:scale-[0.98]"
         >
+
           <svg
             viewBox="0 0 24 24"
             className="h-4 w-4"
@@ -194,22 +272,28 @@ const handleExportPDF = async () => {
             strokeLinecap="round"
             strokeLinejoin="round"
           >
+
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+
             <polyline points="7 10 12 15 17 10" />
+
             <line x1="12" y1="15" x2="12" y2="3" />
+
           </svg>
 
           {t("exportPDF")}
+
         </button>
 
       </div>
 
       {/* Preview */}
+
       <div className="relative z-10 flex-1 overflow-auto bg-[#0f172a] p-6">
 
         <div
           ref={paperRef}
-          className="preview-paper mx-auto w-full max-w-[210mm] overflow-hidden rounded-[28px] bg-white shadow-2xl"
+          className="preview-paper mx-auto w-full max-w-[210mm] overflow-visible rounded-[28px] bg-white shadow-2xl"
         >
 
           <PrintHeader
