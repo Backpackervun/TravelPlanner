@@ -1,68 +1,47 @@
-import puppeteer from "puppeteer-core";
-import chromium from "@sparticuz/chromium";
+import puppeteer
+  from "puppeteer-core";
+
+import chromium
+  from "@sparticuz/chromium";
 
 export const dynamic =
   "force-dynamic";
 
-export const runtime =
-  "nodejs";
-
-export const maxDuration =
-  60;
-
-export async function POST(req) {
-
-  let browser;
+export async function GET(req) {
 
   try {
 
-    const body =
-      await req.json();
+    const { searchParams } =
+      new URL(req.url);
 
-    const html =
-      body?.html;
+    const url =
+      searchParams.get("url");
 
-    if (!html) {
+    if (!url) {
 
-      return Response.json(
-        {
-          error:
-            "Missing HTML content",
-        },
+      return new Response(
+        JSON.stringify({
+          error: "Missing URL",
+        }),
         {
           status: 400,
         }
       );
     }
 
-    browser =
+    const browser =
       await puppeteer.launch({
-
-        args: [
-          ...chromium.args,
-          "--hide-scrollbars",
-          "--disable-web-security",
-          "--no-sandbox",
-        ],
-
-        defaultViewport: {
-          width: 1440,
-          height: 2200,
-        },
-
+        args: chromium.args,
         executablePath:
           await chromium.executablePath(),
-
-        headless: chromium.headless,
-
-        ignoreHTTPSErrors: true,
+        headless: true,
       });
 
     const page =
       await browser.newPage();
 
-    await page.setContent(
-      html,
+    await page.goto(
+      url,
       {
         waitUntil:
           "networkidle0",
@@ -76,29 +55,15 @@ export async function POST(req) {
       }
     );
 
-    await new Promise(
-      (resolve) =>
-        setTimeout(
-          resolve,
-          1500
-        )
-    );
-
     const pdf =
       await page.pdf({
-
         format: "A4",
-
         printBackground: true,
-
-        preferCSSPageSize: true,
-
         margin: {
-
-          top: "0mm",
-          right: "0mm",
-          bottom: "0mm",
-          left: "0mm",
+          top: "0",
+          right: "0",
+          bottom: "0",
+          left: "0",
         },
       });
 
@@ -107,12 +72,10 @@ export async function POST(req) {
     return new Response(
       pdf,
       {
-
+        status: 200,
         headers: {
-
           "Content-Type":
             "application/pdf",
-
           "Content-Disposition":
             'attachment; filename="backpackervun-itinerary.pdf"',
         },
@@ -121,20 +84,13 @@ export async function POST(req) {
 
   } catch (err) {
 
-    console.error(
-      "PDF EXPORT ERROR:",
-      err
-    );
+    console.error(err);
 
-    if (browser) {
-
-      await browser.close();
-    }
-
-    return Response.json(
-      {
-        error: String(err),
-      },
+    return new Response(
+      JSON.stringify({
+        error:
+          err.message,
+      }),
       {
         status: 500,
       }
