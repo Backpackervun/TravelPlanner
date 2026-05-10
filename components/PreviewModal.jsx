@@ -194,51 +194,109 @@ export default function PreviewModal({
           1.0
         );
 
-      /* ===================================================
-         MULTI PAGE SUPPORT
-      =================================================== */
+   // ===================================================
+// MULTI PAGE SUPPORT
+// ===================================================
 
-      let heightLeft =
-        imgHeight;
+let heightLeft =
+  imgHeight;
 
-      let position = 0;
+let position = 0;
 
-      pdf.addImage(
-        imgData,
-        "JPEG",
-        0,
-        position,
-        imgWidth,
-        imgHeight,
-        undefined,
-        "FAST"
-      );
+// FIRST PAGE
+pdf.addImage(
+  imgData,
+  "JPEG",
+  0,
+  position,
+  imgWidth,
+  imgHeight,
+  undefined,
+  "FAST"
+);
 
-      heightLeft -=
-        pdfHeight;
+// ===================================================
+// CLICKABLE PDF LINKS
+// ===================================================
 
-      while (heightLeft > 0) {
+const pdfLinks =
+  input.querySelectorAll(
+    "[data-pdf-link]"
+  );
 
-        position =
-          heightLeft -
-          imgHeight;
+pdfLinks.forEach((el) => {
 
-        pdf.addPage();
+  const href =
+    el.getAttribute("href");
 
-        pdf.addImage(
-          imgData,
-          "JPEG",
-          0,
-          position,
-          imgWidth,
-          imgHeight,
-          undefined,
-          "FAST"
-        );
+  if (!href) return;
 
-        heightLeft -=
-          pdfHeight;
-      }
+  const rect =
+    el.getBoundingClientRect();
+
+  const parentRect =
+    input.getBoundingClientRect();
+
+  // PDF POSITION
+  const x =
+    ((rect.left -
+      parentRect.left) /
+      input.offsetWidth) *
+    pdfWidth;
+
+  const y =
+    ((rect.top -
+      parentRect.top) /
+      input.offsetHeight) *
+    imgHeight;
+
+  const w =
+    (rect.width /
+      input.offsetWidth) *
+    pdfWidth;
+
+  const h =
+    (rect.height /
+      input.offsetHeight) *
+    imgHeight;
+
+  pdf.link(
+    x,
+    y,
+    w,
+    h,
+    {
+      url: href,
+    }
+  );
+});
+
+heightLeft -=
+  pdfHeight;
+
+// NEXT PAGES
+while (heightLeft > 0) {
+
+  position =
+    heightLeft -
+    imgHeight;
+
+  pdf.addPage();
+
+  pdf.addImage(
+    imgData,
+    "JPEG",
+    0,
+    position,
+    imgWidth,
+    imgHeight,
+    undefined,
+    "FAST"
+  );
+
+  heightLeft -=
+    pdfHeight;
+}
 
       /* ===================================================
          DOWNLOAD

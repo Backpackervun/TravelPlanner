@@ -246,52 +246,98 @@ export default function PrintLayout({
                                   </div>
                                 )}
 
-                                {/* ACTION BUTTONS */}
 
-                                <div className="mt-4 flex flex-wrap gap-2">
+{/* ACTION BUTTONS */}
 
-                                  {row.destination && (
-                                    <a
-                                      href={buildMapUrl(row.destination)}
-                                      target="_blank"
-                                      rel="noreferrer"
-                                      className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700"
-                                    >
-                                      📍 Map
-                                    </a>
-                                  )}
+<div className="mt-4 flex flex-wrap gap-2">
 
-                                  {row.from && row.to && (
-                                    <a
-                                      href={buildRouteUrl(row.from, row.to)}
-                                      target="_blank"
-                                      rel="noreferrer"
-                                      className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700"
-                                    >
-                                      🗺️ Route
-                                    </a>
-                                  )}
+  {row.destination && (
+    <a
+      href={buildMapUrl(row.destination)}
+      target="_blank"
+      rel="noreferrer"
+      data-pdf-link
+      className="
+        inline-flex
+        items-center
+        gap-2
+        rounded-full
+        border
+        border-slate-200
+        bg-white
+        px-4
+        py-2
+        text-sm
+        font-medium
+        text-slate-700
+      "
+    >
+      <span>📍</span>
+      <span>Map</span>
+    </a>
+  )}
 
-                                  {row.destination && (
-                                    <a
-                                      href={getBookingLink(row.destination)}
-                                      target="_blank"
-                                      rel="noreferrer"
-                                      className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700"
-                                    >
-                                      {booking.icon} {booking.label}
-                                    </a>
-                                  )}
+  {row.from && row.to && (
+    <a
+      href={buildRouteUrl(row.from, row.to)}
+      target="_blank"
+      rel="noreferrer"
+      data-pdf-link
+      className="
+        inline-flex
+        items-center
+        gap-2
+        rounded-full
+        border
+        border-slate-200
+        bg-white
+        px-4
+        py-2
+        text-sm
+        font-medium
+        text-slate-700
+      "
+    >
+      <span>🗺️</span>
+      <span>Route</span>
+    </a>
+  )}
 
-                                </div>
+  {row.destination && (
+    <a
+      href={getBookingLink(row.destination)}
+      target="_blank"
+      rel="noreferrer"
+      data-pdf-link
+      className="
+        inline-flex
+        items-center
+        gap-2
+        rounded-full
+        border
+        border-slate-200
+        bg-white
+        px-4
+        py-2
+        text-sm
+        font-medium
+        text-slate-700
+      "
+    >
+      <span>{booking.icon}</span>
+      <span>{booking.label}</span>
+    </a>
+  )}
 
-                              </div>
+</div>
 
-                            </div>
+</div>
 
-                          </div>
+</div>
 
-                          {/* RIGHT */}
+</div>
+
+{/* RIGHT */}
 
                           <div className="min-w-[180px] text-right">
 
