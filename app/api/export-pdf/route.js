@@ -9,15 +9,15 @@ export const runtime =
 export const dynamic =
   "force-dynamic";
 
-export async function GET(request) {
+export async function POST(request) {
 
   try {
 
-    const { searchParams } =
-      new URL(request.url);
+    const formData =
+      await request.formData();
 
     const html =
-      searchParams.get("html");
+      formData.get("html");
 
     if (!html) {
 
@@ -73,7 +73,7 @@ export async function GET(request) {
         </head>
 
         <body>
-          ${decodeURIComponent(html)}
+          ${html}
         </body>
       </html>
       `,

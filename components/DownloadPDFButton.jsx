@@ -14,20 +14,12 @@ export default function DownloadPDFButton() {
 
         setLoading(true);
 
-        // =================================================
-        // SAFE DYNAMIC IMPORTS
-        // =================================================
-
         const html2canvas =
           (await import("html2canvas"))
             .default;
 
         const { jsPDF } =
           await import("jspdf");
-
-        // =================================================
-        // TARGET ELEMENT
-        // =================================================
 
         const element =
           document.getElementById(
@@ -44,7 +36,7 @@ export default function DownloadPDFButton() {
         }
 
         // =================================================
-        // MOBILE DETECTION
+        // MOBILE
         // =================================================
 
         const isMobile =
@@ -52,25 +44,54 @@ export default function DownloadPDFButton() {
             navigator.userAgent
           );
 
-        // =================================================
-        // MOBILE → SERVER PDF EXPORT
-        // =================================================
-
         if (isMobile) {
 
-          const html =
-            encodeURIComponent(
-              element.outerHTML
+          const form =
+            document.createElement(
+              "form"
             );
 
-          window.location.href =
-            `/api/export-pdf?html=${html}`;
+          form.method = "POST";
+
+          form.action =
+            "/api/export-pdf";
+
+          form.target =
+            "_blank";
+
+          const input =
+            document.createElement(
+              "input"
+            );
+
+          input.type =
+            "hidden";
+
+          input.name =
+            "html";
+
+          input.value =
+            element.outerHTML;
+
+          form.appendChild(
+            input
+          );
+
+          document.body.appendChild(
+            form
+          );
+
+          form.submit();
+
+          document.body.removeChild(
+            form
+          );
 
           return;
         }
 
         // =================================================
-        // WAIT ALL IMAGES LOADED
+        // DESKTOP IMAGES
         // =================================================
 
         const images =
@@ -139,10 +160,6 @@ export default function DownloadPDFButton() {
             }
           );
 
-        // =================================================
-        // PDF SETUP
-        // =================================================
-
         const pdf =
           new jsPDF({
             orientation:
@@ -179,16 +196,10 @@ export default function DownloadPDFButton() {
             1.0
           );
 
-        // =================================================
-        // MULTIPAGE SUPPORT
-        // =================================================
-
         let heightLeft =
           imgHeight;
 
         let position = 0;
-
-        // FIRST PAGE
 
         pdf.addImage(
           imgData,
@@ -201,8 +212,6 @@ export default function DownloadPDFButton() {
 
         heightLeft -=
           pdfHeight;
-
-        // NEXT PAGES
 
         while (
           heightLeft > 0
@@ -226,10 +235,6 @@ export default function DownloadPDFButton() {
           heightLeft -=
             pdfHeight;
         }
-
-        // =================================================
-        // DESKTOP SAVE
-        // =================================================
 
         pdf.save(
           "travel-itinerary.pdf"
