@@ -75,7 +75,7 @@ export default function PreviewModal({
 
   /* ========================================================
      FINAL PDF EXPORT
-     PUPPETEER SERVER PDF
+     PUPPETEER HTML PDF
   ======================================================== */
 
   const handleExportPDF = async () => {
@@ -95,19 +95,108 @@ export default function PreviewModal({
 
       setExporting(true);
 
-      const isMobile =
-        /Android|iPhone|iPad|iPod/i.test(
-          navigator.userAgent
+      const paperEl =
+        paperRef.current;
+
+      if (!paperEl) {
+
+        throw new Error(
+          "Preview paper missing"
         );
+      }
 
-      /* ========================================
-         CREATE EXPORT SESSION
-      ======================================== */
+      const html = `
+        <!DOCTYPE html>
 
-      const sessionResponse =
+        <html>
+
+        <head>
+
+          <meta charset="UTF-8" />
+
+          <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1.0"
+          />
+
+          <style>
+
+            * {
+              box-sizing: border-box;
+            }
+
+            html,
+            body {
+
+              margin: 0;
+
+              padding: 0;
+
+              background: #ffffff;
+
+              font-family:
+                Inter,
+                Arial,
+                sans-serif;
+
+              -webkit-print-color-adjust: exact;
+
+              print-color-adjust: exact;
+            }
+
+            @page {
+
+              size: A4;
+
+              margin: 0;
+            }
+
+            .preview-paper {
+
+              width: 210mm;
+
+              background: white;
+
+              overflow: visible !important;
+            }
+
+            img {
+
+              max-width: 100%;
+
+              display: block;
+            }
+
+            a {
+
+              color: inherit !important;
+
+              text-decoration: none !important;
+            }
+
+            * {
+
+              page-break-inside: avoid;
+            }
+
+          </style>
+
+        </head>
+
+        <body>
+
+          ${paperEl.outerHTML}
+
+        </body>
+
+        </html>
+      `;
+
+      const response =
         await fetch(
-          "/api/export-session",
+          "/api/export-pdf",
           {
+
             method: "POST",
 
             headers: {
@@ -116,74 +205,72 @@ export default function PreviewModal({
             },
 
             body: JSON.stringify({
-              tripInfo,
-              rows,
-              dayMap,
-              region,
-              rate,
-              totalLocal,
-              totalIDR,
+              html,
             }),
           }
         );
 
-      if (!sessionResponse.ok) {
+      if (!response.ok) {
+
+        const errorText =
+          await response.text();
+
+        console.error(
+          "PDF API ERROR:",
+          errorText
+        );
 
         throw new Error(
-          "Failed to create export session"
+          "PDF generation failed"
         );
       }
 
-      const session =
-        await sessionResponse.json();
+      const blob =
+        await response.blob();
 
-      if (!session?.id) {
-
-        throw new Error(
-          "Missing export session ID"
+      const url =
+        URL.createObjectURL(
+          blob
         );
-      }
 
-      /* ========================================
-         FINAL PDF URL
-      ======================================== */
-
-      const pdfUrl =
-        `/api/export-pdf?id=${session.id}`;
-
-      /* ========================================
-         MOBILE
-      ======================================== */
+      const isMobile =
+        /Android|iPhone|iPad|iPod/i.test(
+          navigator.userAgent
+        );
 
       if (isMobile) {
 
-        window.location.href =
-          pdfUrl;
+        window.open(
+          url,
+          "_blank"
+        );
 
-        return;
+      } else {
+
+        const link =
+          document.createElement("a");
+
+        link.href = url;
+
+        link.download =
+          "backpackervun-itinerary.pdf";
+
+        document.body.appendChild(
+          link
+        );
+
+        link.click();
+
+        link.remove();
       }
 
-      /* ========================================
-         DESKTOP
-      ======================================== */
+      setTimeout(() => {
 
-      const link =
-        document.createElement("a");
+        URL.revokeObjectURL(
+          url
+        );
 
-      link.href = pdfUrl;
-
-      link.setAttribute(
-        "download",
-        "backpackervun-itinerary.pdf"
-      );
-
-      document.body.appendChild(
-        link
-      );
-
-      link.click();
-
-      link.remove();
+      }, 10000);
 
     } catch (err) {
 

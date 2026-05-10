@@ -6,42 +6,27 @@ export const dynamic =
 
 export const maxDuration = 60;
 
-export async function GET(req) {
+export async function POST(req) {
 
   try {
 
-    const { searchParams } =
-      new URL(req.url);
+    const body =
+      await req.json();
 
-    const id =
-      searchParams.get("id");
+    const html =
+      body.html;
 
-    if (!id) {
+    if (!html) {
 
       return Response.json(
         {
-          error: "Missing ID",
+          error: "Missing HTML",
         },
         {
           status: 400,
         }
       );
     }
-
-    const baseUrl =
-      process.env
-        .NEXT_PUBLIC_SITE_URL;
-
-    if (!baseUrl) {
-
-      throw new Error(
-        "NEXT_PUBLIC_SITE_URL missing"
-      );
-    }
-
-    /* ========================================
-       LAUNCH CHROMIUM
-    ======================================== */
 
     const browser =
       await puppeteer.launch({
@@ -51,7 +36,7 @@ export async function GET(req) {
         executablePath:
           await chromium.executablePath(),
 
-        headless: chromium.headless,
+        headless: true,
 
         defaultViewport: {
 
@@ -66,63 +51,34 @@ export async function GET(req) {
     const page =
       await browser.newPage();
 
-    /* ========================================
-       OPEN PRINT PAGE
-    ======================================== */
+    await page.setViewport({
 
-    const printUrl =
-      `${baseUrl}/print/${id}?export=true`;
+      width: 1440,
 
-    console.log(
-      "OPENING:",
-      printUrl
-    );
+      height: 2200,
 
-    await page.goto(
-      printUrl,
+      deviceScaleFactor: 2,
+    });
+
+    await page.setContent(
+      html,
       {
-
         waitUntil:
           "networkidle0",
-
-        timeout: 60000,
       }
     );
-
-    /* ========================================
-       WAIT FOR FULL RENDER
-    ======================================== */
-
-    await page.waitForSelector(
-      "body",
-      {
-        timeout: 15000,
-      }
-    );
-
-    /* ========================================
-       EXTRA WAIT FOR FIRESTORE
-    ======================================== */
-
-    await new Promise(
-      (resolve) =>
-        setTimeout(
-          resolve,
-          2500
-        )
-    );
-
-    /* ========================================
-       SCREEN MODE
-    ======================================== */
 
     await page.emulateMediaType(
       "screen"
     );
 
-    /* ========================================
-       PDF GENERATION
-    ======================================== */
+    await new Promise(
+      (resolve) =>
+        setTimeout(
+          resolve,
+          1500
+        )
+    );
 
     const pdf =
       await page.pdf({
@@ -150,10 +106,6 @@ export async function GET(req) {
       });
 
     await browser.close();
-
-    /* ========================================
-       RETURN PDF
-    ======================================== */
 
     return new Response(
       pdf,
