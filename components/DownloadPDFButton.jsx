@@ -26,7 +26,7 @@ export default function DownloadPDFButton() {
           await import("jspdf");
 
         // =================================================
-        // ELEMENT
+        // TARGET ELEMENT
         // =================================================
 
         const element =
@@ -213,21 +213,46 @@ export default function DownloadPDFButton() {
         }
 
         // =================================================
-        // SAVE / OPEN PDF
+        // SAVE PDF
         // =================================================
 
         if (
           isMobile
         ) {
 
-          const blobUrl =
+          const pdfBlob =
             pdf.output(
-              "bloburl"
+              "blob"
             );
 
-          window.open(
-            blobUrl,
-            "_blank"
+          const blobUrl =
+            URL.createObjectURL(
+              pdfBlob
+            );
+
+          const link =
+            document.createElement(
+              "a"
+            );
+
+          link.href =
+            blobUrl;
+
+          link.download =
+            "travel-itinerary.pdf";
+
+          document.body.appendChild(
+            link
+          );
+
+          link.click();
+
+          document.body.removeChild(
+            link
+          );
+
+          URL.revokeObjectURL(
+            blobUrl
           );
 
         } else {
