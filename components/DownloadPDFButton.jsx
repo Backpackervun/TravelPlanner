@@ -51,13 +51,18 @@ export default function DownloadPDFButton() {
               "form"
             );
 
-          form.method = "POST";
+          form.method =
+            "POST";
 
           form.action =
             "/api/export-pdf";
 
+          // =================================================
+          // IOS SAFARI FIX
+          // =================================================
+
           form.target =
-            "_blank";
+            "_self";
 
           const input =
             document.createElement(
@@ -201,6 +206,8 @@ export default function DownloadPDFButton() {
 
         let position = 0;
 
+        // FIRST PAGE
+
         pdf.addImage(
           imgData,
           "JPEG",
@@ -212,6 +219,8 @@ export default function DownloadPDFButton() {
 
         heightLeft -=
           pdfHeight;
+
+        // NEXT PAGES
 
         while (
           heightLeft > 0
@@ -235,6 +244,10 @@ export default function DownloadPDFButton() {
           heightLeft -=
             pdfHeight;
         }
+
+        // =================================================
+        // DESKTOP SAVE
+        // =================================================
 
         pdf.save(
           "travel-itinerary.pdf"
