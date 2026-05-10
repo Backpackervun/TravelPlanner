@@ -1,8 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import html2canvas from "html2canvas";
-import jsPDF from "jspdf";
 
 import { useT } from "@/context/TranslationContext";
 
@@ -105,6 +103,13 @@ export default function PreviewModal({
 
       setExporting(true);
 
+      // ✅ DYNAMIC IMPORT FIX
+      const html2canvas =
+        (await import("html2canvas")).default;
+
+      const { jsPDF } =
+        await import("jspdf");
+
       const input =
         paperRef.current;
 
@@ -126,7 +131,7 @@ export default function PreviewModal({
 
             scale:
               Math.max(
-                window.devicePixelRatio,
+                window.devicePixelRatio || 1,
                 3
               ),
 
@@ -194,109 +199,110 @@ export default function PreviewModal({
           1.0
         );
 
-   // ===================================================
-// MULTI PAGE SUPPORT
-// ===================================================
+      // ===================================================
+      // MULTI PAGE SUPPORT
+      // ===================================================
 
-let heightLeft =
-  imgHeight;
+      let heightLeft =
+        imgHeight;
 
-let position = 0;
+      let position = 0;
 
-// FIRST PAGE
-pdf.addImage(
-  imgData,
-  "JPEG",
-  0,
-  position,
-  imgWidth,
-  imgHeight,
-  undefined,
-  "FAST"
-);
+      // FIRST PAGE
 
-// ===================================================
-// CLICKABLE PDF LINKS
-// ===================================================
+      pdf.addImage(
+        imgData,
+        "JPEG",
+        0,
+        position,
+        imgWidth,
+        imgHeight,
+        undefined,
+        "FAST"
+      );
 
-const pdfLinks =
-  input.querySelectorAll(
-    "[data-pdf-link]"
-  );
+      // ===================================================
+      // CLICKABLE PDF LINKS
+      // ===================================================
 
-pdfLinks.forEach((el) => {
+      const pdfLinks =
+        input.querySelectorAll(
+          "[data-pdf-link]"
+        );
 
-  const href =
-    el.getAttribute("href");
+      pdfLinks.forEach((el) => {
 
-  if (!href) return;
+        const href =
+          el.getAttribute("href");
 
-  const rect =
-    el.getBoundingClientRect();
+        if (!href) return;
 
-  const parentRect =
-    input.getBoundingClientRect();
+        const rect =
+          el.getBoundingClientRect();
 
-  // PDF POSITION
-  const x =
-    ((rect.left -
-      parentRect.left) /
-      input.offsetWidth) *
-    pdfWidth;
+        const parentRect =
+          input.getBoundingClientRect();
 
-  const y =
-    ((rect.top -
-      parentRect.top) /
-      input.offsetHeight) *
-    imgHeight;
+        const x =
+          ((rect.left -
+            parentRect.left) /
+            input.offsetWidth) *
+          pdfWidth;
 
-  const w =
-    (rect.width /
-      input.offsetWidth) *
-    pdfWidth;
+        const y =
+          ((rect.top -
+            parentRect.top) /
+            input.offsetHeight) *
+          imgHeight;
 
-  const h =
-    (rect.height /
-      input.offsetHeight) *
-    imgHeight;
+        const w =
+          (rect.width /
+            input.offsetWidth) *
+          pdfWidth;
 
-  pdf.link(
-    x,
-    y,
-    w,
-    h,
-    {
-      url: href,
-    }
-  );
-});
+        const h =
+          (rect.height /
+            input.offsetHeight) *
+          imgHeight;
 
-heightLeft -=
-  pdfHeight;
+        pdf.link(
+          x,
+          y,
+          w,
+          h,
+          {
+            url: href,
+          }
+        );
+      });
 
-// NEXT PAGES
-while (heightLeft > 0) {
+      heightLeft -=
+        pdfHeight;
 
-  position =
-    heightLeft -
-    imgHeight;
+      // NEXT PAGES
 
-  pdf.addPage();
+      while (heightLeft > 0) {
 
-  pdf.addImage(
-    imgData,
-    "JPEG",
-    0,
-    position,
-    imgWidth,
-    imgHeight,
-    undefined,
-    "FAST"
-  );
+        position =
+          heightLeft -
+          imgHeight;
 
-  heightLeft -=
-    pdfHeight;
-}
+        pdf.addPage();
+
+        pdf.addImage(
+          imgData,
+          "JPEG",
+          0,
+          position,
+          imgWidth,
+          imgHeight,
+          undefined,
+          "FAST"
+        );
+
+        heightLeft -=
+          pdfHeight;
+      }
 
       /* ===================================================
          DOWNLOAD
