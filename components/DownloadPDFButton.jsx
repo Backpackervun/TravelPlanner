@@ -53,6 +53,73 @@ export default function DownloadPDFButton() {
           );
 
         // =================================================
+        // MOBILE → SERVER PDF EXPORT
+        // =================================================
+
+        if (isMobile) {
+
+          const response =
+            await fetch(
+              "/api/export-pdf",
+              {
+                method: "POST",
+
+                headers: {
+                  "Content-Type":
+                    "application/json",
+                },
+
+                body: JSON.stringify({
+                  html:
+                    element.outerHTML,
+                }),
+              }
+            );
+
+          if (!response.ok) {
+
+            throw new Error(
+              "Failed to export mobile PDF"
+            );
+          }
+
+          const blob =
+            await response.blob();
+
+          const url =
+            URL.createObjectURL(
+              blob
+            );
+
+          const link =
+            document.createElement(
+              "a"
+            );
+
+          link.href =
+            url;
+
+          link.download =
+            "travel-itinerary.pdf";
+
+          document.body.appendChild(
+            link
+          );
+
+          link.click();
+
+          document.body.removeChild(
+            link
+          );
+
+          URL.revokeObjectURL(
+            url
+          );
+
+          return;
+        }
+
+        // =================================================
         // WAIT ALL IMAGES LOADED
         // =================================================
 
@@ -89,7 +156,7 @@ export default function DownloadPDFButton() {
         );
 
         // =================================================
-        // HIGH QUALITY SCREENSHOT
+        // DESKTOP HTML2CANVAS
         // =================================================
 
         const canvas =
@@ -97,10 +164,7 @@ export default function DownloadPDFButton() {
             element,
             {
 
-              scale:
-                isMobile
-                  ? 1.5
-                  : 3,
+              scale: 3,
 
               useCORS: true,
 
@@ -213,54 +277,12 @@ export default function DownloadPDFButton() {
         }
 
         // =================================================
-        // SAVE PDF
+        // DESKTOP SAVE
         // =================================================
 
-        if (
-          isMobile
-        ) {
-
-          const pdfBlob =
-            pdf.output(
-              "blob"
-            );
-
-          const blobUrl =
-            URL.createObjectURL(
-              pdfBlob
-            );
-
-          const link =
-            document.createElement(
-              "a"
-            );
-
-          link.href =
-            blobUrl;
-
-          link.download =
-            "travel-itinerary.pdf";
-
-          document.body.appendChild(
-            link
-          );
-
-          link.click();
-
-          document.body.removeChild(
-            link
-          );
-
-          URL.revokeObjectURL(
-            blobUrl
-          );
-
-        } else {
-
-          pdf.save(
-            "travel-itinerary.pdf"
-          );
-        }
+        pdf.save(
+          "travel-itinerary.pdf"
+        );
 
       } catch (err) {
 
