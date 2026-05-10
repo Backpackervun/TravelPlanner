@@ -14,13 +14,6 @@ export default function DownloadPDFButton() {
 
         setLoading(true);
 
-        const html2canvas =
-          (await import("html2canvas"))
-            .default;
-
-        const { jsPDF } =
-          await import("jspdf");
-
         const element =
           document.getElementById(
             "pdf-content"
@@ -44,60 +37,29 @@ export default function DownloadPDFButton() {
             navigator.userAgent
           );
 
+        // =================================================
+        // MOBILE → NATIVE PRINT
+        // =================================================
+
         if (isMobile) {
 
-          const form =
-            document.createElement(
-              "form"
-            );
-
-          form.method =
-            "POST";
-
-          form.action =
-            "/api/export-pdf";
-
-          // =================================================
-          // IOS SAFARI FIX
-          // =================================================
-
-          form.target =
-            "_self";
-
-          const input =
-            document.createElement(
-              "input"
-            );
-
-          input.type =
-            "hidden";
-
-          input.name =
-            "html";
-
-          input.value =
-            element.outerHTML;
-
-          form.appendChild(
-            input
-          );
-
-          document.body.appendChild(
-            form
-          );
-
-          form.submit();
-
-          document.body.removeChild(
-            form
-          );
+          window.print();
 
           return;
         }
 
         // =================================================
-        // DESKTOP IMAGES
+        // DESKTOP PDF EXPORT
         // =================================================
+
+        const html2canvas =
+          (await import("html2canvas"))
+            .default;
+
+        const { jsPDF } =
+          await import("jspdf");
+
+        // WAIT IMAGES
 
         const images =
           element.querySelectorAll(
@@ -132,9 +94,7 @@ export default function DownloadPDFButton() {
           )
         );
 
-        // =================================================
-        // DESKTOP HTML2CANVAS
-        // =================================================
+        // SCREENSHOT
 
         const canvas =
           await html2canvas(
@@ -164,6 +124,8 @@ export default function DownloadPDFButton() {
                 element.scrollHeight,
             }
           );
+
+        // PDF
 
         const pdf =
           new jsPDF({
@@ -245,9 +207,7 @@ export default function DownloadPDFButton() {
             pdfHeight;
         }
 
-        // =================================================
-        // DESKTOP SAVE
-        // =================================================
+        // SAVE DESKTOP
 
         pdf.save(
           "travel-itinerary.pdf"
