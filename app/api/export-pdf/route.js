@@ -7,17 +7,24 @@ export async function GET(req) {
 
   try {
 
+    console.log("PDF START");
+
     const { searchParams } =
       new URL(req.url);
 
     const id =
-      searchParams.get("id") ||
-      "demo";
+      searchParams.get("id");
+
+    console.log("PDF ID:", id);
 
     const baseUrl =
       process.env
-        .NEXT_PUBLIC_SITE_URL ||
-      "http://localhost:3000";
+        .NEXT_PUBLIC_SITE_URL;
+
+    console.log(
+      "BASE URL:",
+      baseUrl
+    );
 
     const browser =
       await puppeteer.launch({
@@ -30,31 +37,43 @@ export async function GET(req) {
         executablePath:
           await chromium.executablePath(),
 
-        headless: chromium.headless,
+        headless: true,
 
       });
+
+    console.log(
+      "BROWSER READY"
+    );
 
     const page =
       await browser.newPage();
 
-   await page.goto(
-  `${baseUrl}/print/${id}`,
-  {
-    waitUntil: "networkidle0",
-  }
-);
+    await page.goto(
+      `${baseUrl}/print/${id}?export=true`,
+      {
+        waitUntil:
+          "domcontentloaded",
+      }
+    );
 
-await page.waitForSelector(
-  ".preview-paper"
-);
+    console.log(
+      "PAGE LOADED"
+    );
 
-await new Promise((resolve) =>
-  setTimeout(resolve, 1500)
-);
+    await page.waitForSelector(
+      ".preview-paper",
+      {
+        timeout: 5000,
+      }
+    );
 
-await page.emulateMediaType(
-  "screen"
-);
+    console.log(
+      "SELECTOR READY"
+    );
+
+    await page.emulateMediaType(
+      "screen"
+    );
 
     const pdf =
       await page.pdf({
@@ -65,6 +84,8 @@ await page.emulateMediaType(
 
         preferCSSPageSize: true,
 
+        scale: 0.98,
+
         margin: {
           top: "0px",
           right: "0px",
@@ -74,31 +95,39 @@ await page.emulateMediaType(
 
       });
 
+    console.log(
+      "PDF GENERATED"
+    );
+
     await browser.close();
 
-    return new Response(pdf, {
+    return new Response(
+      pdf,
+      {
 
-      headers: {
+        headers: {
 
-        "Content-Type":
-          "application/pdf",
+          "Content-Type":
+            "application/pdf",
 
-        "Content-Disposition":
-          'attachment; filename="backpackervun-itinerary.pdf"',
-      },
+          "Content-Disposition":
+            'attachment; filename="backpackervun-itinerary.pdf"',
+        },
 
-    });
+      }
+    );
 
   } catch (err) {
 
-    console.error(err);
+    console.error(
+      "PDF ERROR:",
+      err
+    );
 
-    return new Response(
-
-      JSON.stringify({
+    return Response.json(
+      {
         error: String(err),
-      }),
-
+      },
       {
         status: 500,
       }
