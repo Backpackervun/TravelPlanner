@@ -130,7 +130,9 @@ FINAL PREVIEW PAPER
 ========================================================= */
 
 .preview-paper {
+
   width: 210mm;
+
   max-width: 100%;
 
   margin: 0 auto;
@@ -139,11 +141,11 @@ FINAL PREVIEW PAPER
 
   border-radius: 24px;
 
-  overflow: visible;
+  overflow: visible !important;
 
   min-height: auto;
 
-  height: auto;
+  height: auto !important;
 
   box-shadow:
     0 30px 80px rgba(0, 0, 0, 0.45),
@@ -159,6 +161,33 @@ FINAL PREVIEW PAPER
   color: rgba(255, 255, 255, 0.3);
 
   font-size: 12px;
+}
+
+/* =========================================================
+PAGE FLOW SYSTEM
+========================================================= */
+
+.day-block,
+.day-item,
+.itinerary-card,
+.print-card,
+.print-section,
+.transport-card,
+.summary-card,
+.summary-section,
+.print-footer,
+.print-no-break {
+
+  break-inside: avoid;
+
+  page-break-inside: avoid;
+}
+
+.stop {
+
+  break-inside: auto;
+
+  page-break-inside: auto;
 }
 
 /* =========================================================
@@ -178,46 +207,70 @@ PRINT SYSTEM
   }
 
   body {
+
     -webkit-print-color-adjust: exact !important;
+
     print-color-adjust: exact !important;
   }
 
   .preview-paper {
+
     width: 210mm !important;
+
+    max-width: 210mm !important;
 
     border-radius: 0 !important;
 
     overflow: visible !important;
 
+    height: auto !important;
+
     box-shadow: none !important;
+
+    background: white !important;
   }
 
   .paper-bg {
+
     background: white !important;
+
     background-image: none !important;
   }
 
-  .print-section,
-  .print-card,
-  .print-footer,
-  .print-no-break,
-  .itinerary-card,
   .day-block,
   .day-item,
-  .stop,
-  .summary-section {
+  .itinerary-card,
+  .print-card,
+  .print-section,
+  .transport-card,
+  .summary-card,
+  .summary-section,
+  .print-footer,
+  .print-no-break {
+
     break-inside: avoid !important;
+
     page-break-inside: avoid !important;
   }
 
+  .stop {
+
+    break-inside: auto !important;
+
+    page-break-inside: auto !important;
+  }
+
   .print-page-break {
+
     page-break-before: always !important;
   }
 
   *,
   *::before,
   *::after {
+
     box-shadow: none !important;
+
     text-shadow: none !important;
   }
 }
@@ -233,7 +286,9 @@ MOBILE
   }
 
   .preview-paper {
+
     width: 100%;
+
     border-radius: 18px;
   }
 
@@ -251,46 +306,83 @@ PATCH 14D
 ========================================================= */
 
 /* ── Mobile label helper ── */
+
 .mlab {
+
   font-size: 9px;
+
   font-weight: 600;
+
   text-transform: uppercase;
+
   letter-spacing: 0.1em;
+
   color: #94A3B8;
+
   margin-bottom: 4px;
 }
 
 /* ── Dropdown animation ── */
+
 @keyframes bpv-fade-in {
+
   from {
+
     opacity: 0;
-    transform: translateY(-6px) scale(0.97);
+
+    transform:
+      translateY(-6px)
+      scale(0.97);
   }
 
   to {
+
     opacity: 1;
-    transform: translateY(0) scale(1);
+
+    transform:
+      translateY(0)
+      scale(1);
   }
 }
 
 .animate-fade-in {
-  animation: bpv-fade-in 180ms cubic-bezier(0.16, 1, 0.3, 1) both;
+
+  animation:
+    bpv-fade-in
+    180ms
+    cubic-bezier(0.16, 1, 0.3, 1)
+    both;
 }
 
 /* ── FAB spacing mobile ── */
+
 @media (max-width: 767px) {
+
   footer.site-footer {
+
     padding-bottom:
-      calc(76px + env(safe-area-inset-bottom, 12px)) !important;
+      calc(
+        76px +
+        env(
+          safe-area-inset-bottom,
+          12px
+        )
+      ) !important;
   }
 }
 
 /* ── Scrollbar hide ── */
+
 .scrollbar-hide {
-  -ms-overflow-style: none !important;
-  scrollbar-width: none !important;
+
+  -ms-overflow-style:
+    none !important;
+
+  scrollbar-width:
+    none !important;
 }
 
 .scrollbar-hide::-webkit-scrollbar {
+
   display: none !important;
 }

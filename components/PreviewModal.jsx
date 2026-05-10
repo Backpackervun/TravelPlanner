@@ -100,6 +100,11 @@ export default function PreviewModal({
         );
       }
 
+      const isMobile =
+        /Android|iPhone|iPad|iPod/i.test(
+          navigator.userAgent
+        );
+
       const opt = {
 
         margin: [0, 0, 0, 0],
@@ -108,19 +113,26 @@ export default function PreviewModal({
           "backpackervun-itinerary.pdf",
 
         image: {
+
           type: "jpeg",
+
           quality: 1,
         },
 
         html2canvas: {
 
-          scale: 1.35,
+          scale: isMobile
+            ? 0.75
+            : 0.9,
 
           useCORS: true,
 
           letterRendering: true,
 
           scrollY: 0,
+
+          backgroundColor:
+            "#ffffff",
         },
 
         jsPDF: {
@@ -134,6 +146,7 @@ export default function PreviewModal({
         },
 
         pagebreak: {
+
           mode: [
             "css",
             "legacy",
@@ -141,55 +154,53 @@ export default function PreviewModal({
         },
       };
 
-      const pdfBlob =
-        await html2pdf()
-          .set(opt)
-          .from(element)
-          .outputPdf("blob");
-
-      const blobUrl =
-        URL.createObjectURL(
-          pdfBlob
-        );
-
-      const isMobile =
-        /Android|iPhone|iPad|iPod/i.test(
-          navigator.userAgent
-        );
+      /* =========================
+         MOBILE
+      ========================= */
 
       if (isMobile) {
+
+        const worker =
+          html2pdf()
+            .set(opt)
+            .from(element);
+
+        const pdfBlob =
+          await worker.outputPdf(
+            "blob"
+          );
+
+        const blobUrl =
+          URL.createObjectURL(
+            pdfBlob
+          );
 
         window.open(
           blobUrl,
           "_blank"
         );
 
-      } else {
+        setTimeout(() => {
 
-        const link =
-          document.createElement("a");
+          URL.revokeObjectURL(
+            blobUrl
+          );
 
-        link.href = blobUrl;
+        }, 10000);
 
-        link.download =
-          "backpackervun-itinerary.pdf";
-
-        document.body.appendChild(
-          link
-        );
-
-        link.click();
-
-        link.remove();
       }
 
-      setTimeout(() => {
+      /* =========================
+         DESKTOP
+      ========================= */
 
-        URL.revokeObjectURL(
-          blobUrl
-        );
+      else {
 
-      }, 10000);
+        await html2pdf()
+          .set(opt)
+          .from(element)
+          .save();
+      }
 
     } catch (err) {
 
