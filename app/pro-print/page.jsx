@@ -11,6 +11,8 @@ export default function ProPrintPage() {
       }}
     >
 
+      {/* HEADER */}
+
       <section>
 
         <h1
@@ -33,7 +35,7 @@ export default function ProPrintPage() {
 
       </section>
 
-      {/* CARD */}
+      {/* MAIN CARD */}
 
       <div
         style={{
@@ -42,8 +44,6 @@ export default function ProPrintPage() {
             "1px solid #e5e7eb",
           borderRadius: "24px",
           padding: "24px",
-          pageBreakInside:
-            "avoid",
         }}
       >
 
@@ -111,58 +111,110 @@ export default function ProPrintPage() {
           }}
         />
 
-        {/* CLICKABLE LINKS */}
+      </div>
 
-        <div
+      {/* SEPARATE LINK BLOCK */}
+
+      <div
+        style={{
+          marginTop: "16px",
+
+          display: "flex",
+
+          gap: "12px",
+
+          flexWrap: "wrap",
+
+          breakInside: "avoid",
+
+          pageBreakInside:
+            "avoid",
+        }}
+      >
+
+        <a
+          href="https://maps.google.com/?q=Sydney+Airport"
+          target="_blank"
+          rel="noopener noreferrer"
           style={{
-            display: "flex",
-            gap: "12px",
-            marginTop: "20px",
-            flexWrap: "wrap",
+            border:
+              "1px solid #d1d5db",
+
+            padding:
+              "12px 18px",
+
+            borderRadius:
+              "999px",
+
+            textDecoration:
+              "none",
+
+            color: "#111827",
+
+            fontWeight: 700,
+
+            background:
+              "#ffffff",
           }}
         >
+          📍 Open Maps
+        </a>
 
-          <a
-            href="https://maps.google.com/?q=Sydney+Airport"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              border:
-                "1px solid #d1d5db",
-              padding:
-                "12px 18px",
-              borderRadius:
-                "999px",
-              textDecoration:
-                "none",
-              color: "#111827",
-              fontWeight: 700,
-            }}
-          >
-            📍 Open Maps
-          </a>
+        <a
+          href="https://www.booking.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            border:
+              "1px solid #d1d5db",
 
-          <a
-            href="https://www.booking.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              border:
-                "1px solid #d1d5db",
-              padding:
-                "12px 18px",
-              borderRadius:
-                "999px",
-              textDecoration:
-                "none",
-              color: "#111827",
-              fontWeight: 700,
-            }}
-          >
-            🏨 Hotel
-          </a>
+            padding:
+              "12px 18px",
 
-        </div>
+            borderRadius:
+              "999px",
+
+            textDecoration:
+              "none",
+
+            color: "#111827",
+
+            fontWeight: 700,
+
+            background:
+              "#ffffff",
+          }}
+        >
+          🏨 Hotel
+        </a>
+
+        <a
+          href="https://www.google.com/travel/flights"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            border:
+              "1px solid #d1d5db",
+
+            padding:
+              "12px 18px",
+
+            borderRadius:
+              "999px",
+
+            textDecoration:
+              "none",
+
+            color: "#111827",
+
+            fontWeight: 700,
+
+            background:
+              "#ffffff",
+          }}
+        >
+          ✈️ Flights
+        </a>
 
       </div>
 
