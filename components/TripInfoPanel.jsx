@@ -5,14 +5,27 @@ import { differenceInDays } from "date-fns";
 import { useT } from "@/context/TranslationContext";
 
 /**
- * TripInfoPanel — shows already-filled trip details in PLANNER view.
+ * TripInfoPanel — Patch PDF-v3
  *
- * This is NOT the setup form. It shows the data that was entered on the
- * setup screen, all fields are editable inline, but it's compact and
- * doesn't include the region selector (region is in the header).
- *
- * Fix: replaces the SetupScreen rendering in planner view.
+ * Date format fix:
+ * - computeTravel now returns "11 May 2026 – 15 May 2026" instead of "2026-05-11 – 2026-05-15"
+ * - Duration display is unchanged
+ * - travelDates stored in tripInfo is now the human-readable string
  */
+
+/**
+ * Format ISO date string to "11 May 2026"
+ */
+function formatDateDisplay(s) {
+  if (!s) return "";
+  try {
+    const d = new Date(s + "T12:00:00");
+    if (isNaN(d)) return s;
+    return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+    // → "11 May 2026"
+  } catch { return s; }
+}
+
 export default function TripInfoPanel({ tripInfo, onChange }) {
   const { t } = useT();
 
@@ -30,21 +43,24 @@ export default function TripInfoPanel({ tripInfo, onChange }) {
     } catch { return null; }
   }, [tripInfo?.startDate, tripInfo?.endDate]);
 
-  // Auto travel dates display
-  const autoTravelDates = useMemo(() => {
-    const { startDate, endDate } = tripInfo ?? {};
-    if (!startDate || !endDate) return null;
-    return `${startDate} – ${endDate}`;
-  }, [tripInfo?.startDate, tripInfo?.endDate]);
-
   const handleStartDate = (v) => {
-    const dur = computeDuration(v, tripInfo?.endDate);
-    onChange?.({ ...tripInfo, startDate: v, duration: dur || tripInfo?.duration, travelDates: computeTravel(v, tripInfo?.endDate) });
+    onChange?.({
+      ...tripInfo,
+      startDate: v,
+      duration: computeDuration(v, tripInfo?.endDate) || tripInfo?.duration,
+      // ✅ Store formatted travel dates
+      travelDates: computeTravel(v, tripInfo?.endDate),
+    });
   };
 
   const handleEndDate = (v) => {
-    const dur = computeDuration(tripInfo?.startDate, v);
-    onChange?.({ ...tripInfo, endDate: v, duration: dur || tripInfo?.duration, travelDates: computeTravel(tripInfo?.startDate, v) });
+    onChange?.({
+      ...tripInfo,
+      endDate: v,
+      duration: computeDuration(tripInfo?.startDate, v) || tripInfo?.duration,
+      // ✅ Store formatted travel dates
+      travelDates: computeTravel(tripInfo?.startDate, v),
+    });
   };
 
   function computeDuration(s, e) {
@@ -57,13 +73,36 @@ export default function TripInfoPanel({ tripInfo, onChange }) {
     } catch { return ""; }
   }
 
+  /**
+   * ✅ Returns "11 May 2026 – 15 May 2026" (human-readable)
+   */
   function computeTravel(s, e) {
     if (!s || !e) return "";
-    return `${s} – ${e}`;
+    return `${formatDateDisplay(s)} – ${formatDateDisplay(e)}`;
   }
 
   const displayDuration = autoDuration || tripInfo?.duration || "";
-  const displayDates    = autoTravelDates || tripInfo?.travelDates || "";
+
+  // ✅ Always display dates in formatted form
+  const displayTravelDates = useMemo(() => {
+    if (tripInfo?.startDate && tripInfo?.endDate) {
+      return `${formatDateDisplay(tripInfo.startDate)} – ${formatDateDisplay(tripInfo.endDate)}`;
+    }
+    // Fallback: try to format whatever is stored
+    if (tripInfo?.travelDates) {
+      const td = tripInfo.travelDates;
+      // If already formatted (contains "May", "Jan", etc.) return as-is
+      if (/[A-Za-z]{3}/.test(td)) return td;
+      // If ISO range, format it
+      const sep = td.includes("–") ? "–" : " - ";
+      const parts = td.split(sep).map(x => x.trim());
+      if (parts.length === 2) {
+        return `${formatDateDisplay(parts[0])} – ${formatDateDisplay(parts[1])}`;
+      }
+      return formatDateDisplay(td) || td;
+    }
+    return "—";
+  }, [tripInfo?.startDate, tripInfo?.endDate, tripInfo?.travelDates]);
 
   return (
     <div className="rounded-2xl border border-paper-line bg-white shadow-soft overflow-hidden">
@@ -121,9 +160,10 @@ export default function TripInfoPanel({ tripInfo, onChange }) {
           </p>
         </TF>
 
+        {/* ✅ Travel dates shown in readable format */}
         <TF label="Travel Dates">
-          <p className="text-sm text-ink-soft truncate">
-            {displayDates || <span className="text-ink-muted/40">—</span>}
+          <p className="text-sm text-ink-soft" style={{ wordBreak: "break-word" }}>
+            {displayTravelDates}
           </p>
         </TF>
 

@@ -1,20 +1,20 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useT } from "@/context/TranslationContext";
 import PrintHeader from "./PrintHeader";
 import PrintLayout from "./PrintLayout";
 
 /**
- * PreviewModal — Patch PDF-v2
+ * PreviewModal — Patch PDF-v3
  *
- * Preview: renders React components in-modal (unchanged design)
- * Export:  saves data to localStorage → opens /pdf-render in new tab
- *          → browser-native PDF with clickable links on ALL pages
+ * Desktop: unchanged (localStorage + window.open → /pdf-render → auto-print) ✅
  *
- * iOS Safari: window.open() is called SYNCHRONOUSLY before any async work
- * to bypass Safari popup blocker. Data is written to localStorage BEFORE
- * the window opens, so the tab can read it immediately.
+ * iOS Safari improvements:
+ * - More robust localStorage handling (fallback to sessionStorage if localStorage fails)
+ * - Explicit user message about what to do after page opens
+ * - Handles Safari private mode (localStorage blocked)
+ * - Keeps window.open() synchronous for popup bypass
  */
 export default function PreviewModal({
   open,
@@ -44,9 +44,9 @@ export default function PreviewModal({
   // Lock body scroll
   useEffect(() => {
     if (!open) return;
-    const p = document.body.style.overflow;
+    const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = p; };
+    return () => { document.body.style.overflow = prev; };
   }, [open]);
 
   if (!open) return null;
@@ -63,23 +63,42 @@ export default function PreviewModal({
     setError(null);
 
     try {
-      // ── 1. Write data to localStorage BEFORE opening the window ──
-      //    (must be synchronous — localStorage.setItem is sync)
-      const payload = JSON.stringify({ tripInfo, rows, dayMap, region, rate, totalLocal, totalIDR });
-      localStorage.setItem("bpv-pdf-render", payload);
+      const payload = JSON.stringify({
+        tripInfo, rows, dayMap, region, rate, totalLocal, totalIDR,
+      });
 
-      // ── 2. Open /pdf-render in a new tab SYNCHRONOUSLY ──
-      //    This is inside the click handler (user gesture) so iOS Safari
-      //    will NOT block it, even though we haven't done any async work.
+      // ── Save data (synchronous) ──
+      // Try localStorage first, fall back to sessionStorage for Safari private mode
+      let saved = false;
+      try {
+        localStorage.setItem("bpv-pdf-render", payload);
+        saved = true;
+      } catch {
+        try {
+          sessionStorage.setItem("bpv-pdf-render", payload);
+          saved = true;
+        } catch {
+          // Both blocked (very restrictive browser settings)
+        }
+      }
+
+      if (!saved) {
+        setError("Storage unavailable. If you're in Private mode, please switch to normal mode.");
+        setExporting(false);
+        return;
+      }
+
+      // ── Open /pdf-render in new tab SYNCHRONOUSLY ──
+      // Must be called synchronously in the click handler for iOS Safari to allow it
       const newTab = window.open("/pdf-render", "_blank");
 
       if (!newTab) {
-        // Popup was blocked — navigate current tab instead
+        // Popup blocked — navigate current tab
         window.location.href = "/pdf-render";
         return;
       }
 
-      // Reset exporting after a delay (the new tab handles everything)
+      // Reset after 2s
       setTimeout(() => setExporting(false), 2000);
 
     } catch (err) {
@@ -98,6 +117,7 @@ export default function PreviewModal({
       {/* Top bar */}
       <div className="relative z-10 flex flex-shrink-0 items-center justify-between border-b border-white/10 bg-[#0f172a]/95 px-4 py-3 sm:px-6">
 
+        {/* Back */}
         <button
           onClick={onClose}
           className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/10 px-3.5 py-2 text-xs font-semibold text-white transition hover:bg-white/20 active:scale-[0.97]"
@@ -109,10 +129,12 @@ export default function PreviewModal({
           <span className="sm:hidden">{t("back")}</span>
         </button>
 
+        {/* Title */}
         <span className="rounded-full bg-white/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-white/60">
           {t("previewTitle")}
         </span>
 
+        {/* Export button */}
         <button
           onClick={handleExport}
           disabled={exporting}
@@ -141,13 +163,13 @@ export default function PreviewModal({
 
       {/* Error */}
       {error && (
-        <div className="relative z-10 flex items-center justify-between gap-3 border-b border-red-800 bg-red-900/80 px-4 py-2.5 text-xs text-red-200 flex-shrink-0">
+        <div className="relative z-10 flex flex-shrink-0 items-center justify-between gap-3 border-b border-red-800 bg-red-900/80 px-4 py-2.5 text-xs text-red-200">
           <span>⚠️ {error}</span>
           <button onClick={() => setError(null)} className="text-red-300 hover:text-white">✕</button>
         </div>
       )}
 
-      {/* Preview paper */}
+      {/* Paper preview (screen only — not used for PDF generation) */}
       <div className="relative z-10 flex-1 overflow-auto bg-[#0f172a] p-4 sm:p-6">
         <div className="preview-paper mx-auto w-full max-w-[210mm] overflow-hidden rounded-2xl bg-white shadow-2xl">
           <PrintHeader
@@ -166,7 +188,6 @@ export default function PreviewModal({
             totalIDR={totalIDR}
           />
         </div>
-
         <p className="mt-4 pb-6 text-center text-xs text-white/25">
           {t("previewHint")}
         </p>

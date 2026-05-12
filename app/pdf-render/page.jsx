@@ -1,31 +1,22 @@
 "use client";
 
 /**
- * /pdf-render — Backpackervun PDF Renderer
+ * /pdf-render — Backpackervun PDF Renderer (Patch PDF-v3)
  *
- * ARCHITECTURE: Browser-native print (Vercel Hobby compatible)
- *
- * Flow:
- *  1. PreviewModal saves data to localStorage["bpv-pdf-render"]
- *  2. Opens this page in a new tab (synchronously for iOS Safari)
- *  3. This page reads the data, renders the itinerary, auto-triggers window.print()
- *  4. Browser's native PDF renderer creates the PDF with clickable links on ALL pages
- *
- * Why this works better than html2canvas + jsPDF:
- *  - Links are real <a href> tags → browser PDF renderer preserves them natively
- *  - Works on page 1, 2, 3, 10, 50 — no manual coordinate calculation
- *  - No server/Puppeteer needed → zero timeout risk on Vercel Hobby
- *  - iOS Safari: print dialog → Save to Files → real PDF with clickable links
+ * Changes:
+ * 1. Date format: "2026-05-11 – 2026-05-15" → "11 May 2026 – 15 May 2026"
+ * 2. Links: inline display instead of flex-wrap (no unexpected line breaks)
+ * 3. iOS UX: shows "Tap to Export PDF" button for clearer mobile experience
  */
 
 import { useEffect, useState } from "react";
 
-// ── Design tokens (matching Sydney Marathon PDF) ──────────────────────────────
-const N  = "#0B3C5D";   // navy
-const I  = "#1E293B";   // ink dark
-const IS = "#475569";   // ink soft
-const IM = "#94A3B8";   // ink muted
-const B  = "#E8EDF3";   // border
+// ── Design tokens ─────────────────────────────────────────────────────────────
+const N  = "#0B3C5D";
+const I  = "#1E293B";
+const IS = "#475569";
+const IM = "#94A3B8";
+const B  = "#E8EDF3";
 
 const CATEGORY = {
   Transport:  { icon: "🚌", bg: "#EFF6FF", color: "#1D4ED8" },
@@ -36,40 +27,40 @@ const CATEGORY = {
 };
 
 const TICONS = {
-  Flight: "✈️", Shinkansen: "🚅", Train: "🚆", KTX: "🚄", "High-Speed Rail": "🚄",
-  Bus: "🚌", FlixBus: "🚌", Car: "🚗", Ferry: "⛴️", Walk: "🚶",
-  Taxi: "🚕", MRT: "🚇", LRT: "🚇", Subway: "🚇", Tram: "🚊", BTS: "🚊",
-  Eurostar: "🚄", Ojek: "🛵", Motorbike: "🛵", "Tuk-Tuk": "🛺",
-  Grab: "🚗", Uber: "🚗", Amtrak: "🚆", Songthaew: "🛺",
+  Flight:"✈️", Shinkansen:"🚅", Train:"🚆", KTX:"🚄","High-Speed Rail":"🚄",
+  Bus:"🚌", FlixBus:"🚌", Car:"🚗", Ferry:"⛴️", Walk:"🚶",
+  Taxi:"🚕", MRT:"🚇", LRT:"🚇", Subway:"🚇", Tram:"🚊", BTS:"🚊",
+  Eurostar:"🚄", Ojek:"🛵", Motorbike:"🛵","Tuk-Tuk":"🛺",
+  Grab:"🚗", Uber:"🚗", Amtrak:"🚆", Songthaew:"🛺",
 };
 
 const FLAGS = {
-  Japan: "🇯🇵", "South Korea": "🇰🇷", Thailand: "🇹🇭", Singapore: "🇸🇬",
-  Malaysia: "🇲🇾", Europe: "🇪🇺", Australia: "🇦🇺", Indonesia: "🇮🇩",
-  Vietnam: "🇻🇳", China: "🇨🇳", USA: "🇺🇸",
+  Japan:"🇯🇵","South Korea":"🇰🇷",Thailand:"🇹🇭",Singapore:"🇸🇬",
+  Malaysia:"🇲🇾",Europe:"🇪🇺",Australia:"🇦🇺",Indonesia:"🇮🇩",
+  Vietnam:"🇻🇳",China:"🇨🇳",USA:"🇺🇸",
 };
 
 const CURRENCIES = {
-  Japan:        { code: "JPY",  symbol: "¥",   locale: "ja-JP" },
-  "South Korea":{ code: "KRW",  symbol: "₩",   locale: "ko-KR" },
-  Thailand:     { code: "THB",  symbol: "฿",   locale: "th-TH" },
-  Singapore:    { code: "SGD",  symbol: "S$",  locale: "en-SG" },
-  Malaysia:     { code: "MYR",  symbol: "RM",  locale: "ms-MY" },
-  Europe:       { code: "EUR",  symbol: "€",   locale: "de-DE" },
-  Australia:    { code: "AUD",  symbol: "A$",  locale: "en-AU" },
-  Indonesia:    { code: "IDR",  symbol: "Rp",  locale: "id-ID" },
-  Vietnam:      { code: "VND",  symbol: "₫",   locale: "vi-VN" },
-  China:        { code: "CNY",  symbol: "¥",   locale: "zh-CN" },
-  USA:          { code: "USD",  symbol: "$",   locale: "en-US" },
+  Japan:        { code:"JPY",  symbol:"¥",   locale:"ja-JP" },
+  "South Korea":{ code:"KRW",  symbol:"₩",   locale:"ko-KR" },
+  Thailand:     { code:"THB",  symbol:"฿",   locale:"th-TH" },
+  Singapore:    { code:"SGD",  symbol:"S$",  locale:"en-SG" },
+  Malaysia:     { code:"MYR",  symbol:"RM",  locale:"ms-MY" },
+  Europe:       { code:"EUR",  symbol:"€",   locale:"de-DE" },
+  Australia:    { code:"AUD",  symbol:"A$",  locale:"en-AU" },
+  Indonesia:    { code:"IDR",  symbol:"Rp",  locale:"id-ID" },
+  Vietnam:      { code:"VND",  symbol:"₫",   locale:"vi-VN" },
+  China:        { code:"CNY",  symbol:"¥",   locale:"zh-CN" },
+  USA:          { code:"USD",  symbol:"$",   locale:"en-US" },
 };
 
-function getCurr(r) { return CURRENCIES[r] ?? { code: "IDR", symbol: "Rp", locale: "id-ID" }; }
+function getCurr(r) { return CURRENCIES[r] ?? { code:"IDR", symbol:"Rp", locale:"id-ID" }; }
 
 function fmtC(amount, curr) {
   if (!amount && amount !== 0) return `${curr.symbol}0`;
   try {
     return new Intl.NumberFormat(curr.locale, {
-      style: "currency", currency: curr.code,
+      style:"currency", currency:curr.code,
       maximumFractionDigits: ["IDR","VND","KRW"].includes(curr.code) ? 0 : 2,
     }).format(Number(amount));
   } catch { return `${curr.symbol}${Number(amount).toLocaleString()}`; }
@@ -78,7 +69,9 @@ function fmtC(amount, curr) {
 function fmtIDR(a) {
   if (!a && a !== 0) return "Rp 0";
   try {
-    return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(Number(a));
+    return new Intl.NumberFormat("id-ID", {
+      style:"currency", currency:"IDR", maximumFractionDigits:0,
+    }).format(Number(a));
   } catch { return `Rp ${Number(a).toLocaleString("id-ID")}`; }
 }
 
@@ -88,20 +81,56 @@ function fmtTime(t) {
   if (isNaN(h)) return t;
   const ap = h >= 12 ? "PM" : "AM";
   const h12 = h > 12 ? h - 12 : h === 0 ? 12 : h;
-  return `${h12}:${String(m || 0).padStart(2,"0")} ${ap}`;
+  return `${h12}:${String(m || 0).padStart(2, "0")} ${ap}`;
 }
 
-function fmtDate(s) {
-  if (!s) return "";
+/**
+ * Format a single date string to "11 May 2026"
+ * Handles both ISO format (2026-05-11) and already-formatted strings
+ */
+function fmtDateReadable(s) {
+  if (!s || typeof s !== "string") return s || "";
+  s = s.trim();
   try {
     let d;
-    if (/^\d{4}-\d{2}-\d{2}/.test(s)) d = new Date(s + "T12:00:00");
-    else { const m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/); d = m ? new Date(`${m[3]}-${m[2].padStart(2,"0")}-${m[1].padStart(2,"0")}T12:00:00`) : new Date(s); }
-    return isNaN(d) ? s : d.toLocaleDateString("en-US", { weekday:"short", day:"numeric", month:"short", year:"numeric" });
+    if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
+      // ISO format: 2026-05-11
+      d = new Date(s + "T12:00:00");
+    } else if (/^\d{1,2}[\/\-]\d{1,2}[\/\-]\d{4}$/.test(s)) {
+      // DD/MM/YYYY or DD-MM-YYYY
+      const parts = s.split(/[\/\-]/);
+      d = new Date(`${parts[2]}-${parts[1].padStart(2,"0")}-${parts[0].padStart(2,"0")}T12:00:00`);
+    } else {
+      // Try parsing as-is (e.g. already "11 May 2026")
+      d = new Date(s);
+    }
+    if (isNaN(d)) return s;
+    return d.toLocaleDateString("en-GB", { day:"numeric", month:"short", year:"numeric" });
+    // → "11 May 2026"
   } catch { return s; }
 }
 
-// ── CSS (print + screen) ──────────────────────────────────────────────────────
+/**
+ * Format travel dates range to "11 May 2026 – 15 May 2026"
+ * Handles: "2026-05-11 – 2026-05-15" or "11 May 2026 – 15 May 2026" or single date
+ */
+function fmtTravelDates(travelDates, startDate, endDate) {
+  // Prefer startDate/endDate if available
+  if (startDate && endDate) {
+    return `${fmtDateReadable(startDate)} – ${fmtDateReadable(endDate)}`;
+  }
+  if (!travelDates) return "—";
+
+  // Try to split on – or -
+  const sep = travelDates.includes("–") ? "–" : travelDates.includes(" - ") ? " - " : null;
+  if (sep) {
+    const [s, e] = travelDates.split(sep).map(x => x.trim());
+    return `${fmtDateReadable(s)} – ${fmtDateReadable(e)}`;
+  }
+  return fmtDateReadable(travelDates) || travelDates;
+}
+
+// ── Print CSS ─────────────────────────────────────────────────────────────────
 const PRINT_CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap');
 
@@ -125,49 +154,95 @@ a { color: #0B3C5D; text-decoration: none; }
 .day-block { break-inside: avoid; page-break-inside: avoid; }
 .row-item  { break-inside: avoid; page-break-inside: avoid; }
 
+/* Screen-only: max width + print button */
 @media screen {
-  body { max-width: 794px; margin: 0 auto; padding: 0; }
+  body { max-width: 794px; margin: 0 auto; }
+  .screen-only { display: block; }
+  .print-only  { display: none; }
 }
 
 @media print {
-  .print-hide { display: none !important; }
+  .screen-only { display: none !important; }
+  .print-only  { display: block !important; }
 }
 `;
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function PDFRenderPage() {
-  const [data,  setData]  = useState(null);
-  const [ready, setReady] = useState(false);
+  const [data,   setData]   = useState(null);
+  const [ready,  setReady]  = useState(false);
+  const [printed, setPrinted] = useState(false);
+
+  const isIOS = typeof navigator !== "undefined" &&
+    /iPad|iPhone|iPod/.test(navigator.userAgent);
 
   useEffect(() => {
     try {
       const raw = localStorage.getItem("bpv-pdf-render");
       if (raw) {
         setData(JSON.parse(raw));
-        // Clean up after 10s (give time for re-print)
-        setTimeout(() => localStorage.removeItem("bpv-pdf-render"), 10_000);
+        setTimeout(() => localStorage.removeItem("bpv-pdf-render"), 15_000);
       }
     } catch (e) { console.error("PDF data error:", e); }
     setReady(true);
   }, []);
 
+  const triggerPrint = () => {
+    setPrinted(true);
+    window.print();
+  };
+
   useEffect(() => {
     if (!data || !ready) return;
-    const go = () => window.print();
-    if (document.fonts?.ready) {
-      document.fonts.ready.then(() => setTimeout(go, 150));
-    } else {
-      setTimeout(go, 700);
+    // Auto-print on desktop; on iOS show button first (better UX)
+    if (!isIOS) {
+      if (document.fonts?.ready) {
+        document.fonts.ready.then(() => setTimeout(triggerPrint, 200));
+      } else {
+        setTimeout(triggerPrint, 700);
+      }
     }
-  }, [data, ready]);
+  }, [data, ready]); // eslint-disable-line
 
   if (!ready) return <Splash text="Loading…" />;
-  if (!data)  return <Splash text="No itinerary data found. Please open this page from the Travel Planner." link="/dashboard" />;
+  if (!data)  return <Splash text="No itinerary data. Please export from the Travel Planner." link="/dashboard" />;
 
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: PRINT_CSS }} />
+
+      {/* ── iOS/Mobile: prominent export button ── */}
+      {isIOS && !printed && (
+        <div className="screen-only" style={{ position:"sticky", top:0, zIndex:100, background:N, padding:"12px 20px", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+          <span style={{ color:"white", fontSize:"13px", fontWeight:600, fontFamily:"Montserrat,sans-serif" }}>
+            Backpackervun Travel Planner
+          </span>
+          <button
+            onClick={triggerPrint}
+            style={{ background:"white", color:N, border:"none", borderRadius:"8px", padding:"8px 16px", fontSize:"13px", fontWeight:700, cursor:"pointer", fontFamily:"Montserrat,sans-serif" }}
+          >
+            ↓ Save as PDF
+          </button>
+        </div>
+      )}
+
+      {/* ── iOS hint text ── */}
+      {isIOS && (
+        <div className="screen-only" style={{ background:"#FFF7ED", borderBottom:`1px solid #FED7AA`, padding:"10px 20px", textAlign:"center", fontFamily:"Montserrat,sans-serif", fontSize:"12px", color:"#C2410C" }}>
+          Tap <strong>Save as PDF</strong> above → then tap <strong>Share → Save to Files</strong>
+        </div>
+      )}
+
+      {/* ── Desktop re-print button ── */}
+      {!isIOS && (
+        <div className="screen-only" style={{ padding:"10px 16px", textAlign:"right", fontFamily:"Montserrat,sans-serif", background:"#F8FAFC", borderBottom:`1px solid ${B}` }}>
+          <button onClick={triggerPrint} style={{ background:N, color:"white", border:"none", borderRadius:"6px", padding:"6px 14px", fontSize:"12px", fontWeight:600, cursor:"pointer" }}>
+            Print / Save as PDF again
+          </button>
+        </div>
+      )}
+
       <Document {...data} />
     </>
   );
@@ -195,7 +270,6 @@ function Document({ tripInfo, rows, dayMap, region, rate, totalLocal, totalIDR }
     Number(r.budgetLocal) > 0 || Number(r.budgetIDR) > 0
   );
 
-  // Group rows by date → sorted days
   const byDay = new Map();
   for (const r of meaningful) {
     const key = (r.date || "").trim() || "__";
@@ -210,17 +284,22 @@ function Document({ tripInfo, rows, dayMap, region, rate, totalLocal, totalIDR }
 
   const totalDays = Object.keys(dayMap).length || 1;
 
+  // ✅ Format travel dates properly
+  const travelDatesFormatted = fmtTravelDates(
+    tripInfo?.travelDates,
+    tripInfo?.startDate,
+    tripInfo?.endDate
+  );
+
   return (
     <div style={{ background:"white", minHeight:"100vh" }}>
 
       {/* ── HEADER ── */}
       <div style={{ padding:"22px 32px 18px", display:"flex", alignItems:"flex-start", justifyContent:"space-between", borderBottom:`1px solid ${B}` }}>
-        {/* Brand */}
         <div>
           <div style={{ fontSize:"22px", fontWeight:700, color:N, letterSpacing:"-0.3px", lineHeight:1 }}>Backpackervun</div>
           <div style={{ fontSize:"10px", fontWeight:600, color:IM, letterSpacing:"0.22em", textTransform:"uppercase", marginTop:"3px" }}>Travel Planner</div>
         </div>
-        {/* Totals */}
         <div style={{ textAlign:"right" }}>
           {!isIDR && (
             <div style={{ marginBottom:"6px" }}>
@@ -237,14 +316,17 @@ function Document({ tripInfo, rows, dayMap, region, rate, totalLocal, totalIDR }
 
       {/* ── TRIP INFO ── */}
       <div style={{ padding:"24px 32px 20px", borderBottom:`1px solid ${B}` }}>
-        {tripInfo?.clientName && <>
-          <div style={{ fontSize:"9px", fontWeight:600, textTransform:"uppercase", letterSpacing:"0.2em", color:IM }}>PREPARED FOR CLIENT</div>
-          <div style={{ fontSize:"34px", fontWeight:700, color:I, lineHeight:1.1, margin:"4px 0 20px" }}>{tripInfo.clientName}</div>
-        </>}
+        {tripInfo?.clientName && (
+          <>
+            <div style={{ fontSize:"9px", fontWeight:600, textTransform:"uppercase", letterSpacing:"0.2em", color:IM }}>PREPARED FOR CLIENT</div>
+            <div style={{ fontSize:"34px", fontWeight:700, color:I, lineHeight:1.1, margin:"4px 0 20px" }}>{tripInfo.clientName}</div>
+          </>
+        )}
         {[
           ["DURATION",     tripInfo?.duration || "—"],
           ["DESTINATIONS", tripInfo?.destinations || "—"],
-          ["TRAVEL DATES", tripInfo?.travelDates || (tripInfo?.startDate && tripInfo?.endDate ? `${tripInfo.startDate} – ${tripInfo.endDate}` : "—")],
+          // ✅ Formatted travel dates
+          ["TRAVEL DATES", travelDatesFormatted],
           ["REGION",       region ? `${FLAGS[region]||"🌍"} ${region}` : "—"],
         ].map(([lbl, val]) => (
           <div key={lbl} style={{ display:"flex", alignItems:"flex-start", padding:"4px 0" }}>
@@ -263,31 +345,31 @@ function Document({ tripInfo, rows, dayMap, region, rate, totalLocal, totalIDR }
       </div>
 
       <div style={{ padding:"4px 32px 8px" }}>
-        {days.length === 0
-          ? <div style={{ padding:"40px", textAlign:"center", color:IM }}>No itinerary entries.</div>
-          : days.map(([dateKey, dayRows]) => {
-            const dn     = dateKey !== "__" ? (dayMap[dateKey] ?? null) : null;
-            const city   = dayRows[0]?.city || "";
-            const dStr   = dateKey !== "__" ? fmtDate(dateKey) : "";
-            return (
-              <div key={dateKey} className="day-block" style={{ marginBottom:"20px", border:`1px solid ${B}`, borderRadius:"12px", overflow:"hidden" }}>
-                {/* Day header */}
-                <div style={{ background:N, padding:"12px 20px", display:"flex", alignItems:"center", gap:"14px" }}>
-                  {dn !== null && (
-                    <div style={{ background:"white", color:N, borderRadius:"50%", width:"36px", height:"36px", display:"flex", alignItems:"center", justifyContent:"center", fontWeight:700, fontSize:"14px", flexShrink:0 }}>
-                      {dn}
-                    </div>
-                  )}
-                  <div>
-                    <div style={{ color:"white", fontSize:"16px", fontWeight:700 }}>Day {dn ?? "—"}{city ? ` — ${city}` : ""}</div>
-                    {dStr && <div style={{ color:"rgba(255,255,255,0.7)", fontSize:"11px", marginTop:"1px" }}>{dStr}</div>}
+        {days.length === 0 ? (
+          <div style={{ padding:"40px", textAlign:"center", color:IM }}>No itinerary entries.</div>
+        ) : days.map(([dateKey, dayRows]) => {
+          const dn   = dateKey !== "__" ? (dayMap[dateKey] ?? null) : null;
+          const city = dayRows[0]?.city || "";
+          const dStr = dateKey !== "__" ? fmtDateReadable(dateKey) : "";
+          return (
+            <div key={dateKey} className="day-block" style={{ marginBottom:"20px", border:`1px solid ${B}`, borderRadius:"12px", overflow:"hidden" }}>
+              <div style={{ background:N, padding:"12px 20px", display:"flex", alignItems:"center", gap:"14px" }}>
+                {dn !== null && (
+                  <div style={{ background:"white", color:N, borderRadius:"50%", width:"36px", height:"36px", display:"flex", alignItems:"center", justifyContent:"center", fontWeight:700, fontSize:"14px", flexShrink:0 }}>
+                    {dn}
                   </div>
+                )}
+                <div>
+                  <div style={{ color:"white", fontSize:"16px", fontWeight:700 }}>Day {dn ?? "—"}{city ? ` — ${city}` : ""}</div>
+                  {dStr && <div style={{ color:"rgba(255,255,255,0.7)", fontSize:"11px", marginTop:"1px" }}>{dStr}</div>}
                 </div>
-                {/* Row items */}
-                {dayRows.map((row, i) => <RowItem key={row.id ?? i} row={row} curr={curr} isIDR={isIDR} last={i === dayRows.length - 1} />)}
               </div>
-            );
-          })}
+              {dayRows.map((row, i) => (
+                <RowItem key={row.id ?? i} row={row} curr={curr} isIDR={isIDR} last={i === dayRows.length - 1} />
+              ))}
+            </div>
+          );
+        })}
       </div>
 
       {/* ── TRIP SUMMARY ── */}
@@ -295,11 +377,11 @@ function Document({ tripInfo, rows, dayMap, region, rate, totalLocal, totalIDR }
         <div style={{ fontSize:"20px", fontWeight:700, color:I, marginBottom:"16px" }}>Trip Summary</div>
         <div style={{ border:`1px solid ${B}`, borderRadius:"10px", overflow:"hidden" }}>
           {[
-            { label:"Total stops",      val: meaningful.length,                                     bold:false, accent:false },
-            { label:"Total days",       val: totalDays,                                              bold:false, accent:false },
-            { label:"Conversion rate",  val: isIDR ? "1:1" : `1 ${curr.code} = ${rate} IDR`,        bold:false, accent:false },
+            { label:"Total stops",      val: meaningful.length,                                    bold:false, accent:false },
+            { label:"Total days",       val: totalDays,                                             bold:false, accent:false },
+            { label:"Conversion rate",  val: isIDR ? "1:1" : `1 ${curr.code} = ${rate} IDR`,       bold:false, accent:false },
             ...(!isIDR ? [{ label:`TOTAL · ${curr.code}`, val: fmtC(totalLocal, curr), bold:true, accent:false }] : []),
-            { label:"TOTAL · IDR",      val: fmtIDR(totalIDR),                                      bold:true,  accent:true  },
+            { label:"TOTAL · IDR",      val: fmtIDR(totalIDR),                                     bold:true,  accent:true  },
           ].map(({ label, val, bold, accent }) => (
             <div key={label} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"12px 20px", borderBottom:`1px solid ${B}`, background:"white" }}>
               <span style={{ fontSize:"13px", color: bold ? I : IM, fontWeight: bold ? 600 : 400 }}>{label}</span>
@@ -312,13 +394,6 @@ function Document({ tripInfo, rows, dayMap, region, rate, totalLocal, totalIDR }
       {/* ── FOOTER ── */}
       <div style={{ margin:"24px 32px 0", padding:"16px 0", borderTop:`1px solid ${B}`, textAlign:"center", fontSize:"10px", fontWeight:600, textTransform:"uppercase", letterSpacing:"0.2em", color:IM }}>
         PREPARED WITH BACKPACKERVUN · BACKPACKERVUN.COM
-      </div>
-
-      {/* Screen-only: reprint button */}
-      <div className="print-hide" style={{ padding:"16px 32px 32px", textAlign:"center" }}>
-        <button onClick={() => window.print()} style={{ padding:"10px 24px", background:N, color:"white", border:"none", borderRadius:"8px", fontSize:"13px", fontWeight:600, cursor:"pointer" }}>
-          ↓ Print / Save as PDF again
-        </button>
       </div>
 
     </div>
@@ -335,7 +410,6 @@ function RowItem({ row, curr, isIDR, last }) {
   const tIcon     = row.transport ? (TICONS[row.transport] ?? "") : "";
   const enc       = encodeURIComponent;
 
-  // Build Google links
   const destQ    = enc([row.destination, row.city, row.to].filter(Boolean).join(" ") || "");
   const mapUrl   = `https://www.google.com/maps/search/?api=1&query=${destQ}`;
   const routeUrl = row.from && row.to ? `https://www.google.com/maps/dir/${enc(row.from)}/${enc(row.to)}` : null;
@@ -344,8 +418,9 @@ function RowItem({ row, curr, isIDR, last }) {
 
   return (
     <div className="row-item" style={{ display:"flex", alignItems:"flex-start", gap:"16px", padding:"16px 20px", borderBottom: last ? "none" : `1px solid ${B}`, background:"white" }}>
+
       {/* Time */}
-      <div style={{ flexShrink:0, width:"64px", textAlign:"right", fontSize:"11px", fontWeight:600, color:IM, paddingTop:"2px", fontVariantNumeric:"tabular-nums" }}>
+      <div style={{ flexShrink:0, width:"60px", textAlign:"right", fontSize:"11px", fontWeight:600, color:IM, paddingTop:"2px", fontVariantNumeric:"tabular-nums" }}>
         {fmtTime(row.time) || "—"}
       </div>
 
@@ -356,9 +431,11 @@ function RowItem({ row, curr, isIDR, last }) {
             <span>{cat.icon}</span> {row.category?.toUpperCase()}
           </div>
         )}
+
         <div style={{ fontSize:"15px", fontWeight:700, color:I, lineHeight:1.3, marginBottom:"4px" }}>
           {row.destination || row.city || "—"}
         </div>
+
         {(row.transport || row.from || row.to) && (
           <div style={{ display:"flex", alignItems:"center", gap:"5px", fontSize:"11px", color:IM, flexWrap:"wrap", marginBottom:"4px" }}>
             {tIcon && <span>{tIcon}</span>}
@@ -369,22 +446,46 @@ function RowItem({ row, curr, isIDR, last }) {
             {row.to && <span>{row.to}</span>}
           </div>
         )}
-        {row.notes && <div style={{ fontSize:"11px", color:IM, fontStyle:"italic", marginBottom:"6px" }}>{row.notes}</div>}
 
-        {/* ✅ Real <a href> links — browser preserves these on ALL PDF pages natively */}
-        <div style={{ display:"flex", flexWrap:"wrap", gap:"0", marginTop:"6px" }}>
-          <a href={mapUrl}   target="_blank" rel="noopener noreferrer" style={{ fontSize:"11px", fontWeight:500, color:N, marginRight:"16px", display:"inline-flex", alignItems:"center", gap:"3px" }}>📍 View in Google Maps</a>
-          {routeUrl && <a href={routeUrl}  target="_blank" rel="noopener noreferrer" style={{ fontSize:"11px", fontWeight:500, color:N, marginRight:"16px", display:"inline-flex", alignItems:"center", gap:"3px" }}>🗺 Open Route</a>}
-          {fltUrl   && <a href={fltUrl}    target="_blank" rel="noopener noreferrer" style={{ fontSize:"11px", fontWeight:500, color:N, marginRight:"16px", display:"inline-flex", alignItems:"center", gap:"3px" }}>✈️ View Flights</a>}
+        {row.notes && (
+          <div style={{ fontSize:"11px", color:IM, fontStyle:"italic", marginBottom:"6px" }}>{row.notes}</div>
+        )}
+
+        {/* ✅ LINKS — inline display so they flow naturally, no unwanted line breaks */}
+        <div style={{ marginTop:"6px", lineHeight:"1.9" }}>
+          <a href={mapUrl} target="_blank" rel="noopener noreferrer"
+            style={{ fontSize:"11px", fontWeight:500, color:N, marginRight:"14px", display:"inline", whiteSpace:"nowrap" }}>
+            📍 View in Google Maps
+          </a>
+          {routeUrl && (
+            <a href={routeUrl} target="_blank" rel="noopener noreferrer"
+              style={{ fontSize:"11px", fontWeight:500, color:N, marginRight:"14px", display:"inline", whiteSpace:"nowrap" }}>
+              🗺 Open Route
+            </a>
+          )}
+          {fltUrl && (
+            <a href={fltUrl} target="_blank" rel="noopener noreferrer"
+              style={{ fontSize:"11px", fontWeight:500, color:N, marginRight:"14px", display:"inline", whiteSpace:"nowrap" }}>
+              ✈️ View Flights
+            </a>
+          )}
         </div>
       </div>
 
       {/* Budget */}
-      <div style={{ flexShrink:0, textAlign:"right", minWidth:"60px" }}>
-        {hasBudget ? <>
-          {!isIDR && budget > 0 && <div style={{ fontSize:"13px", fontWeight:700, color:I }}>{fmtC(budget, curr)}</div>}
-          {budgetIDR > 0 && <div style={{ fontSize:"11px", color: isIDR ? I : IM, fontWeight: isIDR ? 700 : 400 }}>{fmtIDR(budgetIDR)}</div>}
-        </> : (
+      <div style={{ flexShrink:0, textAlign:"right", minWidth:"64px" }}>
+        {hasBudget ? (
+          <>
+            {!isIDR && budget > 0 && (
+              <div style={{ fontSize:"13px", fontWeight:700, color:I }}>{fmtC(budget, curr)}</div>
+            )}
+            {budgetIDR > 0 && (
+              <div style={{ fontSize:"11px", color: isIDR ? I : IM, fontWeight: isIDR ? 700 : 400 }}>
+                {fmtIDR(budgetIDR)}
+              </div>
+            )}
+          </>
+        ) : (
           <div style={{ fontSize:"13px", color:"#CBD5E1" }}>—</div>
         )}
       </div>
