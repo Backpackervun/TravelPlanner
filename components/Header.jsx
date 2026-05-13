@@ -7,15 +7,7 @@ import { useT } from "@/context/TranslationContext";
 import LanguageSwitcher from "./LanguageSwitcher";
 import PlanBadge from "./PlanBadge";
 
-/**
- * Header v14b
- *
- * REGION: single compact button showing current region.
- * Click → dropdown list of all regions (no Taiwan).
- * Cleaner, less crowded header.
- */
-
-// ✅ No Taiwan
+// No Taiwan
 const REGIONS = [
   { id: "Japan",       flag: "🇯🇵" },
   { id: "South Korea", flag: "🇰🇷" },
@@ -47,7 +39,6 @@ export default function Header({
   const menuRef   = useRef(null);
   const regionRef = useRef(null);
 
-  // Close on outside click
   useEffect(() => {
     const fn = (e) => {
       if (menuRef.current   && !menuRef.current.contains(e.target))   setMenuOpen(false);
@@ -69,9 +60,6 @@ export default function Header({
   })();
 
   const current = REGIONS.find(r => r.id === region);
-  const rateTime = rateUpdatedAt
-    ? new Date(rateUpdatedAt).toLocaleTimeString("en-US", { hour:"2-digit", minute:"2-digit" })
-    : null;
 
   const saveBtnCls =
     saveStatus === "saved" ? "border-emerald-200 bg-emerald-50 text-emerald-700" :
@@ -84,11 +72,11 @@ export default function Header({
 
   return (
     <header className="page-header sticky top-0 z-30 border-b border-paper-line bg-white">
-      <div className="mx-auto max-w-[1600px] flex items-center gap-2 px-4 py-2 sm:px-5">
+      <div className="mx-auto max-w-[1600px] flex items-center px-3 py-2 sm:px-5 sm:gap-3">
 
-        {/* Brand */}
-        <div className="flex items-center gap-2.5 flex-shrink-0">
-          <img src="/logo.png" alt="Backpackervun" className="h-7 w-auto" />
+        {/* ── BRAND ── */}
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <img src="/logo.png" alt="Backpackervun" className="h-6 w-auto sm:h-7" />
           {firstName && (
             <div className="hidden md:block border-l border-paper-line pl-2.5">
               <p className="text-[9px] font-semibold uppercase tracking-[0.2em] text-ink-muted leading-none">Travel Planner</p>
@@ -97,19 +85,20 @@ export default function Header({
           )}
         </div>
 
-        {/* ✅ REGION — single compact button, click to open dropdown list */}
-        <div ref={regionRef} className="relative flex-shrink-0">
+        {/* ── REGION BUTTON ── */}
+        <div ref={regionRef} className="relative flex-shrink-0 ml-2 sm:ml-0">
           <button
             onClick={() => setRegionOpen(v => !v)}
-            className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold transition ${
+            className={`inline-flex items-center gap-1.5 rounded-xl border px-2 py-1.5 sm:px-3 sm:py-2 text-xs font-semibold transition ${
               region
-                ? "border-navy-300 bg-navy-50 text-navy-600 shadow-sm"
-                : "border-paper-line bg-white text-ink-muted hover:border-navy-200"
+                ? "border-navy-300 bg-navy-50 text-navy-600"
+                : "border-paper-line bg-white text-ink-muted"
             }`}
           >
-            <span className="text-base leading-none">{current?.flag ?? "🌍"}</span>
+            <span className="text-sm leading-none">{current?.flag ?? "🌍"}</span>
+            {/* Show region name only on sm+ to keep mobile compact */}
             <span className="hidden sm:inline">{region ?? t("region")}</span>
-            <svg viewBox="0 0 24 24" className={`h-3 w-3 transition-transform ${regionOpen ? "rotate-180" : ""}`}
+            <svg viewBox="0 0 24 24" className={`h-3 w-3 transition-transform flex-shrink-0 ${regionOpen ? "rotate-180" : ""}`}
               fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M6 9l6 6 6-6"/>
             </svg>
@@ -134,14 +123,19 @@ export default function Header({
           )}
         </div>
 
-        {/* Spacer */}
-        <div className="flex-1" />
+        {/*
+          ── SPACER ──
+          MOBILE FIX: on mobile (<sm) this is flex-none w-2 — just 8px of breathing room.
+          On sm+ it expands to flex-1, pushing right controls to the far right as on desktop.
+          This prevents the spacer from stealing space and hiding right-side buttons on mobile.
+        */}
+        <div className="flex-none w-2 sm:flex-1" />
 
-        {/* Right controls */}
-        <div className="flex items-center gap-1.5">
+        {/* ── RIGHT CONTROLS ── */}
+        <div className="flex items-center gap-1.5 flex-shrink-0">
 
-          {/* Totals */}
-          <div className="hidden sm:flex items-center gap-2 rounded-xl border border-paper-line bg-white px-3 py-1.5 shadow-soft">
+          {/* Totals — hidden on mobile, show sm+ */}
+          <div className="hidden sm:flex items-center gap-2 rounded-xl border border-paper-line bg-white px-2.5 py-1.5 shadow-soft">
             <div>
               <p className="text-[9px] font-semibold uppercase tracking-[0.08em] text-ink-muted leading-none">{currency.code}</p>
               <p className="mt-0.5 font-mono text-sm font-semibold tabular-nums text-ink">{formatCurrency(totalLocal, currency)}</p>
@@ -157,7 +151,7 @@ export default function Header({
             )}
           </div>
 
-          {/* Currency mode + rate — desktop */}
+          {/* Currency mode + rate — desktop xl only */}
           {!isIDR && (
             <div className="hidden xl:flex items-center gap-1.5 rounded-xl border border-paper-line bg-white px-2.5 py-1.5">
               <div className="flex gap-0.5 rounded-lg border border-paper-line bg-paper-dim p-0.5">
@@ -176,19 +170,22 @@ export default function Header({
                 className="w-14 bg-transparent text-right font-mono text-xs font-semibold text-ink outline-none" />
               <span className="text-[9px] text-ink-muted">IDR</span>
               {rateSource === "live" && (
-                <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[9px] font-bold text-emerald-700" title={rateTime ?? "Live"}>LIVE</span>
+                <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[9px] font-bold text-emerald-700">LIVE</span>
               )}
             </div>
           )}
 
+          {/* Plan badge */}
           {plan && <PlanBadge plan={plan} onClick={onRedeemOpen} />}
+
+          {/* Language switcher */}
           <LanguageSwitcher />
 
           {/* Save */}
           <div className="relative">
             <button onClick={onSave} disabled={saveStatus === "saving"}
-              className={`no-print inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold transition disabled:opacity-60 ${saveBtnCls}`}>
-              <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              className={`no-print inline-flex items-center gap-1.5 rounded-xl border px-2.5 py-1.5 text-xs font-semibold transition disabled:opacity-60 ${saveBtnCls}`}>
+              <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
                 <polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>
               </svg>
@@ -199,12 +196,12 @@ export default function Header({
             )}
           </div>
 
-          {/* Main menu */}
+          {/* Menu */}
           <div ref={menuRef} className="relative no-print">
             <button onClick={() => setMenuOpen(v => !v)}
-              className="inline-flex items-center gap-2 rounded-xl bg-navy-500 px-3 py-1.5 text-xs font-semibold text-white shadow transition hover:bg-navy-600 active:scale-[0.97]"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-navy-500 px-2.5 py-1.5 text-xs font-semibold text-white shadow transition hover:bg-navy-600 active:scale-[0.97]"
               aria-expanded={menuOpen}>
-              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg viewBox="0 0 24 24" className="h-4 w-4 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
               </svg>
               <span className="hidden sm:inline">{t("menu")}</span>
@@ -212,18 +209,18 @@ export default function Header({
 
             {menuOpen && (
               <div className="absolute right-0 top-[calc(100%+6px)] z-50 w-56 animate-fade-in overflow-hidden rounded-2xl border border-paper-line bg-white shadow-[0_12px_40px_rgba(11,60,93,0.14)]">
-                {/* Rate on smaller screens */}
+                {/* Rate + currency mode on non-xl screens */}
                 {!isIDR && (
                   <div className="xl:hidden border-b border-paper-line px-4 py-3 bg-paper-dim/40">
                     <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-muted mb-2">{t("currencyMode")}</p>
-                    <div className="flex gap-0.5 rounded-lg border border-paper-line bg-white p-0.5 mb-2 w-fit">
+                    <div className="flex gap-0.5 rounded-lg border border-paper-line bg-white p-0.5 w-fit mb-2">
                       <button onClick={() => onCurrencyModeChange?.("local")} className={`rounded-md px-2 py-1 text-[10px] font-bold transition ${currencyMode === "local" ? "bg-navy-500 text-white" : "text-ink-muted"}`}>{currency.code}</button>
                       <button onClick={() => onCurrencyModeChange?.("idr")} className={`rounded-md px-2 py-1 text-[10px] font-bold transition ${currencyMode === "idr" ? "bg-navy-500 text-white" : "text-ink-muted"}`}>IDR</button>
                     </div>
                     <div className="flex items-center gap-1.5">
                       <span className="text-[9px] text-ink-muted">1 {currency.code} =</span>
                       <input type="number" value={rate} onChange={(e) => onRateChange(Number(e.target.value))}
-                        className="w-20 rounded-lg border border-paper-line bg-white px-2 py-1 text-right font-mono text-xs font-semibold outline-none focus:border-accent-300" />
+                        className="w-20 rounded-lg border border-paper-line bg-white px-2 py-1 text-right font-mono text-xs font-semibold outline-none" />
                       <span className="text-[9px] text-ink-muted">IDR</span>
                       {rateSource === "live" && <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[9px] font-bold text-emerald-700">LIVE</span>}
                     </div>
