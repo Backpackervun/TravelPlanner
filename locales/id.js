@@ -1,9 +1,12 @@
 const id = {
+  // ── Core ──────────────────────────────────────────────────────────────────
   appName: "Perencana Perjalanan", backpackervun: "Backpackervun", loading: "Memuat…",
   close: "Tutup", cancel: "Batal", confirm: "Konfirmasi", apply: "Terapkan",
   save: "Simpan", saving: "Menyimpan…", saved: "Tersimpan ✓", saveRetry: "Coba lagi",
   delete: "Hapus", edit: "Edit", back: "Kembali", next: "Lanjut", done: "Selesai",
   yes: "Ya", no: "Tidak", optional: "opsional",
+
+  // ── Auth ──────────────────────────────────────────────────────────────────
   signIn: "Masuk", signUp: "Buat Akun", logout: "Keluar",
   logoutConfirm: "Keluar dari akun Anda?",
   loginSubtitle: "Masukkan akun Anda untuk mengakses planner.",
@@ -35,6 +38,8 @@ const id = {
   validationPhoneRequired: "Nomor telepon wajib diisi.",
   validationPasswordShort: "Kata sandi minimal 6 karakter.",
   validationPasswordMismatch: "Kata sandi tidak cocok.",
+
+  // ── How to start ──────────────────────────────────────────────────────────
   howToStart: "Cara memulai",
   howToStartStep1: "Buat akun dengan nama, email, dan nomor telepon.",
   howToStartStep2: "Masukkan kode redeem untuk membuka paket Lite atau Pro.",
@@ -43,13 +48,28 @@ const id = {
   howToStartStep5: "Ekspor PDF itinerary premium untuk dibagikan ke klien.",
   howToStartCta: "Butuh kode redeem? Chat kami di",
   howToStartCtaWhatsApp: "WhatsApp",
-  // ── Help modal ──────────────────────────────────────────────────────────
+
+  // ── Help modal ────────────────────────────────────────────────────────────
   helpTitle: "Bantuan & kontak",
-  helpTabHow: "Cara Pakai",
-  helpTabContact: "Kontak",
+  helpTabHow: "📖 Cara Pakai",
+  helpTabContact: "💬 Kontak",
   helpWhatTitle: "Apa itu aplikasi ini?",
+  helpWhatDesc: "Aplikasi ini membantu kamu merencanakan itinerary perjalanan secara terstruktur dan profesional. Isi detail, pilih wilayah, dan buat rencana harian yang bisa diekspor sebagai PDF premium.",
   helpWhatBody: "Aplikasi ini membantu kamu merencanakan itinerary perjalanan secara terstruktur dan profesional. Isi detail, pilih wilayah, dan buat rencana harian yang bisa diekspor sebagai PDF premium.",
+  helpStepsTitle: "Panduan langkah demi langkah",
   helpGuideTitle: "Panduan langkah demi langkah",
+  helpSteps: [
+    "Isi detail perjalanan: nama klien, tujuan, dan tanggal.",
+    "Pilih wilayah perjalanan dengan cermat — ini menentukan mata uang lokal.",
+    "Klik 'Mulai Merencanakan' untuk membuka editor itinerary.",
+    "Tambahkan baris itinerary satu per satu dengan '+ Tambah Baris'.",
+    "Masukkan nama tempat PERSIS seperti yang ditampilkan di Google Maps.",
+    "Isi Dari → Ke ketika baris melibatkan perpindahan lokasi.",
+    "Pilih jenis transportasi dari dropdown.",
+    "Klik Map atau Route untuk memverifikasi lokasi di Google Maps.",
+    "Masukkan biaya aktual secara manual — biaya tidak diestimasi otomatis.",
+    "Klik Pratinjau lalu Ekspor PDF untuk menyimpan itinerary.",
+  ],
   helpStep1: "Isi detail perjalanan: nama klien, tujuan, dan tanggal.",
   helpStep2: "Pilih wilayah perjalanan dengan cermat — ini menentukan mata uang lokal.",
   helpStep3: "Klik 'Mulai Merencanakan' untuk membuka editor itinerary.",
@@ -61,6 +81,12 @@ const id = {
   helpStep9: "Masukkan biaya aktual secara manual — biaya tidak diestimasi otomatis.",
   helpStep10: "Klik Pratinjau lalu Ekspor PDF untuk menyimpan itinerary.",
   helpRulesTitle: "Aturan penting",
+  helpRules: [
+    "Selalu gunakan nama lokasi dari Google Maps untuk akurasi.",
+    "Pastikan tujuan sesuai dengan wilayah yang dipilih.",
+    "Aplikasi ini TIDAK menyediakan data transportasi atau harga real-time.",
+    "Waktu dan biaya harus dimasukkan secara manual olehmu.",
+  ],
   helpRule1: "Selalu gunakan nama lokasi dari Google Maps untuk akurasi.",
   helpRule2: "Pastikan tujuan sesuai dengan wilayah yang dipilih.",
   helpRule3: "Aplikasi ini TIDAK menyediakan data transportasi atau harga real-time.",
@@ -70,8 +96,19 @@ const id = {
   helpTip2: "Cek ulang rute di Google Maps sebelum hari keberangkatan.",
   helpTip3: "Gunakan kategori Transportasi untuk semua baris perpindahan.",
   helpTip4: "Gunakan Sisipkan Di Atas / Di Bawah untuk menambah pemberhentian tanpa mengacaukan urutan.",
+  helpContactDesc: "Ada pertanyaan atau ingin kami bantu atur perjalanan kamu?",
   helpContactBody: "Ada pertanyaan? Hubungi kami melalui salah satu kanal di bawah ini.",
-  // ── Nav ──────────────────────────────────────────────────────────────────
+
+  // ── .bvntrip Export/Import ─────────────────────────────────────────────────
+  helpBvntripTitle: "Ekspor & Impor Itinerary (.bvntrip)",
+  helpBvntripDesc: "Simpan itinerary kamu sebagai file .bvntrip untuk backup, berbagi, atau dimuat ulang nanti.",
+  helpBvntripExportLabel: "Ekspor",
+  helpBvntripExportStep: "Klik Menu → Export .bvntrip untuk mengunduh itinerary kamu sebagai file.",
+  helpBvntripImportLabel: "Impor",
+  helpBvntripImportStep: "Klik Menu → Import .bvntrip dan unggah file .bvntrip untuk memuat itinerary yang tersimpan.",
+  helpBvntripNote: "Mengimpor akan mengganti itinerary kamu saat ini. Pastikan sudah disimpan terlebih dahulu.",
+
+  // ── Nav ───────────────────────────────────────────────────────────────────
   menu: "Menu", help: "Bantuan", preview: "Pratinjau", exportPDF: "Ekspor PDF",
   backToEdit: "Kembali Edit", loadTrip: "Muat Perjalanan", reset: "Reset",
   resetConfirm: "Hapus semua dan mulai dari awal?",
@@ -83,6 +120,8 @@ const id = {
   useRegionalCurrency: "Gunakan mata uang regional", currencySwitcher: "Mata Uang",
   editLocal: "Edit {code}", editIDR: "Edit IDR",
   account: "Akun", preferences: "Preferensi", tools: "Alat",
+
+  // ── Setup ─────────────────────────────────────────────────────────────────
   setupTitle: "Rencanakan perjalanan baru",
   setupSubtitle: "Isi informasi dasar, pilih wilayah, lalu mulai merencanakan.",
   setupStep: "Pengaturan",
@@ -101,6 +140,8 @@ const id = {
   whoAndWhere: "Siapa dan ke mana", preparedFor: "Disiapkan untuk",
   clientNameField: "Nama klien", dayByDay: "Rencana harian",
   itinerarySection: "02 — Perencana Itinerary", overviewSection: "03 — Ringkasan Perjalanan",
+
+  // ── Itinerary table ───────────────────────────────────────────────────────
   addRow: "+ Tambah Baris",
   noStops: "Belum ada pemberhentian. Klik + Tambah Baris untuk mulai.",
   stopsCount: "{count} pemberhentian", stopCount: "{count} pemberhentian",
@@ -117,11 +158,17 @@ const id = {
   idrOnly: "Anggaran dalam IDR.", budgetDisabledHint: "Kolom ini dihitung otomatis.",
   catHotel: "Hotel", catFood: "Makanan", catAttraction: "Atraksi",
   catActivity: "Aktivitas", catTransport: "Transportasi",
+
+  // ── Charts ────────────────────────────────────────────────────────────────
   budgetAtAGlance: "Ringkasan anggaran", totalBudget: "Total anggaran",
   transportUsage: "Penggunaan transportasi", budgetPerCategory: "Anggaran per kategori",
   leg: "perjalanan", legs: "perjalanan", inLocalCurrency: "Dalam mata uang lokal",
   addTransportToChart: "Pilih moda transportasi untuk melihat grafik ini.",
   addBudgetToChart: "Tambahkan anggaran untuk melihat grafik ini.",
+  totalStops: "Total pemberhentian", totalDays: "Total hari",
+  conversionRate: "Kurs", byCategory: "Per kategori",
+
+  // ── Plans ─────────────────────────────────────────────────────────────────
   yourPlan: "Paket Anda", free: "Gratis", lite: "Lite", pro: "Pro",
   upgradeToPro: "Upgrade ke Pro",
   redeemCode: "Masukkan kode redeem", redeemApply: "Gunakan Kode",
@@ -138,75 +185,50 @@ const id = {
   planFeatPro3: "Ekspor PDF premium", planFeatPro4: "Semua analitik & grafik",
   planFeatPro5: "Dukungan prioritas",
   planActivatedUntil: "Berlaku hingga {date}",
+
+  // ── CTA ───────────────────────────────────────────────────────────────────
   needHelp: "Butuh bantuan mengatur perjalanan ini?",
   ctaSubtitle: "Backpackervun mengurus semuanya.",
   chatWA: "Chat di WhatsApp", requestTrip: "Minta Perjalanan Kustom",
   freeConsult: "Konsultasi gratis · Tanpa biaya tersembunyi",
-  serviceHotels: "🏨 Hotel & akomodasi", serviceTransport: "🚆 Transportasi & JR Pass",
-  serviceFlights: "✈️ Penerbangan & transfer", serviceVisa: "📄 Bantuan visa",
-  serviceItinerary: "🗺️ Itinerary kustom", serviceArrangement: "🎌 Pengaturan lengkap",
+  serviceHotels: "🏨 Hotel & akomodasi",
+  serviceTransport: "🚆 Transportasi & JR Pass",
+  serviceFlights: "✈️ Penerbangan & transfer",
+  serviceVisa: "📄 Bantuan visa",
+  serviceItinerary: "🗺️ Itinerary kustom",
+  serviceArrangement: "🎌 Pengaturan lengkap",
   contactUs: "Hubungi Kami",
+
+  // ── Footer ────────────────────────────────────────────────────────────────
   termsOfUse: "Syarat", privacyPolicy: "Privasi", contact: "Kontak",
+
+  // ── Projects modal ────────────────────────────────────────────────────────
   savedTrips: "Perjalanan tersimpan",
   noSavedTrips: "Belum ada perjalanan tersimpan.",
   savedOn: "Disimpan {date}", deleteTrip: "Hapus perjalanan",
   deleteTripConfirm: "Hapus perjalanan ini? Tidak bisa dibatalkan.",
   loadingTrips: "Memuat perjalanan…", couldNotLoad: "Gagal memuat perjalanan.",
+
+  // ── Preview & PDF ─────────────────────────────────────────────────────────
   previewTitle: "Pratinjau", previewHint: "Pilih 'Simpan sebagai PDF' di dialog cetak.", previewLabel: "Pratinjau",
   preparedForClient: "Disiapkan untuk klien",
   itinerary: "Itinerary", tripSummary: "Ringkasan Perjalanan",
   noItinerary: "Belum ada entri itinerary.",
-  totalStops: "Total pemberhentian", totalDays: "Total hari",
-  conversionRate: "Kurs", byCategory: "Per kategori",
-  pdfCTA:
-  "Direncanakan dengan Backpackervun · backpackervun.com",
 
-pdfFooter:
-  "Direncanakan dengan Backpackervun · backpackervun.com",
+  // ── PDF footer ────────────────────────────────────────────────────────────
+  pdfCTA:    "Direncanakan dengan Backpackervun · backpackervun.com",
+  pdfFooter: "Direncanakan dengan Backpackervun · backpackervun.com",
+  preparedWith: "Direncanakan dengan Backpackervun · backpackervun.com",
 
-preparedWith:
-  "Direncanakan dengan Backpackervun · backpackervun.com",
+  // ── PDF Export — iOS instructions ─────────────────────────────────────────
+  iosPdfTitle: "Simpan Itinerary sebagai PDF",
+  iosPdfDesktopNote: "Untuk hyperlink yang bisa diklik di PDF, ekspor lewat browser desktop (Chrome / Safari di Mac).",
+  iosPdfMobileSteps: "Di iPhone/iPad: Ketuk Share → Print → perbesar pratinjau dengan dua jari → ketuk Share lagi → Simpan ke Files.",
+  iosPdfOpenPrint: "Buka Dialog Print",
+  iosPdfPrintAgain: "Print / Simpan sebagai PDF lagi",
 
-// PDF EXPORT — iOS instructions
-iosPdfTitle:
-  "Simpan Itinerary sebagai PDF",
-
-iosPdfDesktopNote:
-  "Untuk hyperlink yang bisa diklik di PDF, ekspor lewat browser desktop (Chrome / Safari di Mac).",
-
-iosPdfMobileSteps:
-  "Di iPhone/iPad: Ketuk Share → Print → perbesar pratinjau dengan dua jari → ketuk Share lagi → Simpan ke Files.",
-
-iosPdfOpenPrint:
-  "Buka Dialog Print",
-
-iosPdfPrintAgain:
-  "Print / Simpan sebagai PDF lagi",
-
-// HELP MODAL — bvntrip section
-helpBvntripTitle:
-  "Ekspor & Impor Itinerary (.bvntrip)",
-
-helpBvntripDesc:
-  "Simpan itinerary kamu sebagai file .bvntrip untuk backup, berbagi, atau dimuat ulang nanti.",
-
-helpBvntripExportLabel:
-  "Ekspor",
-
-helpBvntripExportStep:
-  "Klik Menu → Export .bvntrip untuk mengunduh itinerary kamu sebagai file.",
-
-helpBvntripImportLabel:
-  "Impor",
-
-helpBvntripImportStep:
-  "Klik Menu → Import .bvntrip dan unggah file .bvntrip untuk memuat itinerary yang tersimpan.",
-
-helpBvntripNote:
-  "Mengimpor akan mengganti itinerary kamu saat ini. Pastikan sudah disimpan terlebih dahulu.",
-
-unsavedChanges:
-  "Ada perubahan belum disimpan",
+  // ── Misc ──────────────────────────────────────────────────────────────────
+  unsavedChanges: "Ada perubahan belum disimpan",
 };
 
 export default id;
