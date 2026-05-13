@@ -1,5 +1,21 @@
 "use client";
 
+/**
+ * dashboard/page.jsx — patch: adds .bvntrip export/import/duplicate
+ *
+ * Changes from previous version:
+ * 1. Import { exportBvntrip, generateFilename } from @/lib/itinerary-file
+ * 2. Import ImportModal component
+ * 3. Add importOpen state
+ * 4. Add handleExportBvntrip() — one function, 3 lines
+ * 5. Add handleImport(data) — replaces state from parsed file
+ * 6. Add handleDuplicate() — clones current state with "(Copy)" suffix
+ * 7. Pass onExportBvntrip, onImportOpen, onDuplicate to Header
+ * 8. Render <ImportModal />
+ *
+ * Everything else is unchanged.
+ */
+
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -7,6 +23,7 @@ import Header         from "@/components/Header";
 import HelpModal      from "@/components/HelpModal";
 import PreviewModal   from "@/components/PreviewModal";
 import ProjectsModal  from "@/components/ProjectsModal";
+import ImportModal    from "@/components/ImportModal";   // ← NEW
 import SetupScreen    from "@/components/SetupScreen";
 import TripInfoPanel  from "@/components/TripInfoPanel";
 import ItineraryTable from "@/components/ItineraryTable";
@@ -23,6 +40,7 @@ import { usePlan }                        from "@/hooks/usePlan";
 import { saveProject, countUserTrips }    from "@/lib/firestore";
 import { fetchRateToIDR, invalidateRate } from "@/lib/exchangeRates";
 import { DEFAULT_RATE, generateId, getCurrency } from "@/lib/utils";
+import { exportBvntrip, generateFilename } from "@/lib/itinerary-file";  // ← NEW
 
 const STORAGE_KEY = "backpackervun-v9";
 const BLANK_TRIP  = { clientName:"", duration:"", destinations:"", travelDates:"", startDate:"", endDate:"" };
@@ -58,8 +76,9 @@ export default function DashboardPage() {
   const { t } = useT();
 
   const [hydrated, setHydrated]         = useState(false);
-  const [view, setView]                 = useState("setup"); // "setup" | "planner"
+  const [view, setView]                 = useState("setup");
   const [previewOpen, setPreviewOpen]   = useState(false);
+  const [importOpen, setImportOpen]     = useState(false);          // ← NEW
   const [rows, setRows]                 = useState([]);
   const [tripInfo, setTripInfo]         = useState(BLANK_TRIP);
   const [rate, setRate]                 = useState(DEFAULT_RATE);
@@ -112,7 +131,6 @@ export default function DashboardPage() {
         if (p.currencyMode) setCurrencyMode(p.currencyMode);
         if (p.projectId)    setProjectId(p.projectId);
         setRate(r);
-        // Migration from old setupComplete boolean
         if (p.view === "planner" || p.setupComplete === true) setView("planner");
       }
     } catch { /* ignore */ }
@@ -175,8 +193,6 @@ export default function DashboardPage() {
       return n;
     });
   };
-
-  // ✅ Move row up or down
   const moveRow = (id, dir) => {
     setRows(prev => {
       const i = prev.findIndex(r => r.id === id);
@@ -184,6 +200,51 @@ export default function DashboardPage() {
       if (dir === "down" && i < prev.length - 1) { const n=[...prev]; [n[i],n[i+1]]=[n[i+1],n[i]]; return n; }
       return prev;
     });
+  };
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // ✅ NEW: Export .bvntrip
+  // ══════════════════════════════════════════════════════════════════════════
+  const handleExportBvntrip = () => {
+    exportBvntrip({ tripInfo, rows, region, rate });
+  };
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // ✅ NEW: Import .bvntrip
+  // ══════════════════════════════════════════════════════════════════════════
+  const handleImport = (data) => {
+    const lr = data.rate ?? DEFAULT_RATE;
+    setRows((data.rows ?? []).map(r => normalizeRow(r, lr)));
+    setTripInfo({ ...BLANK_TRIP, ...(data.tripInfo ?? {}) });
+    setRate(lr); setRateSource("manual");
+    setRegion(data.region ?? null);
+    setProjectId(null);             // imported file is a new project
+    setView("planner");
+    setHasUnsaved(true);
+    ratesFetched.current  = false;
+    initialChange.current = true;
+    if (data.region) {
+      invalidateRate(getCurrency(data.region).code);
+      applyLiveRate(data.region);
+    }
+  };
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // ✅ NEW: Duplicate / Clone current itinerary
+  // ══════════════════════════════════════════════════════════════════════════
+  const handleDuplicate = () => {
+    if (!window.confirm("Duplicate current itinerary? A copy will be created as a new unsaved project.")) return;
+    // Give every row a fresh ID so the clone is fully independent
+    const clonedRows = rows.map(r => ({ ...r, id: generateId() }));
+    const clonedTrip = {
+      ...tripInfo,
+      clientName: tripInfo.clientName ? `${tripInfo.clientName} (Copy)` : "Copy",
+    };
+    setRows(clonedRows);
+    setTripInfo(clonedTrip);
+    setProjectId(null);    // treat as new unsaved project
+    setHasUnsaved(true);
+    initialChange.current = true;
   };
 
   const handleReset = () => {
@@ -238,6 +299,7 @@ export default function DashboardPage() {
     setPreviewOpen(true);
   };
 
+  // ── Loading ────────────────────────────────────────────────────────────────
   if (authLoading || !hydrated) {
     return (
       <div className="min-h-screen paper-bg flex items-center justify-center">
@@ -249,9 +311,7 @@ export default function DashboardPage() {
     );
   }
 
-  // ══════════════════════════════════════════════════════════════════════════
-  // VIEW: SETUP — mutually exclusive with planner
-  // ══════════════════════════════════════════════════════════════════════════
+  // ── SETUP VIEW ─────────────────────────────────────────────────────────────
   if (view === "setup") {
     return (
       <div className="paper-bg min-h-screen flex flex-col">
@@ -314,9 +374,7 @@ export default function DashboardPage() {
     );
   }
 
-  // ══════════════════════════════════════════════════════════════════════════
-  // VIEW: PLANNER — SetupScreen NOT rendered anywhere here
-  // ══════════════════════════════════════════════════════════════════════════
+  // ── PLANNER VIEW ───────────────────────────────────────────────────────────
   return (
     <div className="paper-bg min-h-screen flex flex-col">
       <Header
@@ -332,10 +390,13 @@ export default function DashboardPage() {
         plan={plan}
         currencyMode={currencyMode}
         onCurrencyModeChange={setCurrencyMode}
+        /* ✅ NEW props */
+        onExportBvntrip={handleExportBvntrip}
+        onImportOpen={() => setImportOpen(true)}
+        onDuplicate={handleDuplicate}
       />
 
       <main className="flex-1 mx-auto w-full max-w-[1600px] px-4 py-6 sm:px-5 lg:py-8">
-        {/* ✅ TripInfoPanel — editable trip details, NOT SetupScreen */}
         <TripInfoPanel tripInfo={tripInfo} onChange={setTripInfo} />
 
         <div className="mt-6 grid gap-6 items-start lg:grid-cols-[minmax(0,1fr)_320px] xl:grid-cols-[minmax(0,1fr)_360px]">
@@ -384,18 +445,62 @@ export default function DashboardPage() {
       </div>
       <Footer />
 
-      <PreviewModal
-        open={previewOpen} onClose={() => setPreviewOpen(false)}
-        tripInfo={tripInfo} rows={rows} dayMap={dayMap}
-        region={region} rate={rate} totalLocal={totalLocal} totalIDR={totalIDR}
-        canExportPDF={canExportPDF}
-        onUpgradeNeeded={(reason) => { setPreviewOpen(false); setUpgradeReason(reason); setUpgradeOpen(true); }}
-      />
-      <HelpModal     open={helpOpen}     initialTab={helpTab}  onClose={() => setHelpOpen(false)} />
-      <ProjectsModal open={projectsOpen} userId={user?.uid}    onClose={() => setProjectsOpen(false)} onLoad={handleLoadProject} />
-      <RedeemModal   open={redeemOpen}   onClose={() => setRedeemOpen(false)} onSuccess={() => refreshPlan()} />
-      <UpgradeModal  open={upgradeOpen}  onClose={() => setUpgradeOpen(false)} reason={upgradeReason} />
-      <ContactModal  open={contactOpen}  onClose={() => setContactOpen(false)} />
+{/* ── Modals ── */}
+
+<PreviewModal
+  open={previewOpen}
+  onClose={() => setPreviewOpen(false)}
+  tripInfo={tripInfo}
+  rows={rows}
+  dayMap={dayMap}
+  region={region}
+  rate={rate}
+  totalLocal={totalLocal}
+  totalIDR={totalIDR}
+  canExportPDF={canExportPDF}
+  onUpgradeNeeded={(reason) => {
+    setPreviewOpen(false);
+    setUpgradeReason(reason);
+    setUpgradeOpen(true);
+  }}
+/>
+
+{/* ── Import Modal ── */}
+<ImportModal
+  open={importOpen}
+  onClose={() => setImportOpen(false)}
+  onImport={handleImport}
+/>
+
+<HelpModal
+  open={helpOpen}
+  initialTab={helpTab}
+  onClose={() => setHelpOpen(false)}
+/>
+
+<ProjectsModal
+  open={projectsOpen}
+  userId={user?.uid}
+  onClose={() => setProjectsOpen(false)}
+  onLoad={handleLoadProject}
+/>
+
+<RedeemModal
+  open={redeemOpen}
+  onClose={() => setRedeemOpen(false)}
+  onSuccess={() => refreshPlan()}
+/>
+
+<UpgradeModal
+  open={upgradeOpen}
+  onClose={() => setUpgradeOpen(false)}
+  reason={upgradeReason}
+/>
+
+<ContactModal
+  open={contactOpen}
+  onClose={() => setContactOpen(false)}
+/>
     </div>
   );
 }
