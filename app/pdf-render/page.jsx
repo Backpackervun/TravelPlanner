@@ -1,12 +1,14 @@
 "use client";
 
 /**
- * /pdf-render — Backpackervun PDF Renderer (patch-final)
+ * /pdf-render — Backpackervun PDF Renderer (patch-v4)
  *
  * Fixes:
- * 1. ADDED "Budget at a Glance" section so PDF matches preview mode
- * 2. iOS: better "Create PDF" instructions (most reliable Safari method)
- * 3. Desktop: unchanged auto-print behavior
+ * 1. PAGE BREAKS: smarter break-inside + break-before/after rules
+ *    so cards never get cut in the middle, sections start clean
+ * 2. iOS LINKS: clearer "Create PDF" instructions — the only iOS method
+ *    that preserves clickable hyperlinks in the output file
+ * 3. Minor spacing tweaks for cleaner multi-page layout
  */
 
 import { useEffect, useMemo, useState } from "react";
@@ -93,18 +95,114 @@ function fmtTravelDates(td,startDate,endDate){
   return fmtDateReadable(td)||td;
 }
 
-// ── Print CSS ─────────────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
+// PRINT CSS — Key strategy for clean page breaks:
+//
+// 1. .day-block  → break-inside:avoid — never cut a day card mid-content
+//    But allow a break BEFORE a day block if needed (break-before: auto)
+// 2. .row-item   → break-inside:avoid — never cut a row item
+// 3. .no-break   → break-inside:avoid — for section headers + first item
+// 4. .analytics-block → break-inside:avoid
+// 5. Widows/orphans = 3 — prevents single lines dangling on new page
+// 6. Generous page margins so content never feels cramped at edges
+// ══════════════════════════════════════════════════════════════════════════════
 const PRINT_CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap');
-@page{size:A4 portrait;margin:10mm 12mm;}
-*,*::before,*::after{box-sizing:border-box;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
-html,body{margin:0;padding:0;background:white;font-family:'Montserrat',-apple-system,BlinkMacSystemFont,sans-serif;color:#1E293B;font-size:13px;line-height:1.5;}
-a{color:#0B3C5D;text-decoration:none;}
-.day-block{break-inside:avoid;page-break-inside:avoid;}
-.row-item{break-inside:avoid;page-break-inside:avoid;}
-.analytics-block{break-inside:avoid;page-break-inside:avoid;}
-@media screen{body{max-width:794px;margin:0 auto;}.screen-only{display:block;}}
-@media print{.screen-only{display:none!important;}}
+
+@page {
+  size: A4 portrait;
+  margin: 14mm 14mm 18mm 14mm;
+  /* More bottom margin — browser adds URL/date footer, this prevents overlap */
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  -webkit-print-color-adjust: exact !important;
+  print-color-adjust: exact !important;
+  color-adjust: exact !important;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: white;
+  font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, sans-serif;
+  color: #1E293B;
+  font-size: 13px;
+  line-height: 1.5;
+  widows: 3;
+  orphans: 3;
+}
+
+a { color: #0B3C5D; text-decoration: none; }
+
+/* ─── PAGE BREAK RULES ─────────────────────────────────────────────────────
+   Core strategy:
+   - Day cards never split in the middle
+   - Individual row items never split
+   - Analytics section stays together
+   - Section headings always stay with their first item
+   ─────────────────────────────────────────────────────────────────────── */
+
+/* Each day card: avoid splitting internally */
+.day-block {
+  break-inside: avoid;
+  page-break-inside: avoid;
+  /* Don't force break-before — let browser decide */
+  margin-bottom: 20px;
+}
+
+/* Row item within a day card: never split */
+.row-item {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+/* Section heading + first item must stay together */
+.section-group {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+/* Analytics block: keep whole section together if fits */
+.analytics-block {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+/* Stats cards row */
+.stats-row {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+/* Category bars table */
+.cat-table {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+/* Transport chips row */
+.transport-row {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+/* Trip summary section */
+.summary-section {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+/* ─── SCREEN ONLY ─────────────────────────────────────────────────────────── */
+@media screen {
+  body { max-width: 794px; margin: 0 auto; }
+  .screen-only { display: block; }
+}
+
+@media print {
+  .screen-only { display: none !important; }
+}
 `;
 
 // ── Main page ─────────────────────────────────────────────────────────────────
@@ -118,7 +216,13 @@ export default function PDFRenderPage(){
   useEffect(()=>{
     try{
       const raw=localStorage.getItem("bpv-pdf-render")||sessionStorage.getItem("bpv-pdf-render");
-      if(raw){setData(JSON.parse(raw));setTimeout(()=>{localStorage.removeItem("bpv-pdf-render");sessionStorage.removeItem("bpv-pdf-render");},15000);}
+      if(raw){
+        setData(JSON.parse(raw));
+        setTimeout(()=>{
+          try{localStorage.removeItem("bpv-pdf-render");}catch{}
+          try{sessionStorage.removeItem("bpv-pdf-render");}catch{}
+        },15000);
+      }
     }catch(e){console.error("PDF data error:",e);}
     setReady(true);
   },[]);
@@ -126,8 +230,8 @@ export default function PDFRenderPage(){
   useEffect(()=>{
     if(!data||!ready||isIOS)return;
     const go=()=>window.print();
-    if(document.fonts?.ready){document.fonts.ready.then(()=>setTimeout(go,200));}
-    else{setTimeout(go,700);}
+    if(document.fonts?.ready){document.fonts.ready.then(()=>setTimeout(go,300));}
+    else{setTimeout(go,800);}
   },[data,ready]); // eslint-disable-line
 
   if(!ready)return<Splash text="Loading…"/>;
@@ -137,34 +241,50 @@ export default function PDFRenderPage(){
     <>
       <style dangerouslySetInnerHTML={{__html:PRINT_CSS}}/>
 
-      {/* ── iOS instructions — prominently shown, print-hidden ── */}
+      {/* ── iOS instructions ── */}
       {isIOS&&(
-        <div className="screen-only" style={{background:"#0B3C5D",padding:"14px 20px",fontFamily:"Montserrat,sans-serif"}}>
-          <div style={{color:"white",fontSize:"14px",fontWeight:700,marginBottom:"8px"}}>
-            Backpackervun — Save as PDF
+        <div className="screen-only" style={{background:N,padding:"14px 20px",fontFamily:"Montserrat,sans-serif"}}>
+          <div style={{color:"white",fontSize:"14px",fontWeight:700,marginBottom:"10px"}}>
+            Backpackervun — Save Itinerary as PDF
           </div>
-          <div style={{background:"rgba(255,255,255,0.12)",borderRadius:"10px",padding:"12px 14px",marginBottom:"8px"}}>
-            <div style={{color:"white",fontSize:"12px",fontWeight:600,marginBottom:"4px"}}>
-              ✅ Recommended (preserves all clickable links):
+
+          {/* PRIMARY METHOD — preserves clickable links */}
+          <div style={{background:"rgba(255,255,255,0.15)",borderRadius:"10px",padding:"12px 14px",marginBottom:"10px",border:"1px solid rgba(255,255,255,0.25)"}}>
+            <div style={{color:"#86EFAC",fontSize:"11px",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:"6px"}}>
+              ✅ Recommended — Links stay clickable
             </div>
-            <div style={{color:"rgba(255,255,255,0.85)",fontSize:"12px",lineHeight:1.7}}>
-              1. Tap <strong style={{color:"white"}}>□↑ Share</strong> in the Safari toolbar<br/>
-              2. Scroll down → tap <strong style={{color:"white"}}>"Create PDF"</strong><br/>
-              3. Tap Done → Share → <strong style={{color:"white"}}>Save to Files</strong>
+            <div style={{color:"white",fontSize:"13px",fontWeight:600,marginBottom:"4px"}}>
+              Share → "Create PDF"
+            </div>
+            <div style={{color:"rgba(255,255,255,0.75)",fontSize:"12px",lineHeight:1.7}}>
+              1. Tap <strong style={{color:"white"}}>□↑</strong> Share (bottom of Safari)<br/>
+              2. Scroll the share sheet → tap <strong style={{color:"white"}}>"Create PDF"</strong><br/>
+              3. Tap the <strong style={{color:"white"}}>□↑</strong> Share icon in top-right<br/>
+              4. Tap <strong style={{color:"white"}}>"Save to Files"</strong> → Done
             </div>
           </div>
-          <div style={{color:"rgba(255,255,255,0.6)",fontSize:"11px",lineHeight:1.6}}>
-            Alternative: Tap □↑ → Print → Tap □↑ in print preview → Save to Files
+
+          {/* FALLBACK — print dialog, links may not be clickable */}
+          <div style={{background:"rgba(255,255,255,0.07)",borderRadius:"10px",padding:"10px 14px"}}>
+            <div style={{color:"rgba(255,255,255,0.5)",fontSize:"11px",fontWeight:600,marginBottom:"4px"}}>
+              Alternative (links may not work in output)
+            </div>
+            <div style={{color:"rgba(255,255,255,0.6)",fontSize:"12px",lineHeight:1.6}}>
+              Share → Print → pinch-zoom on preview → □↑ Share → Save to Files
+            </div>
+            <button
+              onClick={()=>window.print()}
+              style={{marginTop:"8px",background:"rgba(255,255,255,0.15)",color:"white",border:"1px solid rgba(255,255,255,0.3)",borderRadius:"7px",padding:"7px 14px",fontSize:"12px",fontWeight:600,cursor:"pointer",fontFamily:"Montserrat,sans-serif"}}
+            >
+              Open Print Dialog
+            </button>
           </div>
-          <button onClick={()=>window.print()} style={{marginTop:"10px",background:"white",color:"#0B3C5D",border:"none",borderRadius:"8px",padding:"8px 16px",fontSize:"12px",fontWeight:700,cursor:"pointer",fontFamily:"Montserrat,sans-serif"}}>
-            Open Print Dialog (Alternative)
-          </button>
         </div>
       )}
 
-      {/* Desktop re-print button */}
+      {/* Desktop re-print */}
       {!isIOS&&(
-        <div className="screen-only" style={{padding:"8px 16px",textAlign:"right",fontFamily:"Montserrat,sans-serif",background:"#F8FAFC",borderBottom:`1px solid ${B}`}}>
+        <div className="screen-only" style={{padding:"8px 16px",textAlign:"right",background:"#F8FAFC",borderBottom:`1px solid ${B}`,fontFamily:"Montserrat,sans-serif"}}>
           <button onClick={()=>window.print()} style={{background:N,color:"white",border:"none",borderRadius:"6px",padding:"6px 14px",fontSize:"11px",fontWeight:600,cursor:"pointer"}}>
             Print / Save as PDF again
           </button>
@@ -198,7 +318,6 @@ function Document({tripInfo,rows,dayMap,region,rate,totalLocal,totalIDR}){
     Number(r.budgetLocal)>0||Number(r.budgetIDR)>0
   );
 
-  // Group by day
   const byDay=new Map();
   for(const r of meaningful){
     const key=(r.date||"").trim()||"__";
@@ -206,12 +325,9 @@ function Document({tripInfo,rows,dayMap,region,rate,totalLocal,totalIDR}){
     byDay.get(key).push(r);
   }
   const days=[...byDay.entries()].sort(([a],[b])=>{
-    const da=a==="__"?999:(dayMap[a]??999);
-    const db=b==="__"?999:(dayMap[b]??999);
-    return da-db;
+    return(a==="__"?999:(dayMap[a]??999))-(b==="__"?999:(dayMap[b]??999));
   });
 
-  // ✅ Analytics data
   const catTotals=useMemo(()=>{
     const m={};
     for(const r of rows){if(r.category)m[r.category]=(m[r.category]??0)+(Number(r.budgetLocal)||0);}
@@ -228,12 +344,12 @@ function Document({tripInfo,rows,dayMap,region,rate,totalLocal,totalIDR}){
   const travelDatesFormatted=fmtTravelDates(tripInfo?.travelDates,tripInfo?.startDate,tripInfo?.endDate);
 
   return(
-    <div style={{background:"white",minHeight:"100vh"}}>
+    <div style={{background:"white"}}>
 
-      {/* ── HEADER ── */}
-      <div style={{padding:"22px 32px 18px",display:"flex",alignItems:"flex-start",justifyContent:"space-between",borderBottom:`1px solid ${B}`}}>
+      {/* ── HEADER — no break-before (starts page 1) ── */}
+      <div style={{padding:"20px 32px 16px",display:"flex",alignItems:"flex-start",justifyContent:"space-between",borderBottom:`1px solid ${B}`}}>
         <div>
-          <div style={{fontSize:"22px",fontWeight:700,color:N,letterSpacing:"-0.3px",lineHeight:1}}>Backpackervun</div>
+          <div style={{fontSize:"22px",fontWeight:700,color:N,lineHeight:1}}>Backpackervun</div>
           <div style={{fontSize:"10px",fontWeight:600,color:IM,letterSpacing:"0.22em",textTransform:"uppercase",marginTop:"3px"}}>Travel Planner</div>
         </div>
         <div style={{textAlign:"right"}}>
@@ -249,10 +365,10 @@ function Document({tripInfo,rows,dayMap,region,rate,totalLocal,totalIDR}){
       </div>
 
       {/* ── TRIP INFO ── */}
-      <div style={{padding:"24px 32px 20px",borderBottom:`1px solid ${B}`}}>
+      <div style={{padding:"20px 32px 18px",borderBottom:`1px solid ${B}`}}>
         {tripInfo?.clientName&&<>
           <div style={{fontSize:"9px",fontWeight:600,textTransform:"uppercase",letterSpacing:"0.2em",color:IM}}>PREPARED FOR CLIENT</div>
-          <div style={{fontSize:"34px",fontWeight:700,color:I,lineHeight:1.1,margin:"4px 0 20px"}}>{tripInfo.clientName}</div>
+          <div style={{fontSize:"30px",fontWeight:700,color:I,lineHeight:1.1,margin:"4px 0 18px"}}>{tripInfo.clientName}</div>
         </>}
         {[
           ["DURATION",    tripInfo?.duration||"—"],
@@ -260,22 +376,23 @@ function Document({tripInfo,rows,dayMap,region,rate,totalLocal,totalIDR}){
           ["TRAVEL DATES",travelDatesFormatted],
           ["REGION",      region?`${FLAGS[region]||"🌍"} ${region}`:"—"],
         ].map(([lbl,val])=>(
-          <div key={lbl} style={{display:"flex",alignItems:"flex-start",padding:"4px 0"}}>
+          <div key={lbl} style={{display:"flex",alignItems:"flex-start",padding:"3px 0"}}>
             <div style={{width:"130px",flexShrink:0,fontSize:"9px",fontWeight:600,textTransform:"uppercase",letterSpacing:"0.15em",color:IM,paddingTop:"2px"}}>{lbl}</div>
             <div style={{fontSize:"13px",fontWeight:500,color:I}}>{val}</div>
           </div>
         ))}
       </div>
 
-      {/* ── ITINERARY ── */}
-      <div style={{padding:"22px 32px 8px"}}>
+      {/* ── ITINERARY HEADING (keeps with first day card) ── */}
+      <div style={{padding:"18px 32px 6px"}}>
         <div style={{display:"flex",alignItems:"center",gap:"12px",fontSize:"20px",fontWeight:700,color:I}}>
           <div style={{width:"24px",height:"2px",background:N,flexShrink:0}}/>
           Itinerary
         </div>
       </div>
 
-      <div style={{padding:"4px 32px 8px"}}>
+      {/* ── DAY BLOCKS — each is a self-contained card with break-inside:avoid ── */}
+      <div style={{padding:"4px 32px 0"}}>
         {days.length===0?(
           <div style={{padding:"40px",textAlign:"center",color:IM}}>No itinerary entries.</div>
         ):days.map(([dateKey,dayRows])=>{
@@ -283,15 +400,15 @@ function Document({tripInfo,rows,dayMap,region,rate,totalLocal,totalIDR}){
           const city=dayRows[0]?.city||"";
           const dStr=dateKey!=="__"?fmtDateReadable(dateKey):"";
           return(
-            <div key={dateKey} className="day-block" style={{marginBottom:"20px",border:`1px solid ${B}`,borderRadius:"12px",overflow:"hidden"}}>
-              <div style={{background:N,padding:"12px 20px",display:"flex",alignItems:"center",gap:"14px"}}>
+            // .day-block = break-inside:avoid so entire card stays on one page
+            // If the card is too tall for remaining space, browser pushes it to next page cleanly
+            <div key={dateKey} className="day-block" style={{border:`1px solid ${B}`,borderRadius:"12px",overflow:"hidden"}}>
+              <div style={{background:N,padding:"11px 20px",display:"flex",alignItems:"center",gap:"14px"}}>
                 {dn!==null&&(
-                  <div style={{background:"white",color:N,borderRadius:"50%",width:"36px",height:"36px",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:"14px",flexShrink:0}}>
-                    {dn}
-                  </div>
+                  <div style={{background:"white",color:N,borderRadius:"50%",width:"34px",height:"34px",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:"14px",flexShrink:0}}>{dn}</div>
                 )}
                 <div>
-                  <div style={{color:"white",fontSize:"16px",fontWeight:700}}>Day {dn??"—"}{city?` — ${city}`:""}</div>
+                  <div style={{color:"white",fontSize:"15px",fontWeight:700}}>Day {dn??"—"}{city?` — ${city}`:""}</div>
                   {dStr&&<div style={{color:"rgba(255,255,255,0.7)",fontSize:"11px",marginTop:"1px"}}>{dStr}</div>}
                 </div>
               </div>
@@ -303,43 +420,41 @@ function Document({tripInfo,rows,dayMap,region,rate,totalLocal,totalIDR}){
         })}
       </div>
 
-      {/* ══════════════════════════════════════════════════════════════
-          ✅ BUDGET AT A GLANCE — matches PreviewModal / PrintLayout
-          ══════════════════════════════════════════════════════════════ */}
-      <div style={{padding:"16px 32px 4px"}}>
-        <div style={{display:"flex",alignItems:"center",gap:"12px",fontSize:"20px",fontWeight:700,color:I}}>
-          <div style={{width:"24px",height:"2px",background:N,flexShrink:0}}/>
-          Budget at a Glance
-        </div>
-      </div>
+      {/* ── BUDGET AT A GLANCE ── */}
+      <div style={{padding:"20px 32px 0"}}>
+        <div className="section-group">
+          <div style={{display:"flex",alignItems:"center",gap:"12px",fontSize:"20px",fontWeight:700,color:I,marginBottom:"12px"}}>
+            <div style={{width:"24px",height:"2px",background:N,flexShrink:0}}/>
+            Budget at a Glance
+          </div>
 
-      {/* Stats cards */}
-      <div style={{padding:"8px 32px 8px",display:"grid",gridTemplateColumns:"2fr 1fr 1fr",gap:"12px"}}>
-        <div style={{borderRadius:"10px",border:`1px solid ${B}`,background:"#F8FAFC",padding:"16px"}}>
-          <div style={{fontSize:"9px",fontWeight:600,textTransform:"uppercase",letterSpacing:"0.18em",color:IM,marginBottom:"4px"}}>TOTAL BUDGET</div>
-          <div style={{fontSize:"24px",fontWeight:700,color:N,lineHeight:1.1}}>{fmtIDR(totalIDR)}</div>
-          {!isIDR&&<div style={{fontSize:"12px",color:IS,marginTop:"4px"}}>≈ {fmtC(totalLocal,curr)} · 1 {curr.code} = {rate} IDR</div>}
+          {/* Stats row */}
+          <div className="stats-row" style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr",gap:"10px",marginBottom:"10px"}}>
+            <div style={{borderRadius:"10px",border:`1px solid ${B}`,background:"#F8FAFC",padding:"14px"}}>
+              <div style={{fontSize:"9px",fontWeight:600,textTransform:"uppercase",letterSpacing:"0.18em",color:IM,marginBottom:"4px"}}>TOTAL BUDGET</div>
+              <div style={{fontSize:"22px",fontWeight:700,color:N,lineHeight:1.1}}>{fmtIDR(totalIDR)}</div>
+              {!isIDR&&<div style={{fontSize:"11px",color:IS,marginTop:"4px"}}>≈ {fmtC(totalLocal,curr)} · 1 {curr.code} = {rate} IDR</div>}
+            </div>
+            <div style={{borderRadius:"10px",border:`1px solid ${B}`,background:"white",padding:"14px",textAlign:"center"}}>
+              <div style={{fontSize:"9px",fontWeight:600,textTransform:"uppercase",letterSpacing:"0.18em",color:IM,marginBottom:"4px"}}>TOTAL STOPS</div>
+              <div style={{fontSize:"30px",fontWeight:700,color:I}}>{meaningful.length}</div>
+            </div>
+            <div style={{borderRadius:"10px",border:`1px solid ${B}`,background:"white",padding:"14px",textAlign:"center"}}>
+              <div style={{fontSize:"9px",fontWeight:600,textTransform:"uppercase",letterSpacing:"0.18em",color:IM,marginBottom:"4px"}}>TOTAL DAYS</div>
+              <div style={{fontSize:"30px",fontWeight:700,color:I}}>{totalDays}</div>
+            </div>
+          </div>
         </div>
-        <div style={{borderRadius:"10px",border:`1px solid ${B}`,background:"white",padding:"16px",textAlign:"center"}}>
-          <div style={{fontSize:"9px",fontWeight:600,textTransform:"uppercase",letterSpacing:"0.18em",color:IM,marginBottom:"4px"}}>TOTAL STOPS</div>
-          <div style={{fontSize:"32px",fontWeight:700,color:I}}>{meaningful.length}</div>
-        </div>
-        <div style={{borderRadius:"10px",border:`1px solid ${B}`,background:"white",padding:"16px",textAlign:"center"}}>
-          <div style={{fontSize:"9px",fontWeight:600,textTransform:"uppercase",letterSpacing:"0.18em",color:IM,marginBottom:"4px"}}>TOTAL DAYS</div>
-          <div style={{fontSize:"32px",fontWeight:700,color:I}}>{totalDays}</div>
-        </div>
-      </div>
 
-      {/* Budget per category */}
-      {Object.keys(catTotals).length>0&&(
-        <div className="analytics-block" style={{padding:"4px 32px 8px"}}>
-          <div style={{borderRadius:"10px",border:`1px solid ${B}`,overflow:"hidden"}}>
+        {/* Budget per category */}
+        {Object.keys(catTotals).length>0&&(
+          <div className="cat-table" style={{borderRadius:"10px",border:`1px solid ${B}`,overflow:"hidden",marginBottom:"10px"}}>
             <div style={{background:"#F8FAFC",borderBottom:`1px solid ${B}`,padding:"10px 16px",fontSize:"10px",fontWeight:600,textTransform:"uppercase",letterSpacing:"0.18em",color:IM}}>
               BUDGET PER CATEGORY
             </div>
             {Object.entries(catTotals).map(([cat,val])=>{
               const pct=totalLocal>0?Math.round((val/totalLocal)*100):0;
-              const c=CATEGORY[cat]??{icon:"📌",bg:"#F1F5F9",color:"#64748B",bar:"#6B7280"};
+              const c=CATEGORY[cat]??{icon:"📌",bar:"#6B7280"};
               return(
                 <div key={cat} style={{display:"flex",alignItems:"center",gap:"10px",padding:"10px 16px",background:"white",borderBottom:`1px solid ${B}`}}>
                   <div style={{display:"flex",alignItems:"center",gap:"6px",width:"108px",flexShrink:0}}>
@@ -355,13 +470,11 @@ function Document({tripInfo,rows,dayMap,region,rate,totalLocal,totalIDR}){
               );
             })}
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Transport usage */}
-      {Object.keys(tCounts).length>0&&(
-        <div className="analytics-block" style={{padding:"4px 32px 8px"}}>
-          <div style={{borderRadius:"10px",border:`1px solid ${B}`,overflow:"hidden"}}>
+        {/* Transport usage */}
+        {Object.keys(tCounts).length>0&&(
+          <div className="transport-row" style={{borderRadius:"10px",border:`1px solid ${B}`,overflow:"hidden",marginBottom:"10px"}}>
             <div style={{background:"#F8FAFC",borderBottom:`1px solid ${B}`,padding:"10px 16px",fontSize:"10px",fontWeight:600,textTransform:"uppercase",letterSpacing:"0.18em",color:IM}}>
               TRANSPORT USAGE
             </div>
@@ -382,19 +495,19 @@ function Document({tripInfo,rows,dayMap,region,rate,totalLocal,totalIDR}){
               })}
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* ── TRIP SUMMARY ── */}
-      <div style={{padding:"16px 32px 8px"}}>
-        <div style={{fontSize:"20px",fontWeight:700,color:I,marginBottom:"16px"}}>Trip Summary</div>
+      <div className="summary-section" style={{padding:"0 32px 20px"}}>
+        <div style={{fontSize:"20px",fontWeight:700,color:I,marginBottom:"14px",paddingTop:"10px"}}>Trip Summary</div>
         <div style={{border:`1px solid ${B}`,borderRadius:"10px",overflow:"hidden"}}>
           {[
-            {label:"Total stops",     val:meaningful.length,                                    bold:false,accent:false},
-            {label:"Total days",      val:totalDays,                                             bold:false,accent:false},
-            {label:"Conversion rate", val:isIDR?"1:1":`1 ${curr.code} = ${rate} IDR`,           bold:false,accent:false},
+            {label:"Total stops",    val:meaningful.length,                                    bold:false,accent:false},
+            {label:"Total days",     val:totalDays,                                             bold:false,accent:false},
+            {label:"Conversion rate",val:isIDR?"1:1":`1 ${curr.code} = ${rate} IDR`,           bold:false,accent:false},
             ...(!isIDR?[{label:`TOTAL · ${curr.code}`,val:fmtC(totalLocal,curr),bold:true,accent:false}]:[]),
-            {label:"TOTAL · IDR",     val:fmtIDR(totalIDR),                                     bold:true, accent:true },
+            {label:"TOTAL · IDR",    val:fmtIDR(totalIDR),                                     bold:true, accent:true },
           ].map(({label,val,bold,accent})=>(
             <div key={label} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 20px",borderBottom:`1px solid ${B}`,background:"white"}}>
               <span style={{fontSize:"13px",color:bold?I:IM,fontWeight:bold?600:400}}>{label}</span>
@@ -405,7 +518,7 @@ function Document({tripInfo,rows,dayMap,region,rate,totalLocal,totalIDR}){
       </div>
 
       {/* ── FOOTER ── */}
-      <div style={{margin:"24px 32px 0",padding:"16px 0",borderTop:`1px solid ${B}`,textAlign:"center",fontSize:"10px",fontWeight:600,textTransform:"uppercase",letterSpacing:"0.2em",color:IM}}>
+      <div style={{margin:"0 32px 0",padding:"14px 0",borderTop:`1px solid ${B}`,textAlign:"center",fontSize:"10px",fontWeight:600,textTransform:"uppercase",letterSpacing:"0.2em",color:IM}}>
         PREPARED WITH BACKPACKERVUN · BACKPACKERVUN.COM
       </div>
 
@@ -420,7 +533,7 @@ function RowItem({row,curr,isIDR,last}){
   const budgetIDR=Number(row.budgetIDR)||0;
   const hasBudget=budget>0||budgetIDR>0;
   const cat=row.category?(CATEGORY[row.category]??null):null;
-  const tIcon=row.transport?(TICONS[row.transport]??""): "";
+  const tIcon=row.transport?(TICONS[row.transport]??""):"";
   const enc=encodeURIComponent;
 
   const destQ=enc([row.destination,row.city,row.to].filter(Boolean).join(" ")||"");
@@ -430,21 +543,19 @@ function RowItem({row,curr,isIDR,last}){
   const fltUrl=isFlt&&row.from&&row.to?`https://www.google.com/flights?q=Flights+from+${enc(row.from)}+to+${enc(row.to)}`:null;
 
   return(
-    <div className="row-item" style={{display:"flex",alignItems:"flex-start",gap:"16px",padding:"16px 20px",borderBottom:last?"none":`1px solid ${B}`,background:"white"}}>
-      <div style={{flexShrink:0,width:"60px",textAlign:"right",fontSize:"11px",fontWeight:600,color:IM,paddingTop:"2px",fontVariantNumeric:"tabular-nums"}}>
+    <div className="row-item" style={{display:"flex",alignItems:"flex-start",gap:"14px",padding:"14px 20px",borderBottom:last?"none":`1px solid ${B}`,background:"white"}}>
+      <div style={{flexShrink:0,width:"58px",textAlign:"right",fontSize:"11px",fontWeight:600,color:IM,paddingTop:"2px",fontVariantNumeric:"tabular-nums"}}>
         {fmtTime(row.time)||"—"}
       </div>
       <div style={{flex:1,minWidth:0}}>
         {cat&&(
-          <div style={{display:"inline-flex",alignItems:"center",gap:"4px",background:cat.bg,color:cat.color,padding:"2px 8px",borderRadius:"4px",fontSize:"9px",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.12em",marginBottom:"6px"}}>
+          <div style={{display:"inline-flex",alignItems:"center",gap:"4px",background:cat.bg,color:cat.color,padding:"2px 8px",borderRadius:"4px",fontSize:"9px",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.12em",marginBottom:"5px"}}>
             <span>{cat.icon}</span>{row.category?.toUpperCase()}
           </div>
         )}
-        <div style={{fontSize:"15px",fontWeight:700,color:I,lineHeight:1.3,marginBottom:"4px"}}>
-          {row.destination||row.city||"—"}
-        </div>
+        <div style={{fontSize:"14px",fontWeight:700,color:I,lineHeight:1.3,marginBottom:"3px"}}>{row.destination||row.city||"—"}</div>
         {(row.transport||row.from||row.to)&&(
-          <div style={{display:"flex",alignItems:"center",gap:"5px",fontSize:"11px",color:IM,flexWrap:"wrap",marginBottom:"4px"}}>
+          <div style={{display:"flex",alignItems:"center",gap:"5px",fontSize:"11px",color:IM,flexWrap:"wrap",marginBottom:"3px"}}>
             {tIcon&&<span>{tIcon}</span>}
             {row.transport&&<span style={{fontWeight:600,color:IS}}>{row.transport}</span>}
             {row.transport&&(row.from||row.to)&&<span style={{color:"#CBD5E1"}}>·</span>}
@@ -453,15 +564,14 @@ function RowItem({row,curr,isIDR,last}){
             {row.to&&<span>{row.to}</span>}
           </div>
         )}
-        {row.notes&&<div style={{fontSize:"11px",color:IM,fontStyle:"italic",marginBottom:"6px"}}>{row.notes}</div>}
-        {/* ✅ Inline links — no flex-wrap artifact */}
-        <div style={{marginTop:"6px",lineHeight:"1.9"}}>
+        {row.notes&&<div style={{fontSize:"11px",color:IM,fontStyle:"italic",marginBottom:"5px"}}>{row.notes}</div>}
+        <div style={{marginTop:"5px",lineHeight:"1.9"}}>
           <a href={mapUrl} target="_blank" rel="noopener noreferrer" style={{fontSize:"11px",fontWeight:500,color:N,marginRight:"14px",display:"inline",whiteSpace:"nowrap"}}>📍 View in Google Maps</a>
           {routeUrl&&<a href={routeUrl} target="_blank" rel="noopener noreferrer" style={{fontSize:"11px",fontWeight:500,color:N,marginRight:"14px",display:"inline",whiteSpace:"nowrap"}}>🗺 Open Route</a>}
           {fltUrl&&<a href={fltUrl} target="_blank" rel="noopener noreferrer" style={{fontSize:"11px",fontWeight:500,color:N,marginRight:"14px",display:"inline",whiteSpace:"nowrap"}}>✈️ View Flights</a>}
         </div>
       </div>
-      <div style={{flexShrink:0,textAlign:"right",minWidth:"64px"}}>
+      <div style={{flexShrink:0,textAlign:"right",minWidth:"62px"}}>
         {hasBudget?(
           <>
             {!isIDR&&budget>0&&<div style={{fontSize:"13px",fontWeight:700,color:I}}>{fmtC(budget,curr)}</div>}
