@@ -1,0 +1,88 @@
+/*
+  ══════════════════════════════════════════════════════════════════
+  MOBILE OVERFLOW FIX — Append to app/globals.css
+  Fixes horizontal scroll/overflow on iPhone Safari dashboard
+  ══════════════════════════════════════════════════════════════════
+*/
+
+/* ── 1. Prevent any element from causing horizontal body scroll ── */
+html {
+  overflow-x: hidden;
+}
+
+body {
+  overflow-x: hidden;
+  width: 100%;
+}
+
+/* ── 2. Fix recharts containers (ChartsPanel uses recharts) ── */
+/*
+   Root cause: recharts PieChart/BarChart may render with explicit pixel
+   widths (e.g., width={380}) that overflow on 375px iPhone screens.
+   ResponsiveContainer should handle this, but these rules are a safety net.
+*/
+.recharts-wrapper,
+.recharts-responsive-container {
+  max-width: 100% !important;
+  overflow: hidden !important;
+}
+
+.recharts-surface {
+  max-width: 100%;
+}
+
+/* ── 3. Ensure all grid children respect their container ── */
+/*
+   Tailwind's grid layout can overflow if children have min-width.
+   This ensures grid items shrink properly.
+*/
+.grid > * {
+  min-width: 0;
+}
+
+/* ── 4. ChartsPanel wrapper ── */
+/*
+   The aside column (ChartsPanel) stacks below on mobile.
+   Prevent charts inside from overflowing the viewport.
+*/
+@media (max-width: 1023px) {
+  aside {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  aside > * {
+    max-width: 100%;
+  }
+
+  /* Force recharts to fit mobile width */
+  .recharts-wrapper {
+    width: 100% !important;
+  }
+}
+
+/* ── 5. TripInfoPanel travel dates — no truncation on mobile ── */
+/*
+   The travel dates value (e.g., "11 May 2026 – 15 May 2026") was
+   truncating because the cell was too narrow. Allow word wrap.
+*/
+@media (max-width: 640px) {
+  .trip-info-panel-value {
+    word-break: break-word;
+    white-space: normal;
+  }
+}
+
+/* ── 6. Dashboard main padding on mobile ── */
+@media (max-width: 640px) {
+  .dashboard-main {
+    padding-left: 16px;
+    padding-right: 16px;
+    overflow-x: hidden;
+  }
+}
+
+/* ── 7. PDF preview modal on mobile ── */
+.preview-paper-area {
+  overflow-x: hidden !important;
+}
