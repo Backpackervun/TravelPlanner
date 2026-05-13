@@ -86,8 +86,52 @@ const ko = {
   preparedForClient: "고객을 위해 준비", itinerary: "일정", tripSummary: "여행 요약",
   noItinerary: "아직 일정 항목이 없습니다.", totalStops: "총 장소 수", totalDays: "총 일수",
   conversionRate: "환율", byCategory: "카테고리별",
-  pdfFooter: "Backpackervun으로 계획 · backpackervun.com",
-  preparedWith: "Backpackervun으로 계획 · backpackervun.com",
-  unsavedChanges: "저장되지 않은 변경사항",
+ pdfFooter:
+  "Backpackervun으로 계획 · backpackervun.com",
+
+preparedWith:
+  "Backpackervun으로 계획 · backpackervun.com",
+
+// PDF EXPORT — iOS instructions
+iosPdfTitle:
+  "여행 일정을 PDF로 저장",
+
+iosPdfDesktopNote:
+  "PDF의 링크를 클릭 가능하게 하려면 데스크톱 브라우저(Chrome 또는 Mac Safari)에서 내보내기 하세요.",
+
+iosPdfMobileSteps:
+  "iPhone/iPad: 공유 → 인쇄 → 미리보기를 핀치 줌 → 다시 공유 → 파일에 저장.",
+
+iosPdfOpenPrint:
+  "인쇄 대화상자 열기",
+
+iosPdfPrintAgain:
+  "다시 인쇄 / PDF로 저장",
+
+// HELP MODAL — bvntrip section
+helpBvntripTitle:
+  "여행 일정 내보내기 & 가져오기 (.bvntrip)",
+
+helpBvntripDesc:
+  ".bvntrip 파일로 여행 일정을 저장하여 백업, 공유 또는 나중에 불러올 수 있습니다.",
+
+helpBvntripExportLabel:
+  "내보내기",
+
+helpBvntripExportStep:
+  "메뉴 → .bvntrip 내보내기를 클릭하여 파일을 다운로드합니다.",
+
+helpBvntripImportLabel:
+  "가져오기",
+
+helpBvntripImportStep:
+  "메뉴 → .bvntrip 가져오기를 클릭하고 파일을 업로드합니다.",
+
+helpBvntripNote:
+  "가져오기를 하면 현재 여행 일정이 교체됩니다. 먼저 저장하세요.",
+
+unsavedChanges:
+  "저장되지 않은 변경사항",
 };
+
 export default ko;

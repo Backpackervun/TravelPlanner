@@ -86,8 +86,52 @@ const ja = {
   preparedForClient: "お客様へのご提案", itinerary: "旅程", tripSummary: "旅行概要",
   noItinerary: "旅程エントリがありません。", totalStops: "合計スポット", totalDays: "合計日数",
   conversionRate: "レート", byCategory: "カテゴリ別",
-  pdfFooter: "Backpackervunで計画 · backpackervun.com",
-  preparedWith: "Backpackervunで計画 · backpackervun.com",
-  unsavedChanges: "未保存の変更があります",
+  pdfFooter:
+  "Backpackervunで計画 · backpackervun.com",
+
+preparedWith:
+  "Backpackervunで計画 · backpackervun.com",
+
+// PDF EXPORT — iOS instructions
+iosPdfTitle:
+  "旅程をPDFとして保存",
+
+iosPdfDesktopNote:
+  "PDFのリンクをクリック可能にするには、デスクトップブラウザ（ChromeまたはMac Safari）でエクスポートしてください。",
+
+iosPdfMobileSteps:
+  "iPhone/iPadの場合：共有 → 印刷 → プレビューをピンチズーム → 再度共有 → Filesに保存。",
+
+iosPdfOpenPrint:
+  "印刷ダイアログを開く",
+
+iosPdfPrintAgain:
+  "再度印刷 / PDFとして保存",
+
+// HELP MODAL — bvntrip section
+helpBvntripTitle:
+  "旅程のエクスポート・インポート（.bvntrip）",
+
+helpBvntripDesc:
+  "旅程を.bvntripファイルとして保存してバックアップ、共有、後で再読み込みできます。",
+
+helpBvntripExportLabel:
+  "エクスポート",
+
+helpBvntripExportStep:
+  "メニュー → .bvntripエクスポートをクリックしてファイルをダウンロードします。",
+
+helpBvntripImportLabel:
+  "インポート",
+
+helpBvntripImportStep:
+  "メニュー → .bvntripインポートをクリックしてファイルをアップロードします。",
+
+helpBvntripNote:
+  "インポートすると現在の旅程が置き換えられます。先に保存してください。",
+
+unsavedChanges:
+  "未保存の変更があります",
 };
+
 export default ja;

@@ -317,11 +317,52 @@ const zh = {
 
   byCategory: "按类别",
 
-  pdfFooter: "通过Backpackervun规划 · backpackervun.com",
+  pdfFooter:
+  "通过Backpackervun规划 · backpackervun.com",
 
-  preparedWith: "通过Backpackervun规划 · backpackervun.com",
+preparedWith:
+  "通过Backpackervun规划 · backpackervun.com",
 
-  unsavedChanges: "有未保存的更改",
+// PDF EXPORT — iOS instructions
+iosPdfTitle:
+  "将行程保存为PDF",
+
+iosPdfDesktopNote:
+  "若需PDF中的链接可点击，请通过桌面浏览器（Chrome或Mac Safari）导出。",
+
+iosPdfMobileSteps:
+  "iPhone/iPad：点击分享 → 打印 → 双指缩放预览 → 再次点击分享 → 存储到文件。",
+
+iosPdfOpenPrint:
+  "打开打印对话框",
+
+iosPdfPrintAgain:
+  "再次打印 / 另存为PDF",
+
+// HELP MODAL — bvntrip section
+helpBvntripTitle:
+  "导出和导入行程（.bvntrip）",
+
+helpBvntripDesc:
+  "将行程保存为.bvntrip文件，以便备份、分享或以后重新加载。",
+
+helpBvntripExportLabel:
+  "导出",
+
+helpBvntripExportStep:
+  "点击菜单 → 导出 .bvntrip 下载行程文件。",
+
+helpBvntripImportLabel:
+  "导入",
+
+helpBvntripImportStep:
+  "点击菜单 → 导入 .bvntrip 上传已保存的行程文件。",
+
+helpBvntripNote:
+  "导入将替换当前行程，请先保存。",
+
+unsavedChanges:
+  "有未保存的更改",
 };
 
 export default zh;

@@ -158,9 +158,55 @@ const id = {
   noItinerary: "Belum ada entri itinerary.",
   totalStops: "Total pemberhentian", totalDays: "Total hari",
   conversionRate: "Kurs", byCategory: "Per kategori",
-  pdfCTA: "Direncanakan dengan Backpackervun · backpackervun.com",
-  pdfFooter: "Direncanakan dengan Backpackervun · backpackervun.com",
-  preparedWith: "Direncanakan dengan Backpackervun · backpackervun.com",
-  unsavedChanges: "Ada perubahan belum disimpan",
+  pdfCTA:
+  "Direncanakan dengan Backpackervun · backpackervun.com",
+
+pdfFooter:
+  "Direncanakan dengan Backpackervun · backpackervun.com",
+
+preparedWith:
+  "Direncanakan dengan Backpackervun · backpackervun.com",
+
+// PDF EXPORT — iOS instructions
+iosPdfTitle:
+  "Simpan Itinerary sebagai PDF",
+
+iosPdfDesktopNote:
+  "Untuk hyperlink yang bisa diklik di PDF, ekspor lewat browser desktop (Chrome / Safari di Mac).",
+
+iosPdfMobileSteps:
+  "Di iPhone/iPad: Ketuk Share → Print → perbesar pratinjau dengan dua jari → ketuk Share lagi → Simpan ke Files.",
+
+iosPdfOpenPrint:
+  "Buka Dialog Print",
+
+iosPdfPrintAgain:
+  "Print / Simpan sebagai PDF lagi",
+
+// HELP MODAL — bvntrip section
+helpBvntripTitle:
+  "Ekspor & Impor Itinerary (.bvntrip)",
+
+helpBvntripDesc:
+  "Simpan itinerary kamu sebagai file .bvntrip untuk backup, berbagi, atau dimuat ulang nanti.",
+
+helpBvntripExportLabel:
+  "Ekspor",
+
+helpBvntripExportStep:
+  "Klik Menu → Export .bvntrip untuk mengunduh itinerary kamu sebagai file.",
+
+helpBvntripImportLabel:
+  "Impor",
+
+helpBvntripImportStep:
+  "Klik Menu → Import .bvntrip dan unggah file .bvntrip untuk memuat itinerary yang tersimpan.",
+
+helpBvntripNote:
+  "Mengimpor akan mengganti itinerary kamu saat ini. Pastikan sudah disimpan terlebih dahulu.",
+
+unsavedChanges:
+  "Ada perubahan belum disimpan",
 };
+
 export default id;
