@@ -45,6 +45,10 @@ export default function Header({
   plan,
   currencyMode,
   onCurrencyModeChange,
+  // ✅ New: export/import/duplicate
+  onExportBvntrip,
+  onImportOpen,
+  onDuplicate,
 }) {
   const { logout, user, userProfile } = useAuth();
   const { t } = useT();
@@ -59,33 +63,20 @@ export default function Header({
   const regionRef = useRef(null);
 
   // ─────────────────────────────────────────────
-  // CLOSE DROPDOWN
+  // CLOSE DROPDOWNS ON OUTSIDE CLICK / ESC
   // ─────────────────────────────────────────────
 
   useEffect(() => {
     const fn = (e) => {
-      if (
-        menuRef.current &&
-        !menuRef.current.contains(e.target)
-      ) {
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
         setMenuOpen(false);
       }
-
-      if (
-        regionRef.current &&
-        !regionRef.current.contains(e.target)
-      ) {
+      if (regionRef.current && !regionRef.current.contains(e.target)) {
         setRegionOpen(false);
       }
     };
-
     document.addEventListener("mousedown", fn);
-
-    return () =>
-      document.removeEventListener(
-        "mousedown",
-        fn
-      );
+    return () => document.removeEventListener("mousedown", fn);
   }, []);
 
   useEffect(() => {
@@ -95,38 +86,20 @@ export default function Header({
         setRegionOpen(false);
       }
     };
-
     document.addEventListener("keydown", fn);
-
-    return () =>
-      document.removeEventListener(
-        "keydown",
-        fn
-      );
+    return () => document.removeEventListener("keydown", fn);
   }, []);
 
   // ─────────────────────────────────────────────
-  // USER
+  // HELPERS
   // ─────────────────────────────────────────────
 
   const firstName = (() => {
-    const n =
-      userProfile?.name ||
-      user?.displayName ||
-      "";
-
-    return (
-      n.trim().split(/\s+/)[0] || null
-    );
+    const n = userProfile?.name || user?.displayName || "";
+    return n.trim().split(/\s+/)[0] || null;
   })();
 
-  const current = REGIONS.find(
-    (r) => r.id === region
-  );
-
-  // ─────────────────────────────────────────────
-  // SAVE BUTTON
-  // ─────────────────────────────────────────────
+  const current = REGIONS.find((r) => r.id === region);
 
   const saveBtnCls =
     saveStatus === "saved"
@@ -145,28 +118,21 @@ export default function Header({
       : t("save");
 
   // ─────────────────────────────────────────────
-  // UI
+  // RENDER
   // ─────────────────────────────────────────────
 
   return (
     <header className="page-header sticky top-0 z-30 border-b border-paper-line bg-white">
       <div className="mx-auto flex max-w-[1600px] items-center px-3 py-2 sm:gap-3 sm:px-5">
 
-        {/* ───────────────── BRAND ───────────────── */}
-
+        {/* ── BRAND ── */}
         <div className="flex flex-shrink-0 items-center gap-2">
-          <img
-            src="/logo.png"
-            alt="Backpackervun"
-            className="h-6 w-auto sm:h-7"
-          />
-
+          <img src="/logo.png" alt="Backpackervun" className="h-6 w-auto sm:h-7" />
           {firstName && (
             <div className="hidden border-l border-paper-line pl-2.5 md:block">
               <p className="text-[9px] font-semibold uppercase tracking-[0.2em] text-ink-muted leading-none">
                 Travel Planner
               </p>
-
               <p className="mt-0.5 text-[11px] font-medium leading-none text-navy-500">
                 Hi, {firstName} 👋
               </p>
@@ -174,554 +140,354 @@ export default function Header({
           )}
         </div>
 
-        {/* ───────────────── MOBILE MENU ───────────────── */}
-
+        {/* ══════════════════════════════════════════
+            MOBILE SECTION (hidden on sm+)
+            Complete menu in a single hamburger dropdown
+        ══════════════════════════════════════════ */}
         <div className="ml-auto flex items-center gap-2 sm:hidden">
 
-          {/* PLAN BADGE */}
+          {plan && <PlanBadge plan={plan} onClick={onRedeemOpen} />}
 
-          {plan && (
-            <PlanBadge
-              plan={plan}
-              onClick={onRedeemOpen}
-            />
-          )}
-
-          {/* MOBILE DROPDOWN */}
-
-          <div
-            ref={menuRef}
-            className="relative"
-          >
-
-            <button
-              onClick={() =>
-                setMenuOpen((v) => !v)
-              }
-              className="
-                inline-flex
-                items-center
-                justify-center
-                rounded-xl
-                bg-navy-500
-                p-2.5
-                text-white
-                shadow
-                transition
-                hover:bg-navy-600
-              "
-            >
-              <svg
-                viewBox="0 0 24 24"
-                className="h-5 w-5"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <line
-                  x1="3"
-                  y1="6"
-                  x2="21"
-                  y2="6"
-                />
-                <line
-                  x1="3"
-                  y1="12"
-                  x2="21"
-                  y2="12"
-                />
-                <line
-                  x1="3"
-                  y1="18"
-                  x2="21"
-                  y2="18"
-                />
-              </svg>
-            </button>
-
-            {menuOpen && (
-              <div
-                className="
-                  absolute
-                  right-0
-                  top-[calc(100%+8px)]
-                  z-50
-                  w-72
-                  overflow-hidden
-                  rounded-2xl
-                  border
-                  border-paper-line
-                  bg-white
-                  shadow-[0_12px_40px_rgba(11,60,93,0.14)]
-                "
-              >
-
-                {/* REGION */}
-
-                <div className="border-b border-paper-line p-4">
-
-                  <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-muted">
-                    Region
-                  </p>
-
-                  <div className="grid grid-cols-2 gap-2">
-
-                    {REGIONS.map((r) => (
-
-                      <button
-                        key={r.id}
-                        onClick={() => {
-                          onRegionChange?.(
-                            r.id
-                          );
-
-                          setMenuOpen(false);
-                        }}
-                        className={`
-                          rounded-xl
-                          border
-                          px-2
-                          py-2
-                          text-xs
-                          font-semibold
-                          transition
-                          ${
-                            region === r.id
-                              ? "border-navy-300 bg-navy-50 text-navy-600"
-                              : "border-paper-line bg-white text-ink-soft"
-                          }
-                        `}
-                      >
-                        {r.flag} {r.id}
-                      </button>
-
-                    ))}
-
-                  </div>
-
-                </div>
-
-                {/* LANGUAGE */}
-
-                <div className="border-b border-paper-line p-4">
-
-                  <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-muted">
-                    Language
-                  </p>
-
-                  <LanguageSwitcher />
-
-                </div>
-
-                {/* RATE */}
-
-                {!isIDR && (
-                  <div className="border-b border-paper-line bg-paper-dim/40 p-4">
-
-                    <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-muted">
-                      {t("currencyMode")}
-                    </p>
-
-                    <div className="mb-3 flex gap-1 rounded-lg border border-paper-line bg-white p-1 w-fit">
-
-                      <button
-                        onClick={() =>
-                          onCurrencyModeChange?.(
-                            "local"
-                          )
-                        }
-                        className={`rounded-md px-3 py-1 text-[10px] font-bold transition ${
-                          currencyMode ===
-                          "local"
-                            ? "bg-navy-500 text-white"
-                            : "text-ink-muted"
-                        }`}
-                      >
-                        {currency.code}
-                      </button>
-
-                      <button
-                        onClick={() =>
-                          onCurrencyModeChange?.(
-                            "idr"
-                          )
-                        }
-                        className={`rounded-md px-3 py-1 text-[10px] font-bold transition ${
-                          currencyMode ===
-                          "idr"
-                            ? "bg-navy-500 text-white"
-                            : "text-ink-muted"
-                        }`}
-                      >
-                        IDR
-                      </button>
-
-                    </div>
-
-                    <div className="flex items-center gap-2">
-
-                      <span className="text-[10px] text-ink-muted">
-                        1 {currency.code}
-                      </span>
-
-                      <input
-                        type="number"
-                        value={rate}
-                        onChange={(e) =>
-                          onRateChange(
-                            Number(
-                              e.target.value
-                            )
-                          )
-                        }
-                        className="
-                          w-20
-                          rounded-lg
-                          border
-                          border-paper-line
-                          bg-white
-                          px-2
-                          py-1
-                          text-right
-                          font-mono
-                          text-xs
-                          font-semibold
-                          outline-none
-                        "
-                      />
-
-                      <span className="text-[10px] text-ink-muted">
-                        IDR
-                      </span>
-
-                    </div>
-
-                  </div>
-                )}
-
-                {/* ACTIONS */}
-
-                <div className="py-2">
-
-                  <MI
-                    icon="💾"
-                    label={saveLabel}
-                    onClick={() => {
-                      onSave?.();
-                      setMenuOpen(false);
-                    }}
-                  />
-
-                  <MI
-                    icon="👁"
-                    label={t("preview")}
-                    onClick={() => {
-                      onPreview?.();
-                      setMenuOpen(false);
-                    }}
-                  />
-
-                  <MI
-                    icon="📂"
-                    label={t("loadTrip")}
-                    onClick={() => {
-                      onLoadOpen?.();
-                      setMenuOpen(false);
-                    }}
-                  />
-
-                  <MI
-                    icon="🎟️"
-                    label={t("redeemCode")}
-                    onClick={() => {
-                      onRedeemOpen?.();
-                      setMenuOpen(false);
-                    }}
-                  />
-
-                  <MI
-                    icon="❓"
-                    label={t("help")}
-                    onClick={() => {
-                      onHelp?.();
-                      setMenuOpen(false);
-                    }}
-                  />
-
-                  <MI
-                    icon="↺"
-                    label={t("reset")}
-                    onClick={() => {
-                      onReset?.();
-                      setMenuOpen(false);
-                    }}
-                  />
-
-                </div>
-
-                {/* LOGOUT */}
-
-                <div className="border-t border-paper-line py-2">
-
-                  <MI
-                    icon="→"
-                    label={t("logout")}
-                    danger
-                    onClick={() => {
-                      logout();
-                      setMenuOpen(false);
-                    }}
-                  />
-
-                </div>
-
-              </div>
-            )}
-
-          </div>
-
+          {/* Mobile hamburger — uses its own local ref */}
+          <MobileMenu
+            region={region}
+            onRegionChange={onRegionChange}
+            isIDR={isIDR}
+            currency={currency}
+            currencyMode={currencyMode}
+            onCurrencyModeChange={onCurrencyModeChange}
+            rate={rate}
+            onRateChange={onRateChange}
+            rateSource={rateSource}
+            saveLabel={saveLabel}
+            onSave={onSave}
+            onPreview={onPreview}
+            onLoadOpen={onLoadOpen}
+            onRedeemOpen={onRedeemOpen}
+            onHelp={onHelp}
+            onReset={onReset}
+            onExportBvntrip={onExportBvntrip}
+            onImportOpen={onImportOpen}
+            onDuplicate={onDuplicate}
+            logout={logout}
+            t={t}
+          />
         </div>
 
-        {/* ───────────────── DESKTOP ───────────────── */}
-
+        {/* ══════════════════════════════════════════
+            DESKTOP SECTION (hidden below sm)
+        ══════════════════════════════════════════ */}
         <div className="hidden flex-1 items-center justify-end gap-1.5 sm:flex">
 
-          {/* REGION */}
-
-          <div
-            ref={regionRef}
-            className="relative"
-          >
-
+          {/* Region */}
+          <div ref={regionRef} className="relative">
             <button
-              onClick={() =>
-                setRegionOpen((v) => !v)
-              }
-              className={`
-                inline-flex
-                items-center
-                gap-2
-                rounded-xl
-                border
-                px-3
-                py-2
-                text-xs
-                font-semibold
-                transition
-                ${
-                  region
-                    ? "border-navy-300 bg-navy-50 text-navy-600"
-                    : "border-paper-line bg-white text-ink-muted"
-                }
-              `}
+              onClick={() => setRegionOpen((v) => !v)}
+              className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold transition ${
+                region
+                  ? "border-navy-300 bg-navy-50 text-navy-600"
+                  : "border-paper-line bg-white text-ink-muted"
+              }`}
             >
-
-              <span className="text-base leading-none">
-                {current?.flag ?? "🌍"}
-              </span>
-
-              <span>
-                {region ??
-                  t("region")}
-              </span>
-
+              <span className="text-base leading-none">{current?.flag ?? "🌍"}</span>
+              <span>{region ?? t("region")}</span>
               <svg
                 viewBox="0 0 24 24"
-                className={`h-3 w-3 transition-transform ${
-                  regionOpen
-                    ? "rotate-180"
-                    : ""
-                }`}
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
+                className={`h-3 w-3 transition-transform ${regionOpen ? "rotate-180" : ""}`}
+                fill="none" stroke="currentColor" strokeWidth="2.5"
+                strokeLinecap="round" strokeLinejoin="round"
               >
                 <path d="M6 9l6 6 6-6" />
               </svg>
-
             </button>
 
             {regionOpen && (
               <div className="absolute left-0 top-[calc(100%+6px)] z-50 w-52 animate-fade-in rounded-2xl border border-paper-line bg-white py-1.5 shadow-[0_12px_40px_rgba(11,60,93,0.14)]">
-
                 {REGIONS.map((r) => (
-
                   <button
                     key={r.id}
-                    onClick={() => {
-                      onRegionChange?.(
-                        r.id
-                      );
-
-                      setRegionOpen(
-                        false
-                      );
-                    }}
-                    className={`
-                      flex
-                      w-full
-                      items-center
-                      gap-3
-                      px-4
-                      py-2.5
-                      text-sm
-                      transition
-                      hover:bg-paper-dim
-                      ${
-                        region === r.id
-                          ? "bg-navy-50 font-semibold text-navy-600"
-                          : "text-ink-soft"
-                      }
-                    `}
+                    onClick={() => { onRegionChange?.(r.id); setRegionOpen(false); }}
+                    className={`flex w-full items-center gap-3 px-4 py-2.5 text-sm transition hover:bg-paper-dim ${
+                      region === r.id ? "bg-navy-50 font-semibold text-navy-600" : "text-ink-soft"
+                    }`}
                   >
-
-                    <span className="text-base leading-none">
-                      {r.flag}
-                    </span>
-
+                    <span className="text-base leading-none">{r.flag}</span>
                     {r.id}
-
                   </button>
-
                 ))}
-
               </div>
             )}
-
           </div>
 
-          {/* TOTAL */}
-
+          {/* Totals */}
           <div className="flex items-center gap-2 rounded-xl border border-paper-line bg-white px-2.5 py-1.5 shadow-soft">
-
             <div>
               <p className="text-[9px] font-semibold uppercase tracking-[0.08em] text-ink-muted leading-none">
                 {currency.code}
               </p>
-
               <p className="mt-0.5 font-mono text-sm font-semibold tabular-nums text-ink">
-                {formatCurrency(
-                  totalLocal,
-                  currency
-                )}
+                {formatCurrency(totalLocal, currency)}
               </p>
             </div>
-
             {!isIDR && (
               <>
                 <div className="h-5 w-px bg-paper-line" />
-
                 <div>
-                  <p className="text-[9px] font-bold uppercase tracking-[0.08em] text-navy-400 leading-none">
-                    IDR
-                  </p>
-
+                  <p className="text-[9px] font-bold uppercase tracking-[0.08em] text-navy-400 leading-none">IDR</p>
                   <p className="mt-0.5 font-mono text-sm font-bold tabular-nums text-navy-500">
-                    {formatIDR(
-                      totalIDR
-                    )}
+                    {formatIDR(totalIDR)}
                   </p>
                 </div>
               </>
             )}
-
           </div>
 
-          {/* LANGUAGE */}
-
+          {/* Language */}
           <LanguageSwitcher />
 
-          {/* PLAN */}
+          {/* Plan */}
+          {plan && <PlanBadge plan={plan} onClick={onRedeemOpen} />}
 
-          {plan && (
-            <PlanBadge
-              plan={plan}
-              onClick={onRedeemOpen}
-            />
-          )}
-
-          {/* SAVE */}
-
+          {/* Save */}
           <div className="relative">
-
             <button
               onClick={onSave}
-              disabled={
-                saveStatus ===
-                "saving"
-              }
-              className={`
-                inline-flex
-                items-center
-                gap-1.5
-                rounded-xl
-                border
-                px-3
-                py-1.5
-                text-xs
-                font-semibold
-                transition
-                disabled:opacity-60
-                ${saveBtnCls}
-              `}
+              disabled={saveStatus === "saving"}
+              className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold transition disabled:opacity-60 ${saveBtnCls}`}
             >
-
-              💾
-
-              <span>
-                {saveLabel}
-              </span>
-
+              💾 <span>{saveLabel}</span>
             </button>
-
-            {hasUnsavedChanges &&
-              saveStatus ===
-                "idle" && (
-                <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-amber-400 ring-2 ring-white" />
-              )}
-
+            {hasUnsavedChanges && saveStatus === "idle" && (
+              <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-amber-400 ring-2 ring-white" />
+            )}
           </div>
 
-          {/* DESKTOP MENU */}
-
-          <div
-            ref={menuRef}
-            className="relative"
-          >
-
+          {/* ══════════════════════════════════════
+              DESKTOP MENU — BUG FIX:
+              Dropdown panel is now HERE inside
+              the desktop div, not hidden inside
+              the mobile sm:hidden section.
+          ══════════════════════════════════════ */}
+          <div ref={menuRef} className="relative">
             <button
-              onClick={() =>
-                setMenuOpen((v) => !v)
-              }
-              className="
-                inline-flex
-                items-center
-                gap-2
-                rounded-xl
-                bg-navy-500
-                px-3
-                py-1.5
-                text-xs
-                font-semibold
-                text-white
-                shadow
-                transition
-                hover:bg-navy-600
-              "
+              onClick={() => setMenuOpen((v) => !v)}
+              className="inline-flex items-center gap-2 rounded-xl bg-navy-500 px-3 py-1.5 text-xs font-semibold text-white shadow transition hover:bg-navy-600"
             >
               ☰ {t("menu")}
             </button>
 
+            {menuOpen && (
+              <div className="absolute right-0 top-[calc(100%+8px)] z-50 w-60 animate-fade-in overflow-hidden rounded-2xl border border-paper-line bg-white shadow-[0_12px_40px_rgba(11,60,93,0.14)]">
+
+                {/* Currency mode + rate */}
+                {!isIDR && (
+                  <div className="border-b border-paper-line bg-paper-dim/40 p-4">
+                    <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-muted">
+                      {t("currencyMode")}
+                    </p>
+                    <div className="mb-3 flex gap-1 rounded-lg border border-paper-line bg-white p-1 w-fit">
+                      <button
+                        onClick={() => onCurrencyModeChange?.("local")}
+                        className={`rounded-md px-3 py-1 text-[10px] font-bold transition ${currencyMode === "local" ? "bg-navy-500 text-white" : "text-ink-muted"}`}
+                      >
+                        {currency.code}
+                      </button>
+                      <button
+                        onClick={() => onCurrencyModeChange?.("idr")}
+                        className={`rounded-md px-3 py-1 text-[10px] font-bold transition ${currencyMode === "idr" ? "bg-navy-500 text-white" : "text-ink-muted"}`}
+                      >
+                        IDR
+                      </button>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] text-ink-muted">1 {currency.code} =</span>
+                      <input
+                        type="number"
+                        value={rate}
+                        onChange={(e) => onRateChange(Number(e.target.value))}
+                        className="w-20 rounded-lg border border-paper-line bg-white px-2 py-1 text-right font-mono text-xs font-semibold outline-none"
+                      />
+                      <span className="text-[10px] text-ink-muted">IDR</span>
+                      {rateSource === "live" && (
+                        <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[9px] font-bold text-emerald-700">LIVE</span>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* View & manage */}
+                <div className="py-1.5">
+                  <MI icon="👁"  label={t("preview")}    onClick={() => { onPreview?.();    setMenuOpen(false); }} />
+                  <MI icon="📂"  label={t("loadTrip")}   onClick={() => { onLoadOpen?.();   setMenuOpen(false); }} />
+                </div>
+
+                {/* Export */}
+                <div className="border-t border-paper-line/60 py-1.5">
+                  <p className="px-4 pt-1 pb-0.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-ink-muted">
+                    Export
+                  </p>
+                  <MI icon="📄"  label="Export PDF"       onClick={() => { onPreview?.();          setMenuOpen(false); }} />
+                  <MI icon="📦"  label="Export .bvntrip"  onClick={() => { onExportBvntrip?.();   setMenuOpen(false); }} />
+                </div>
+
+                {/* Import & Clone */}
+                <div className="border-t border-paper-line/60 py-1.5">
+                  <p className="px-4 pt-1 pb-0.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-ink-muted">
+                    Import & Clone
+                  </p>
+                  <MI icon="📥"  label="Import .bvntrip"       onClick={() => { onImportOpen?.();  setMenuOpen(false); }} />
+                  <MI icon="⧉"   label="Duplicate itinerary"   onClick={() => { onDuplicate?.();   setMenuOpen(false); }} />
+                </div>
+
+                {/* Tools */}
+                <div className="border-t border-paper-line/60 py-1.5">
+                  <MI icon="🎟️" label={t("redeemCode")} onClick={() => { onRedeemOpen?.(); setMenuOpen(false); }} />
+                  <MI icon="❓"  label={t("help")}       onClick={() => { onHelp?.();       setMenuOpen(false); }} />
+                  <MI icon="↺"   label={t("reset")}      onClick={() => { onReset?.();      setMenuOpen(false); }} />
+                </div>
+
+                {/* Logout */}
+                <div className="border-t border-paper-line py-1.5">
+                  <MI icon="→" label={t("logout")} danger onClick={() => { logout(); setMenuOpen(false); }} />
+                </div>
+              </div>
+            )}
           </div>
 
         </div>
-
       </div>
     </header>
+  );
+}
+
+// ─────────────────────────────────────────────
+// MOBILE MENU — self-contained with own state
+// Separated so it has its own ref, independent
+// from the desktop menuRef
+// ─────────────────────────────────────────────
+
+function MobileMenu({
+  region, onRegionChange, isIDR, currency, currencyMode, onCurrencyModeChange,
+  rate, onRateChange, rateSource,
+  saveLabel, onSave, onPreview, onLoadOpen, onRedeemOpen, onHelp, onReset,
+  onExportBvntrip, onImportOpen, onDuplicate,
+  logout, t,
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const fn = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener("mousedown", fn);
+    return () => document.removeEventListener("mousedown", fn);
+  }, []);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="inline-flex items-center justify-center rounded-xl bg-navy-500 p-2.5 text-white shadow transition hover:bg-navy-600"
+      >
+        <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor"
+          strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <line x1="3" y1="6" x2="21" y2="6" />
+          <line x1="3" y1="12" x2="21" y2="12" />
+          <line x1="3" y1="18" x2="21" y2="18" />
+        </svg>
+      </button>
+
+      {open && (
+        <div className="absolute right-0 top-[calc(100%+8px)] z-50 w-72 overflow-hidden rounded-2xl border border-paper-line bg-white shadow-[0_12px_40px_rgba(11,60,93,0.14)]">
+
+          {/* Region grid */}
+          <div className="border-b border-paper-line p-4">
+            <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-muted">Region</p>
+            <div className="grid grid-cols-2 gap-2">
+              {REGIONS.map((r) => (
+                <button
+                  key={r.id}
+                  onClick={() => { onRegionChange?.(r.id); setOpen(false); }}
+                  className={`rounded-xl border px-2 py-2 text-xs font-semibold transition ${
+                    region === r.id
+                      ? "border-navy-300 bg-navy-50 text-navy-600"
+                      : "border-paper-line bg-white text-ink-soft"
+                  }`}
+                >
+                  {r.flag} {r.id}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Language */}
+          <div className="border-b border-paper-line p-4">
+            <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-muted">Language</p>
+            <LanguageSwitcher />
+          </div>
+
+          {/* Currency mode + rate */}
+          {!isIDR && (
+            <div className="border-b border-paper-line bg-paper-dim/40 p-4">
+              <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-muted">{t("currencyMode")}</p>
+              <div className="mb-3 flex gap-1 rounded-lg border border-paper-line bg-white p-1 w-fit">
+                <button
+                  onClick={() => onCurrencyModeChange?.("local")}
+                  className={`rounded-md px-3 py-1 text-[10px] font-bold transition ${currencyMode === "local" ? "bg-navy-500 text-white" : "text-ink-muted"}`}
+                >
+                  {currency.code}
+                </button>
+                <button
+                  onClick={() => onCurrencyModeChange?.("idr")}
+                  className={`rounded-md px-3 py-1 text-[10px] font-bold transition ${currencyMode === "idr" ? "bg-navy-500 text-white" : "text-ink-muted"}`}
+                >
+                  IDR
+                </button>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-ink-muted">1 {currency.code}</span>
+                <input
+                  type="number" value={rate}
+                  onChange={(e) => onRateChange(Number(e.target.value))}
+                  className="w-20 rounded-lg border border-paper-line bg-white px-2 py-1 text-right font-mono text-xs font-semibold outline-none"
+                />
+                <span className="text-[10px] text-ink-muted">IDR</span>
+                {rateSource === "live" && (
+                  <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[9px] font-bold text-emerald-700">LIVE</span>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Actions */}
+          <div className="py-2">
+            <MI icon="💾"  label={saveLabel}         onClick={() => { onSave?.();    setOpen(false); }} />
+            <MI icon="👁"  label={t("preview")}      onClick={() => { onPreview?.(); setOpen(false); }} />
+            <MI icon="📂"  label={t("loadTrip")}     onClick={() => { onLoadOpen?.(); setOpen(false); }} />
+          </div>
+
+          {/* Export / Import */}
+          <div className="border-t border-paper-line/60 py-2">
+            <p className="px-4 pt-1 pb-0.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-ink-muted">Export / Import</p>
+            <MI icon="📄"  label="Export PDF"             onClick={() => { onPreview?.();        setOpen(false); }} />
+            <MI icon="📦"  label="Export .bvntrip"        onClick={() => { onExportBvntrip?.(); setOpen(false); }} />
+            <MI icon="📥"  label="Import .bvntrip"        onClick={() => { onImportOpen?.();    setOpen(false); }} />
+            <MI icon="⧉"   label="Duplicate itinerary"    onClick={() => { onDuplicate?.();     setOpen(false); }} />
+          </div>
+
+          <div className="border-t border-paper-line/60 py-2">
+            <MI icon="🎟️" label={t("redeemCode")}   onClick={() => { onRedeemOpen?.(); setOpen(false); }} />
+            <MI icon="❓"  label={t("help")}         onClick={() => { onHelp?.();       setOpen(false); }} />
+            <MI icon="↺"   label={t("reset")}        onClick={() => { onReset?.();      setOpen(false); }} />
+          </div>
+
+          <div className="border-t border-paper-line py-2">
+            <MI icon="→" label={t("logout")} danger onClick={() => { logout(); setOpen(false); }} />
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -729,40 +495,17 @@ export default function Header({
 // MENU ITEM
 // ─────────────────────────────────────────────
 
-function MI({
-  icon,
-  label,
-  onClick,
-  danger,
-}) {
+function MI({ icon, label, onClick, danger }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`
-        flex
-        w-full
-        items-center
-        gap-3
-        px-4
-        py-3
-        text-sm
-        transition
-        hover:bg-paper-dim
-        ${
-          danger
-            ? "font-semibold text-red-500 hover:bg-red-50"
-            : "text-ink-soft"
-        }
-      `}
+      className={`flex w-full items-center gap-3 px-4 py-3 text-sm transition hover:bg-paper-dim ${
+        danger ? "font-semibold text-red-500 hover:bg-red-50" : "text-ink-soft"
+      }`}
     >
-
-      <span className="w-5 text-center text-base leading-none">
-        {icon}
-      </span>
-
+      <span className="w-5 text-center text-base leading-none">{icon}</span>
       {label}
-
     </button>
   );
 }
