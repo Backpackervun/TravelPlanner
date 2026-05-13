@@ -18,6 +18,7 @@ body {
 
   width: 100%;
 
+  /* overflow-x hidden at root level — safest place, doesn't clip children */
   overflow-x: hidden;
 
   background: #f3f4f6;
@@ -345,52 +346,23 @@ SUMMARY
 
 /* =========================================================
 MOBILE OVERFLOW FIX
+=========================================================
+
+  REMOVED (caused header buttons to disappear):
+    - body > * { max-width: 100vw; overflow-x: hidden }
+      → Was clipping the header's right-side flex children (save, menu, language)
+    - .page-header { overflow-x: hidden }
+      → Was hiding header elements that extend to the right edge
+    - .page-header .overflow-x-auto { max-width: calc(100vw - 200px) }
+      → Was intended for region pills but clipped the entire right side of header
+    - main { padding-left/right: 16px !important }
+      → !important was overriding Tailwind responsive padding classes
+
+  KEPT: only rules that affect non-header elements
 ========================================================= */
 
-@media (max-width: 768px) {
-
-  body > * {
-
-    max-width: 100vw;
-
-    overflow-x: hidden;
-  }
-
-  .page-header {
-
-    max-width: 100vw;
-
-    overflow-x: hidden;
-  }
-
-  .page-header .overflow-x-auto {
-
-    max-width: calc(100vw - 200px);
-  }
-
-  main {
-
-    max-width: 100vw;
-
-    overflow-x: hidden;
-
-    padding-left: 16px !important;
-
-    padding-right: 16px !important;
-  }
-}
-
-/* =========================================================
-TRIP INFO MOBILE
-========================================================= */
-
+/* Trip info panel: allow dates to wrap on narrow screens */
 @media (max-width: 640px) {
-
-  .trip-info-panel-grid {
-
-    grid-template-columns:
-      1fr 1fr !important;
-  }
 
   .trip-info-panel-value {
 
@@ -402,6 +374,7 @@ TRIP INFO MOBILE
 
 /* =========================================================
 RECHARTS FIX
+— Prevents charts from creating horizontal scroll
 ========================================================= */
 
 .recharts-wrapper {
@@ -429,6 +402,7 @@ RECHARTS FIX
 
 /* =========================================================
 GRID FIX
+— Tailwind grid children can overflow without this
 ========================================================= */
 
 .grid > * {
@@ -438,6 +412,9 @@ GRID FIX
 
 /* =========================================================
 TABLE OVERFLOW FIX
+— The ItineraryTable desktop version has min-width:1200px.
+  It's hidden on mobile via Tailwind's hidden/lg:block,
+  but this ensures the scroll wrapper never causes body overflow.
 ========================================================= */
 
 @media (max-width: 1023px) {
@@ -456,8 +433,7 @@ PREVIEW MODAL MOBILE
 
   .preview-paper {
 
-    max-width:
-      calc(100vw - 32px);
+    max-width: calc(100vw - 32px);
 
     border-radius: 12px;
   }
@@ -470,6 +446,7 @@ PREVIEW MODAL MOBILE
 
 /* =========================================================
 ASIDE MOBILE
+— ChartsPanel aside: prevent chart overflow on tablet
 ========================================================= */
 
 @media (max-width: 1023px) {
@@ -492,11 +469,9 @@ PRINT FIX
 
     background: white;
 
-    -webkit-print-color-adjust:
-      exact;
+    -webkit-print-color-adjust: exact;
 
-    print-color-adjust:
-      exact;
+    print-color-adjust: exact;
   }
 
   .day-item,
@@ -506,10 +481,8 @@ PRINT FIX
   .summary-card,
   .print-footer {
 
-    break-inside:
-      avoid !important;
+    break-inside: avoid !important;
 
-    page-break-inside:
-      avoid !important;
+    page-break-inside: avoid !important;
   }
 }
