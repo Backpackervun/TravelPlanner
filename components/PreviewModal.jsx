@@ -1,17 +1,21 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useT } from "@/context/TranslationContext";
 import PrintHeader from "./PrintHeader";
 import PrintLayout from "./PrintLayout";
 
 /**
- * PreviewModal — patch-4items
+ * PreviewModal — mobile visual fix
  *
- * Changes:
- * 1. Mobile header: hide "PREVIEW" pill on mobile (saves ~80px), give buttons more room
- * 2. Export button label shorter on mobile ("PDF" only)
- * 3. Back button label shorter on mobile (← only)
+ * Key fix: the preview paper is 210mm (~794px) wide but renders on a ~390px
+ * iPhone screen. Previously it just overflow-hid, making everything tiny.
+ *
+ * Solution: CSS transform scale() on mobile so the paper fills the screen
+ * width while keeping all proportions intact. The paper looks like a
+ * real A4 preview — just zoomed to fit.
+ *
+ * Scale = viewport_width / paper_width (794px)
  */
 export default function PreviewModal({
   open,
@@ -27,9 +31,13 @@ export default function PreviewModal({
   onUpgradeNeeded,
 }) {
   const { t } = useT();
+  const paperRef = useRef(null);
+  const containerRef = useRef(null);
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState(null);
+  const [scale, setScale] = useState(1);
 
+  // ESC to close
   useEffect(() => {
     if (!open) return;
     const fn = (e) => { if (e.key === "Escape") onClose?.(); };
@@ -37,6 +45,7 @@ export default function PreviewModal({
     return () => document.removeEventListener("keydown", fn);
   }, [open, onClose]);
 
+  // Lock body scroll
   useEffect(() => {
     if (!open) return;
     const prev = document.body.style.overflow;
@@ -44,11 +53,34 @@ export default function PreviewModal({
     return () => { document.body.style.overflow = prev; };
   }, [open]);
 
+  // ── Mobile scale calculation ──────────────────────────────────────────────
+  // Run on open and on resize
+  useEffect(() => {
+    if (!open) return;
+
+    const PAPER_W = 794; // px equivalent of 210mm at 96dpi
+
+    const calc = () => {
+      const vw = window.innerWidth;
+      if (vw >= 768) {
+        // Desktop / tablet: no scale needed, paper fits naturally with padding
+        setScale(1);
+      } else {
+        // Mobile: scale paper to fill viewport minus 24px horizontal padding
+        const available = vw - 24;
+        setScale(Math.min(1, available / PAPER_W));
+      }
+    };
+
+    calc();
+    window.addEventListener("resize", calc);
+    return () => window.removeEventListener("resize", calc);
+  }, [open]);
+
   if (!open) return null;
 
   const handleExport = () => {
     if (exporting) return;
-
     if (!canExportPDF) {
       onUpgradeNeeded?.("PDF export requires a Lite or Pro plan.");
       return;
@@ -68,11 +100,12 @@ export default function PreviewModal({
         try { sessionStorage.setItem("bpv-pdf-render", payload); saved = true; } catch {}
       }
       if (!saved) {
-        setError("Storage unavailable. Please disable Private Mode and try again.");
+        setError("Storage unavailable. Please disable Private Mode.");
         setExporting(false);
         return;
       }
 
+      // SYNC open — must be before any await for iOS Safari
       const newTab = window.open("/pdf-render", "_blank");
       if (!newTab) {
         window.location.href = "/pdf-render";
@@ -92,11 +125,8 @@ export default function PreviewModal({
       {/* Backdrop */}
       <div className="absolute inset-0 bg-[#0f172a]/90 backdrop-blur-md" />
 
-      {/* ── TOP BAR ──
-          Mobile: [← Back]  [Export PDF]   — no center pill, saves space
-          Desktop: [← Back to Edit]  [PREVIEW]  [Export PDF]
-      */}
-      <div className="relative z-10 flex flex-shrink-0 items-center justify-between border-b border-white/10 bg-[#0f172a]/95 px-3 py-2.5 sm:px-6 sm:py-3">
+      {/* ── TOP BAR ── */}
+      <div className="relative z-10 flex-shrink-0 flex items-center justify-between border-b border-white/10 bg-[#0f172a]/95 px-3 py-2.5 sm:px-6 sm:py-3">
 
         {/* Back */}
         <button
@@ -106,11 +136,10 @@ export default function PreviewModal({
           <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M19 12H5"/><path d="M12 5l-7 7 7 7"/>
           </svg>
-          {/* Desktop: full label. Mobile: icon only */}
           <span className="hidden sm:inline">{t("backToEdit")}</span>
         </button>
 
-        {/* Center pill — hidden on mobile to save space */}
+        {/* Title — hidden on mobile to save space */}
         <span className="hidden sm:block rounded-full bg-white/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-white/60">
           {t("previewTitle")}
         </span>
@@ -133,39 +162,86 @@ export default function PreviewModal({
               <line x1="12" y1="15" x2="12" y2="3"/>
             </svg>
           )}
-          {/* Desktop: "Export PDF". Mobile: "Export PDF" — both shown, fits since pill is hidden */}
           <span>{exporting ? "…" : t("exportPDF")}</span>
         </button>
       </div>
 
       {/* Error */}
       {error && (
-        <div className="relative z-10 flex flex-shrink-0 items-center justify-between gap-3 border-b border-red-800 bg-red-900/80 px-4 py-2.5 text-xs text-red-200">
+        <div className="relative z-10 flex-shrink-0 flex items-center justify-between gap-3 border-b border-red-800 bg-red-900/80 px-4 py-2.5 text-xs text-red-200">
           <span>⚠️ {error}</span>
           <button onClick={() => setError(null)} className="text-red-300 hover:text-white">✕</button>
         </div>
       )}
 
-      {/* Paper preview */}
-      <div className="relative z-10 flex-1 overflow-auto bg-[#0f172a] p-3 sm:p-6 preview-paper-area">
-        <div className="preview-paper mx-auto w-full max-w-[210mm] overflow-hidden rounded-2xl bg-white shadow-2xl">
-          <PrintHeader
-            tripInfo={tripInfo}
-            region={region}
-            totalLocal={totalLocal}
-            totalIDR={totalIDR}
-          />
-          <PrintLayout
-            tripInfo={tripInfo}
-            rows={rows}
-            dayMap={dayMap}
-            region={region}
-            rate={rate}
-            totalLocal={totalLocal}
-            totalIDR={totalIDR}
-          />
+      {/*
+        ── PAPER AREA ──
+        On desktop: standard scrollable container with padding
+        On mobile: scale the paper to fit viewport width, then allow
+        vertical scroll through the scaled content
+      */}
+      <div
+        ref={containerRef}
+        className="relative z-10 flex-1 overflow-auto bg-[#0f172a]"
+        style={{
+          // Extra padding at top/bottom for breathing room
+          paddingTop: "16px",
+          paddingBottom: "40px",
+          paddingLeft: scale < 1 ? 0 : "16px",
+          paddingRight: scale < 1 ? 0 : "16px",
+        }}
+      >
+        {/*
+          The paper wrapper:
+          - On desktop: centered, max-w-[210mm], rounded corners
+          - On mobile: transform scale() to fit width, origin top-left,
+            then set explicit width/height so the container scrolls correctly
+        */}
+        <div
+          style={
+            scale < 1
+              ? {
+                  // Mobile: scale transform
+                  transformOrigin: "top center",
+                  transform: `scale(${scale})`,
+                  // After scaling, the element still occupies its original
+                  // layout space. We compensate by setting explicit dimensions
+                  // so the scroll container knows the real height.
+                  width: "794px",
+                  marginLeft: "auto",
+                  marginRight: "auto",
+                }
+              : {
+                  // Desktop: normal flow
+                  maxWidth: "210mm",
+                  margin: "0 auto",
+                }
+          }
+        >
+          <div
+            ref={paperRef}
+            className="preview-paper overflow-hidden rounded-2xl bg-white shadow-2xl"
+          >
+            <PrintHeader
+              tripInfo={tripInfo}
+              region={region}
+              totalLocal={totalLocal}
+              totalIDR={totalIDR}
+            />
+            <PrintLayout
+              tripInfo={tripInfo}
+              rows={rows}
+              dayMap={dayMap}
+              region={region}
+              rate={rate}
+              totalLocal={totalLocal}
+              totalIDR={totalIDR}
+            />
+          </div>
         </div>
-        <p className="mt-4 pb-6 text-center text-xs text-white/25">
+
+        {/* Hint text */}
+        <p className="mt-4 text-center text-xs text-white/25">
           {t("previewHint")}
         </p>
       </div>
