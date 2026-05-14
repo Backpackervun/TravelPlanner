@@ -5,12 +5,11 @@ import { useT } from "@/context/TranslationContext";
 import { formatCurrency, formatIDR, getCurrency } from "@/lib/utils";
 
 /**
- * PrintLayout — fix-v5
+ * PrintLayout — fix-v6
  *
  * Changes:
- * 1. Budget at a Glance stats: responsive grid — stacks on mobile
- *    instead of 3-col which caused overflow (Rp number cut off, Total Days orphaned)
- * 2. Total Budget number uses text-xl (not 2xl) + break-words to prevent overflow
+ * 1. "Budget at a Glance" section renamed → "Trip Summary"
+ * 2. Old "Trip Summary" table removed (was duplicate data)
  */
 
 const CATEGORY_BADGE = {
@@ -43,17 +42,14 @@ function fmtTime(t) {
   if (!t) return "";
   const [h, m] = t.split(":").map(Number);
   if (isNaN(h)) return t;
-  const ap = h >= 12 ? "PM" : "AM";
-  const h12 = h > 12 ? h - 12 : h === 0 ? 12 : h;
-  return `${h12}:${String(m || 0).padStart(2, "0")} ${ap}`;
+  return `${h > 12 ? h - 12 : h === 0 ? 12 : h}:${String(m || 0).padStart(2, "0")} ${h >= 12 ? "PM" : "AM"}`;
 }
 
 function fmtDateReadable(s) {
   if (!s) return "";
   try {
     const d = /^\d{4}-\d{2}-\d{2}/.test(s) ? new Date(s + "T12:00:00") : new Date(s);
-    if (isNaN(d)) return s;
-    return d.toLocaleDateString("en-GB", { day:"numeric", month:"short", year:"numeric" });
+    return isNaN(d) ? s : d.toLocaleDateString("en-GB", { day:"numeric", month:"short", year:"numeric" });
   } catch { return s; }
 }
 
@@ -128,8 +124,8 @@ export default function PrintLayout({ tripInfo, rows, dayMap, region, rate, tota
             {[
               { label: t("duration"),     value: tripInfo?.duration || "—" },
               { label: t("destinations"), value: tripInfo?.destinations || "—" },
-              { label: "Travel Dates",   value: travelDatesFormatted },
-              { label: t("region"),      value: region ? `${FLAGS[region]||"🌍"} ${region}` : "—" },
+              { label: "Travel Dates",    value: travelDatesFormatted },
+              { label: t("region"),       value: region ? `${FLAGS[region]||"🌍"} ${region}` : "—" },
             ].map(({ label, value }) => (
               <div key={label}>
                 <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-[#94A3B8]">{label}</p>
@@ -143,7 +139,7 @@ export default function PrintLayout({ tripInfo, rows, dayMap, region, rate, tota
       {/* ── Itinerary ── */}
       <div className="px-6 pb-4 sm:px-8">
         <h2 className="flex items-center gap-3 text-lg font-semibold text-[#1E293B] mb-3 sm:text-xl sm:mb-4">
-          <span className="block h-0.5 w-5 bg-[#0B3C5D] flex-shrink-0" />
+          <span className="block h-0.5 w-5 flex-shrink-0" style={{ background: "#0B3C5D" }} />
           {t("itinerary")}
         </h2>
 
@@ -152,8 +148,8 @@ export default function PrintLayout({ tripInfo, rows, dayMap, region, rate, tota
         ) : (
           <div className="space-y-4">
             {byDay.map(([dateKey, dayRows]) => {
-              const dayNum = dateKey !== "__nodate__" ? (dayMap[dateKey] ?? null) : null;
-              const city   = dayRows[0]?.city || "";
+              const dayNum  = dateKey !== "__nodate__" ? (dayMap[dateKey] ?? null) : null;
+              const city    = dayRows[0]?.city || "";
               const dateStr = dateKey !== "__nodate__" ? fmtDateReadable(dateKey) : "";
               return (
                 <div key={dateKey} className="day-block rounded-xl overflow-hidden border border-[#E8EDF3]">
@@ -167,7 +163,7 @@ export default function PrintLayout({ tripInfo, rows, dayMap, region, rate, tota
                       <p className="text-sm font-bold text-white leading-snug">
                         {t("day")} {dayNum ?? "—"}{city ? ` — ${city}` : ""}
                       </p>
-                      {dateStr && <p className="text-xs" style={{ color: "rgba(255,255,255,0.65)" }}>{dateStr}</p>}
+                      {dateStr && <p className="text-xs" style={{ color:"rgba(255,255,255,0.65)" }}>{dateStr}</p>}
                     </div>
                   </div>
                   <div className="divide-y divide-[#EEF2F7] bg-white">
@@ -182,26 +178,25 @@ export default function PrintLayout({ tripInfo, rows, dayMap, region, rate, tota
         )}
       </div>
 
-      {/* ── Budget at a Glance ── */}
+      {/* ═══════════════════════════════════════════════════════════════════
+          TRIP SUMMARY (was "Budget at a Glance")
+          ✅ Renamed from t("budgetAtAGlance") → t("tripSummary")
+          ✅ Old "Trip Summary" table REMOVED — data was identical
+      ═══════════════════════════════════════════════════════════════════ */}
       <div className="px-6 pb-4 sm:px-8">
         <h2 className="flex items-center gap-3 text-lg font-semibold text-[#1E293B] mb-3 sm:text-xl sm:mb-4">
-          <span className="block h-0.5 w-5 bg-[#0B3C5D] flex-shrink-0" />
-          {t("budgetAtAGlance")}
+          <span className="block h-0.5 w-5 flex-shrink-0" style={{ background: "#0B3C5D" }} />
+          {t("tripSummary")}
         </h2>
 
-        {/* ── Stats cards ──
-          MOBILE FIX: single column stacked layout, no overflow
-          DESKTOP:    3-column grid as before
-        */}
+        {/* Stats cards */}
         <div className="flex flex-col gap-3 sm:grid sm:grid-cols-3 sm:gap-4 mb-4">
-
-          {/* Total Budget — takes full width on mobile */}
-          <div className="rounded-xl border border-[#E8EDF3] bg-[#F8FAFC] p-4 sm:col-span-2 sm:row-span-1">
+          {/* Total Budget — full width on mobile */}
+          <div className="rounded-xl border border-[#E8EDF3] bg-[#F8FAFC] p-4 sm:col-span-2">
             <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-[#94A3B8] mb-1">
               {t("totalBudget")}
             </p>
-            {/* Use break-all so Rp number never clips */}
-            <p className="text-xl font-bold break-all" style={{ color: "#0B3C5D", lineHeight: 1.2 }}>
+            <p className="text-xl font-bold break-all" style={{ color:"#0B3C5D", lineHeight:1.2 }}>
               {formatIDR(totalIDR)}
             </p>
             {!isIDR && (
@@ -210,9 +205,8 @@ export default function PrintLayout({ tripInfo, rows, dayMap, region, rate, tota
               </p>
             )}
           </div>
-
-          {/* Total Stops + Total Days side by side on mobile, stacked on desktop */}
-          <div className="grid grid-cols-2 gap-3 sm:col-span-1 sm:row-span-1 sm:flex sm:flex-col">
+          {/* Stops + Days */}
+          <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-col">
             <div className="rounded-xl border border-[#E8EDF3] bg-white p-4 text-center">
               <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-[#94A3B8] mb-1">
                 {t("totalStops")}
@@ -251,7 +245,9 @@ export default function PrintLayout({ tripInfo, rows, dayMap, region, rate, tota
                       <div className="h-full rounded-full" style={{ width:`${pct}%`, background:color }} />
                     </div>
                     <span className="w-8 text-right text-[10px] font-semibold text-[#94A3B8]">{pct}%</span>
-                    <span className="text-xs font-semibold text-[#1E293B] w-20 text-right tabular-nums">{formatCurrency(val, currency)}</span>
+                    <span className="text-xs font-semibold text-[#1E293B] w-20 text-right tabular-nums">
+                      {formatCurrency(val, currency)}
+                    </span>
                   </div>
                 );
               })}
@@ -261,7 +257,7 @@ export default function PrintLayout({ tripInfo, rows, dayMap, region, rate, tota
 
         {/* Transport usage */}
         {Object.keys(transportCounts).length > 0 && (
-          <div className="rounded-xl border border-[#E8EDF3] overflow-hidden">
+          <div className="mb-4 rounded-xl border border-[#E8EDF3] overflow-hidden">
             <div className="px-4 py-2.5 bg-[#F8FAFC] border-b border-[#E8EDF3]">
               <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#94A3B8]">
                 {t("transportUsage")}
@@ -285,25 +281,24 @@ export default function PrintLayout({ tripInfo, rows, dayMap, region, rate, tota
             </div>
           </div>
         )}
-      </div>
 
-      {/* ── Trip Summary ── */}
-      <div className="px-6 pb-6 sm:px-8">
-        <h2 className="text-lg font-semibold text-[#1E293B] mb-3 sm:text-xl">{t("tripSummary")}</h2>
-        <div className="rounded-xl border border-[#E8EDF3] overflow-hidden">
-          {[
-            { label: t("totalStops"),     value: meaningfulRows.length, bold:false, accent:false },
-            { label: t("totalDays"),      value: totalDays,             bold:false, accent:false },
-            { label: t("conversionRate"), value: isIDR ? "1:1" : `1 ${currency.code} = ${rate} IDR`, bold:false, accent:false },
-            ...(!isIDR ? [{ label:`TOTAL · ${currency.code}`, value: formatCurrency(totalLocal, currency), bold:true, accent:false }] : []),
-            { label:"TOTAL · IDR", value: formatIDR(totalIDR), bold:true, accent:true },
-          ].map(({ label, value, bold, accent }) => (
-            <div key={label} className="flex items-center justify-between px-4 py-3 border-b border-[#EEF2F7] last:border-0 bg-white">
-              <span className={`text-sm ${bold ? "font-semibold text-[#1E293B]" : "text-[#94A3B8]"}`}>{label}</span>
-              <span className={`text-sm ${bold ? "font-semibold" : ""} ${accent ? "text-[#0B3C5D]" : "text-[#1E293B]"}`}>{value}</span>
+        {/* Conversion info row (was in old Trip Summary table, kept here) */}
+        {!isIDR && (
+          <div className="rounded-xl border border-[#E8EDF3] overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-3 bg-white border-b border-[#EEF2F7]">
+              <span className="text-sm text-[#94A3B8]">{t("conversionRate")}</span>
+              <span className="text-sm text-[#1E293B]">1 {currency.code} = {rate} IDR</span>
             </div>
-          ))}
-        </div>
+            <div className="flex items-center justify-between px-4 py-3 bg-white border-b border-[#EEF2F7]">
+              <span className="text-sm font-semibold text-[#1E293B]">TOTAL · {currency.code}</span>
+              <span className="text-sm font-semibold text-[#1E293B] tabular-nums">{formatCurrency(totalLocal, currency)}</span>
+            </div>
+            <div className="flex items-center justify-between px-4 py-3 bg-white">
+              <span className="text-sm font-semibold text-[#1E293B]">TOTAL · IDR</span>
+              <span className="text-sm font-bold tabular-nums" style={{ color:"#0B3C5D" }}>{formatIDR(totalIDR)}</span>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ── Footer ── */}
@@ -338,11 +333,9 @@ function PrintRow({ row, currency, isIDR, t }) {
   return (
     <div className="px-4 py-3.5">
       <div className="flex items-start gap-3">
-        {/* Time */}
         <div className="flex-shrink-0 w-14 text-right">
           <p className="text-xs font-semibold text-[#94A3B8] font-mono tabular-nums">{fmtTime(row.time) || "—"}</p>
         </div>
-        {/* Content */}
         <div className="flex-1 min-w-0">
           {badge && (
             <div className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 mb-1.5" style={{ background: badge.bg }}>
@@ -360,7 +353,7 @@ function PrintRow({ row, currency, isIDR, t }) {
                   <span>{tIcon}</span>{row.transport}
                 </span>
               )}
-              {row.transport && (row.from || row.to) && <span className="opacity-30">·</span>}
+              {row.transport && (row.from||row.to) && <span className="opacity-30">·</span>}
               {row.from && <span>{row.from}</span>}
               {row.from && row.to && <span className="opacity-40">→</span>}
               {row.to && <span>{row.to}</span>}
@@ -369,25 +362,24 @@ function PrintRow({ row, currency, isIDR, t }) {
           {row.notes && <p className="mt-0.5 text-xs text-[#94A3B8] italic">{row.notes}</p>}
           <div className="mt-2 flex flex-col gap-1">
             <a href={mapUrl} target="_blank" rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-[11px] font-medium no-underline" style={{ color: "#0B3C5D" }}>
+              className="inline-flex items-center gap-1 text-[11px] font-medium" style={{ color:"#0B3C5D", textDecoration:"none" }}>
               📍 {t("viewMap")}
             </a>
             {routeUrl && (
               <a href={routeUrl} target="_blank" rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-[11px] font-medium no-underline" style={{ color: "#0B3C5D" }}>
+                className="inline-flex items-center gap-1 text-[11px] font-medium" style={{ color:"#0B3C5D", textDecoration:"none" }}>
                 🗺 {t("openRoute")}
               </a>
             )}
             {fltUrl && (
               <a href={fltUrl} target="_blank" rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-[11px] font-medium no-underline" style={{ color: "#0B3C5D" }}>
+                className="inline-flex items-center gap-1 text-[11px] font-medium" style={{ color:"#0B3C5D", textDecoration:"none" }}>
                 ✈️ {t("viewFlights")}
               </a>
             )}
           </div>
         </div>
-        {/* Budget */}
-        <div className="flex-shrink-0 text-right" style={{ minWidth: "60px" }}>
+        <div className="flex-shrink-0 text-right" style={{ minWidth:"60px" }}>
           {hasBudget ? (
             <>
               {!isIDR && budget > 0 && (

@@ -232,15 +232,15 @@ function Document({tripInfo,rows,dayMap,region,rate,totalLocal,totalIDR,t}){
   return(
     <div style={{background:"white"}}>
 
-      {/* HEADER */}
-      <div style={{padding:"20px 32px 16px",display:"flex",alignItems:"flex-start",justifyContent:"space-between",borderBottom:`1px solid ${B}`}}>
+      {/* HEADER — navy background for brand identity */}
+      <div style={{padding:"20px 32px 18px",display:"flex",alignItems:"flex-start",justifyContent:"space-between",background:N}}>
         <div>
-          <div style={{fontSize:"22px",fontWeight:700,color:N,lineHeight:1}}>Backpackervun</div>
-          <div style={{fontSize:"10px",fontWeight:600,color:IM,letterSpacing:"0.22em",textTransform:"uppercase",marginTop:"3px"}}>Travel Planner</div>
+          <div style={{fontSize:"22px",fontWeight:700,color:"white",lineHeight:1,letterSpacing:"-0.3px"}}>Backpackervun</div>
+          <div style={{fontSize:"10px",fontWeight:600,color:"rgba(255,255,255,0.6)",letterSpacing:"0.24em",textTransform:"uppercase",marginTop:"4px"}}>Travel Planner</div>
         </div>
         <div style={{textAlign:"right"}}>
-          {!isIDR&&<div style={{marginBottom:"6px"}}><div style={{fontSize:"9px",fontWeight:600,textTransform:"uppercase",letterSpacing:"0.15em",color:IM}}>TOTAL · {curr.code}</div><div style={{fontSize:"20px",fontWeight:700,color:I,lineHeight:1.1}}>{fmtC(totalLocal,curr)}</div></div>}
-          <div><div style={{fontSize:"9px",fontWeight:600,textTransform:"uppercase",letterSpacing:"0.15em",color:N}}>TOTAL · IDR</div><div style={{fontSize:isIDR?"20px":"15px",fontWeight:700,color:N,lineHeight:1.1}}>{fmtIDR(totalIDR)}</div></div>
+          {!isIDR&&<div style={{marginBottom:"8px"}}><div style={{fontSize:"9px",fontWeight:600,textTransform:"uppercase",letterSpacing:"0.15em",color:"rgba(255,255,255,0.55)"}}>TOTAL · {curr.code}</div><div style={{fontSize:"20px",fontWeight:700,color:"white",lineHeight:1.1,marginTop:"2px"}}>{fmtC(totalLocal,curr)}</div></div>}
+          <div><div style={{fontSize:"9px",fontWeight:600,textTransform:"uppercase",letterSpacing:"0.15em",color:"rgba(255,255,255,0.55)"}}>TOTAL · IDR</div><div style={{fontSize:isIDR?"20px":"15px",fontWeight:700,color:"rgba(255,255,255,0.95)",lineHeight:1.1,marginTop:"2px"}}>{fmtIDR(totalIDR)}</div></div>
         </div>
       </div>
 
@@ -285,12 +285,12 @@ function Document({tripInfo,rows,dayMap,region,rate,totalLocal,totalIDR,t}){
         })}
       </div>
 
-      {/* BUDGET AT A GLANCE */}
+      {/* TRIP SUMMARY (renamed from Budget at a Glance) */}
       <div style={{padding:"20px 32px 0"}}>
         <div className="section-group">
           <div style={{display:"flex",alignItems:"center",gap:"12px",fontSize:"20px",fontWeight:700,color:I,marginBottom:"12px"}}>
             <div style={{width:"24px",height:"2px",background:N,flexShrink:0}}/>
-            {t("budgetAtAGlance")||"Budget at a Glance"}
+            {t("tripSummary")||"Trip Summary"}
           </div>
           <div className="stats-row" style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr",gap:"10px",marginBottom:"10px"}}>
             <div style={{borderRadius:"10px",border:`1px solid ${B}`,background:"#F8FAFC",padding:"14px"}}>
@@ -348,25 +348,6 @@ function Document({tripInfo,rows,dayMap,region,rate,totalLocal,totalIDR,t}){
             </div>
           </div>
         )}
-      </div>
-
-      {/* TRIP SUMMARY */}
-      <div className="summary-section" style={{padding:"0 32px 20px"}}>
-        <div style={{fontSize:"20px",fontWeight:700,color:I,marginBottom:"14px",paddingTop:"10px"}}>{t("tripSummary")||"Trip Summary"}</div>
-        <div style={{border:`1px solid ${B}`,borderRadius:"10px",overflow:"hidden"}}>
-          {[
-            {label:t("totalStops")||"Total stops",    val:meaningful.length,                              bold:false,accent:false},
-            {label:t("totalDays")||"Total days",      val:totalDays,                                       bold:false,accent:false},
-            {label:t("conversionRate")||"Conversion rate",val:isIDR?"1:1":`1 ${curr.code} = ${rate} IDR`, bold:false,accent:false},
-            ...(!isIDR?[{label:`TOTAL · ${curr.code}`,val:fmtC(totalLocal,curr),bold:true,accent:false}]:[]),
-            {label:"TOTAL · IDR",val:fmtIDR(totalIDR),bold:true,accent:true},
-          ].map(({label,val,bold,accent})=>(
-            <div key={label} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 20px",borderBottom:`1px solid ${B}`,background:"white"}}>
-              <span style={{fontSize:"13px",color:bold?I:IM,fontWeight:bold?600:400}}>{label}</span>
-              <span style={{fontSize:"13px",color:accent?N:I,fontWeight:bold?700:400}}>{val}</span>
-            </div>
-          ))}
-        </div>
       </div>
 
       {/* FOOTER */}
