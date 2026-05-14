@@ -97,18 +97,40 @@ function fmtTravelDates(td,startDate,endDate){
 
 const PRINT_CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap');
-@page{size:A4 portrait;margin:14mm 14mm 18mm 14mm;}
+@page{size:A4 portrait;margin:12mm 12mm 14mm 12mm;}
 *,*::before,*::after{box-sizing:border-box;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
-html,body{margin:0;padding:0;background:white;font-family:'Montserrat',-apple-system,BlinkMacSystemFont,sans-serif;color:#1E293B;font-size:13px;line-height:1.5;widows:3;orphans:3;}
+html,body{margin:0;padding:0;background:white;font-family:'Montserrat',-apple-system,BlinkMacSystemFont,sans-serif;color:#1E293B;font-size:13px;line-height:1.5;widows:2;orphans:2;}
 a{color:#0B3C5D;text-decoration:none;}
-.day-block{break-inside:avoid;page-break-inside:avoid;margin-bottom:20px;}
-.row-item{break-inside:avoid;page-break-inside:avoid;}
-.section-group{break-inside:avoid;page-break-inside:avoid;}
-.analytics-block{break-inside:avoid;page-break-inside:avoid;}
+
+/*
+ PAGE BREAK STRATEGY — adaptive, no wasted space on page 1
+ 
+ KEY CHANGE: .day-block no longer has break-inside:avoid
+ This allows a long day card to SPAN pages naturally.
+ Instead:
+   - .day-header-row  → never break AFTER (keeps header with first row)
+   - .row-item        → never break INSIDE (individual rows stay intact)
+ Result: no giant gap on page 1 when Day 1 has many entries.
+*/
+.day-block{
+  margin-bottom:16px;
+  /* intentionally NO break-inside:avoid here */
+}
+.day-header-row{
+  break-after:avoid;
+  page-break-after:avoid;
+}
+.row-item{
+  break-inside:avoid;
+  page-break-inside:avoid;
+}
+
+/* Analytics sections: keep compact tables together */
 .stats-row{break-inside:avoid;page-break-inside:avoid;}
 .cat-table{break-inside:avoid;page-break-inside:avoid;}
 .transport-row{break-inside:avoid;page-break-inside:avoid;}
 .summary-section{break-inside:avoid;page-break-inside:avoid;}
+
 @media screen{body{max-width:794px;margin:0 auto;}.screen-only{display:block;}}
 @media print{.screen-only{display:none!important;}}
 `;
@@ -233,7 +255,7 @@ function Document({tripInfo,rows,dayMap,region,rate,totalLocal,totalIDR,t}){
     <div style={{background:"white"}}>
 
       {/* HEADER — navy background for brand identity */}
-      <div style={{padding:"20px 32px 18px",display:"flex",alignItems:"flex-start",justifyContent:"space-between",background:N}}>
+      <div style={{padding:"16px 28px 14px",display:"flex",alignItems:"flex-start",justifyContent:"space-between",background:N}}>
         <div>
           <div style={{fontSize:"22px",fontWeight:700,color:"white",lineHeight:1,letterSpacing:"-0.3px"}}>Backpackervun</div>
           <div style={{fontSize:"10px",fontWeight:600,color:"rgba(255,255,255,0.6)",letterSpacing:"0.24em",textTransform:"uppercase",marginTop:"4px"}}>Travel Planner</div>
@@ -245,7 +267,7 @@ function Document({tripInfo,rows,dayMap,region,rate,totalLocal,totalIDR,t}){
       </div>
 
       {/* TRIP INFO */}
-      <div style={{padding:"20px 32px 18px",borderBottom:`1px solid ${B}`}}>
+      <div style={{padding:"16px 28px 14px",borderBottom:`1px solid ${B}`}}>
         {tripInfo?.clientName&&<><div style={{fontSize:"9px",fontWeight:600,textTransform:"uppercase",letterSpacing:"0.2em",color:IM}}>PREPARED FOR CLIENT</div><div style={{fontSize:"30px",fontWeight:700,color:I,lineHeight:1.1,margin:"4px 0 18px"}}>{tripInfo.clientName}</div></>}
         {[["DURATION",tripInfo?.duration||"—"],["DESTINATIONS",tripInfo?.destinations||"—"],["TRAVEL DATES",travelDatesFormatted],["REGION",region?`${FLAGS[region]||"🌍"} ${region}`:"—"]].map(([lbl,val])=>(
           <div key={lbl} style={{display:"flex",alignItems:"flex-start",padding:"3px 0"}}>
@@ -256,14 +278,14 @@ function Document({tripInfo,rows,dayMap,region,rate,totalLocal,totalIDR,t}){
       </div>
 
       {/* ITINERARY */}
-      <div style={{padding:"18px 32px 6px"}}>
-        <div style={{display:"flex",alignItems:"center",gap:"12px",fontSize:"20px",fontWeight:700,color:I}}>
-          <div style={{width:"24px",height:"2px",background:N,flexShrink:0}}/>
+      <div style={{padding:"14px 28px 4px"}}>
+        <div style={{display:"flex",alignItems:"center",gap:"12px",fontSize:"18px",fontWeight:700,color:I}}>
+          <div style={{width:"20px",height:"2px",background:N,flexShrink:0}}/>
           {t("itinerary")||"Itinerary"}
         </div>
       </div>
 
-      <div style={{padding:"4px 32px 0"}}>
+      <div style={{padding:"4px 28px 0"}}>
         {days.length===0?(
           <div style={{padding:"40px",textAlign:"center",color:IM}}>No itinerary entries.</div>
         ):days.map(([dateKey,dayRows])=>{
@@ -271,12 +293,12 @@ function Document({tripInfo,rows,dayMap,region,rate,totalLocal,totalIDR,t}){
           const city=dayRows[0]?.city||"";
           const dStr=dateKey!=="__"?fmtDateReadable(dateKey):"";
           return(
-            <div key={dateKey} className="day-block" style={{border:`1px solid ${B}`,borderRadius:"12px",overflow:"hidden"}}>
-              <div style={{background:N,padding:"11px 20px",display:"flex",alignItems:"center",gap:"14px"}}>
-                {dn!==null&&<div style={{background:"white",color:N,borderRadius:"50%",width:"34px",height:"34px",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:"14px",flexShrink:0}}>{dn}</div>}
+            <div key={dateKey} className="day-block" style={{border:`1px solid ${B}`,borderRadius:"10px",overflow:"hidden"}}>
+              <div className="day-header-row" style={{background:N,padding:"10px 18px",display:"flex",alignItems:"center",gap:"12px"}}>
+                {dn!==null&&<div style={{background:"white",color:N,borderRadius:"50%",width:"32px",height:"32px",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:"13px",flexShrink:0}}>{dn}</div>}
                 <div>
-                  <div style={{color:"white",fontSize:"15px",fontWeight:700}}>{t("day")||"Day"} {dn??"—"}{city?` — ${city}`:""}</div>
-                  {dStr&&<div style={{color:"rgba(255,255,255,0.7)",fontSize:"11px",marginTop:"1px"}}>{dStr}</div>}
+                  <div style={{color:"white",fontSize:"14px",fontWeight:700}}>{t("day")||"Day"} {dn??"—"}{city?` — ${city}`:""}</div>
+                  {dStr&&<div style={{color:"rgba(255,255,255,0.7)",fontSize:"10px",marginTop:"1px"}}>{dStr}</div>}
                 </div>
               </div>
               {dayRows.map((row,i)=><RowItem key={row.id??i} row={row} curr={curr} isIDR={isIDR} last={i===dayRows.length-1}/>)}
@@ -286,10 +308,10 @@ function Document({tripInfo,rows,dayMap,region,rate,totalLocal,totalIDR,t}){
       </div>
 
       {/* TRIP SUMMARY (renamed from Budget at a Glance) */}
-      <div style={{padding:"20px 32px 0"}}>
+      <div style={{padding:"16px 28px 0"}}>
         <div className="section-group">
-          <div style={{display:"flex",alignItems:"center",gap:"12px",fontSize:"20px",fontWeight:700,color:I,marginBottom:"12px"}}>
-            <div style={{width:"24px",height:"2px",background:N,flexShrink:0}}/>
+          <div style={{display:"flex",alignItems:"center",gap:"12px",fontSize:"18px",fontWeight:700,color:I,marginBottom:"10px"}}>
+            <div style={{width:"20px",height:"2px",background:N,flexShrink:0}}/>
             {t("tripSummary")||"Trip Summary"}
           </div>
           <div className="stats-row" style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr",gap:"10px",marginBottom:"10px"}}>
@@ -351,7 +373,7 @@ function Document({tripInfo,rows,dayMap,region,rate,totalLocal,totalIDR,t}){
       </div>
 
       {/* FOOTER */}
-      <div style={{margin:"0 32px 0",padding:"14px 0",borderTop:`1px solid ${B}`,textAlign:"center",fontSize:"10px",fontWeight:600,textTransform:"uppercase",letterSpacing:"0.2em",color:IM}}>
+      <div style={{margin:"0 28px 0",padding:"12px 0",borderTop:`1px solid ${B}`,textAlign:"center",fontSize:"10px",fontWeight:600,textTransform:"uppercase",letterSpacing:"0.2em",color:IM}}>
         PREPARED WITH BACKPACKERVUN · BACKPACKERVUN.COM
       </div>
 
@@ -374,7 +396,7 @@ function RowItem({row,curr,isIDR,last}){
   const fltUrl=isFlt&&row.from&&row.to?`https://www.google.com/flights?q=Flights+from+${enc(row.from)}+to+${enc(row.to)}`:null;
 
   return(
-    <div className="row-item" style={{display:"flex",alignItems:"flex-start",gap:"14px",padding:"14px 20px",borderBottom:last?"none":`1px solid ${B}`,background:"white"}}>
+    <div className="row-item" style={{display:"flex",alignItems:"flex-start",gap:"12px",padding:"12px 18px",borderBottom:last?"none":`1px solid ${B}`,background:"white"}}>
       <div style={{flexShrink:0,width:"58px",textAlign:"right",fontSize:"11px",fontWeight:600,color:IM,paddingTop:"2px"}}>{fmtTime(row.time)||"—"}</div>
       <div style={{flex:1,minWidth:0}}>
         {cat&&<div style={{display:"inline-flex",alignItems:"center",gap:"4px",background:cat.bg,color:cat.color,padding:"2px 8px",borderRadius:"4px",fontSize:"9px",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.12em",marginBottom:"5px"}}><span>{cat.icon}</span>{row.category?.toUpperCase()}</div>}
