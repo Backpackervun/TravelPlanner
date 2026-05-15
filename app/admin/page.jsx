@@ -17,7 +17,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
-  collection, getDocs, doc, updateDoc, query, where, orderBy, getCountFromServer,
+  collection, getDocs, doc, updateDoc, setDoc, query, where, getCountFromServer,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/context/AuthProvider";
@@ -64,6 +64,13 @@ export default function AdminPage() {
   const [sortDir, setSortDir] = useState("asc");
   const [expanded, setExpanded] = useState(null);
   const [actionLoading, setActionLoading] = useState(null);
+
+  // ── Generate codes state ───────────────────────────────────────────────────
+  const [genPlan,    setGenPlan]    = useState("lite");
+  const [genDays,    setGenDays]    = useState(30);
+  const [genQty,     setGenQty]     = useState(1);
+  const [genLoading, setGenLoading] = useState(false);
+  const [genResults, setGenResults] = useState([]);
 
   // ── Auth guard ─────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -135,6 +142,51 @@ export default function AdminPage() {
     }
   }
 
+  // ── Generate redeem codes ──────────────────────────────────────────────────
+  async function generateCodes() {
+    if (genLoading || genQty < 1 || genQty > 50) return;
+    setGenLoading(true);
+    setGenResults([]);
+    const newCodes = [];
+    try {
+      for (let i = 0; i < genQty; i++) {
+        // Format: BE-XXXXXXXX (8 random uppercase chars)
+        const rand = Math.random().toString(36).slice(2,6).toUpperCase() +
+                     Math.random().toString(36).slice(2,6).toUpperCase();
+        const code = `BE-${rand}`;
+        const codeDoc = {
+          code,
+          type:         genPlan,
+          durationDays: Number(genDays),
+          active:       true,
+          used:         false,
+          usedBy:       null,
+          usedAt:       null,
+          createdAt:    new Date(),
+        };
+        await setDoc(doc(db, "redeemCodes", code), codeDoc);
+        newCodes.push(codeDoc);
+      }
+      setGenResults(newCodes);
+      // Refresh codes list
+      setCodes(prev => [...newCodes, ...prev]);
+    } catch (e) {
+      console.error("[admin] generateCodes error", e);
+      alert("Failed to generate codes. Check Firestore permissions.");
+    } finally {
+      setGenLoading(false);
+    }
+  }
+
+  function copyCode(code) {
+    navigator.clipboard.writeText(code).catch(() => {});
+  }
+
+  function copyAllCodes() {
+    const text = genResults.map(c => c.code).join("\n");
+    navigator.clipboard.writeText(text).catch(() => {});
+  }
+
   // ── CSV export ─────────────────────────────────────────────────────────────
   function exportCSV() {
     const headers = ["Name","Email","Phone","Dream Destination","Plan","Plan Status","Expires","Trips","Joined"];
@@ -160,121 +212,34 @@ export default function AdminPage() {
 
   // ── Filtered + sorted users ────────────────────────────────────────────────
   const filteredUsers = useMemo(() => {
-
     const q = search.toLowerCase();
-
     let list = q
       ? users.filter(u =>
-          (u.name || "").toLowerCase().includes(q) ||
-          (u.email || "").toLowerCase().includes(q) ||
-          (u.phone || "").toLowerCase().includes(q) ||
-          (u.dreamDestination || "").toLowerCase().includes(q)
+          (u.name||"").toLowerCase().includes(q) ||
+          (u.email||"").toLowerCase().includes(q) ||
+          (u.phone||"").toLowerCase().includes(q) ||
+          (u.dreamDestination||"").toLowerCase().includes(q)
         )
       : [...users];
 
     list.sort((a, b) => {
-
       let va, vb;
-
-      if (sortBy === "name") {
-
-        va = (a.name || "").toLowerCase();
-        vb = (b.name || "").toLowerCase();
-
-      }
-
-      else if (sortBy === "plan") {
-
-        va = a.plan || "free";
-        vb = b.plan || "free";
-
-      }
-
-      else if (sortBy === "trips") {
-
-        va = a.tripCount ?? 0;
-        vb = b.tripCount ?? 0;
-
-      }
-
+      if (sortBy === "name")    { va = (a.name||"").toLowerCase(); vb = (b.name||"").toLowerCase(); }
+      else if (sortBy === "plan")  { va = a.plan||"free"; vb = b.plan||"free"; }
+      else if (sortBy === "trips") { va = a.tripCount??0; vb = b.tripCount??0; }
       else if (sortBy === "joined") {
-
-        try {
-
-          va =
-            a.createdAt?.toDate?.() ??
-            new Date(a.createdAt ?? 0);
-
-        } catch {
-
-          va = new Date(0);
-
-        }
-
-        try {
-
-          vb =
-            b.createdAt?.toDate?.() ??
-            new Date(b.createdAt ?? 0);
-
-        } catch {
-
-          vb = new Date(0);
-
-        }
-
+        try { va = a.createdAt?.toDate?.() ?? new Date(a.createdAt ?? 0); } catch { va = new Date(0); }
+        try { vb = b.createdAt?.toDate?.() ?? new Date(b.createdAt ?? 0); } catch { vb = new Date(0); }
       }
-
       else if (sortBy === "expires") {
-
-        try {
-
-          va =
-            a.expiresAt?.toDate?.() ??
-            new Date(a.expiresAt ?? 0);
-
-        } catch {
-
-          va = new Date(0);
-
-        }
-
-        try {
-
-          vb =
-            b.expiresAt?.toDate?.() ??
-            new Date(b.expiresAt ?? 0);
-
-        } catch {
-
-          vb = new Date(0);
-
-        }
-
+        try { va = a.expiresAt?.toDate?.() ?? new Date(a.expiresAt ?? 0); } catch { va = new Date(0); }
+        try { vb = b.expiresAt?.toDate?.() ?? new Date(b.expiresAt ?? 0); } catch { vb = new Date(0); }
       }
-
-      if (va < vb) {
-
-        return sortDir === "asc"
-          ? -1
-          : 1;
-
-      }
-
-      if (va > vb) {
-
-        return sortDir === "asc"
-          ? 1
-          : -1;
-
-      }
-
+      if (va < vb) return sortDir === "asc" ? -1 : 1;
+      if (va > vb) return sortDir === "asc" ? 1 : -1;
       return 0;
-
     });
-
     return list;
-
   }, [users, search, sortBy, sortDir]);
 
   // ── Stats ──────────────────────────────────────────────────────────────────
@@ -357,6 +322,7 @@ export default function AdminPage() {
           {[
             { id:"users",  label:`👥 Users (${users.length})` },
             { id:"codes",  label:`🎟️ Redeem Codes (${activeCodesCount} active)` },
+            { id:"generate", label:"⚡ Generate Codes" },
           ].map(({ id, label }) => (
             <button key={id} onClick={() => setTab(id)}
               className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition ${tab===id ? "border-[#0B3C5D] text-[#0B3C5D]" : "border-transparent text-gray-500 hover:text-gray-700"}`}>
@@ -551,6 +517,161 @@ export default function AdminPage() {
                 </tbody>
               </table>
             </div>
+          </div>
+        )}
+
+        {/* ══════════════════════════════════════════════════════════════════
+            GENERATE CODES TAB
+        ══════════════════════════════════════════════════════════════════ */}
+        {tab === "generate" && (
+          <div className="space-y-5">
+
+            {/* ── Generator form ── */}
+            <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+              <h3 className="text-sm font-bold text-gray-800 mb-5">⚡ Generate New Redeem Codes</h3>
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 mb-5">
+
+                {/* Plan */}
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-[0.15em] text-gray-400 mb-1.5">Plan Type</label>
+                  <select
+                    value={genPlan}
+                    onChange={e => setGenPlan(e.target.value)}
+                    className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm font-semibold outline-none focus:border-[#0B3C5D] focus:ring-1 focus:ring-[#0B3C5D]"
+                  >
+                    <option value="lite">Lite</option>
+                    <option value="pro">Pro</option>
+                  </select>
+                </div>
+
+                {/* Duration */}
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-[0.15em] text-gray-400 mb-1.5">Duration (days)</label>
+                  <div className="flex gap-2 flex-wrap">
+                    {[3, 7, 30, 90, 180, 365].map(d => (
+                      <button key={d}
+                        onClick={() => setGenDays(d)}
+                        className={`rounded-lg px-3 py-1.5 text-xs font-bold transition ${genDays === d ? "bg-[#0B3C5D] text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
+                      >
+                        {d}d
+                      </button>
+                    ))}
+                    <input
+                      type="number" min="1" max="3650"
+                      value={genDays}
+                      onChange={e => setGenDays(Number(e.target.value))}
+                      className="w-20 rounded-xl border border-gray-200 px-2 py-1.5 text-xs text-center font-mono outline-none focus:border-[#0B3C5D]"
+                      placeholder="custom"
+                    />
+                  </div>
+                </div>
+
+                {/* Quantity */}
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-[0.15em] text-gray-400 mb-1.5">Quantity (max 50)</label>
+                  <div className="flex gap-2 flex-wrap">
+                    {[1, 3, 5, 10].map(q => (
+                      <button key={q}
+                        onClick={() => setGenQty(q)}
+                        className={`rounded-lg px-3 py-1.5 text-xs font-bold transition ${genQty === q ? "bg-[#0B3C5D] text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
+                      >
+                        {q}
+                      </button>
+                    ))}
+                    <input
+                      type="number" min="1" max="50"
+                      value={genQty}
+                      onChange={e => setGenQty(Math.min(50, Math.max(1, Number(e.target.value))))}
+                      className="w-16 rounded-xl border border-gray-200 px-2 py-1.5 text-xs text-center font-mono outline-none focus:border-[#0B3C5D]"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Preview */}
+              <div className="mb-5 rounded-xl border border-dashed border-gray-200 bg-gray-50 px-4 py-3">
+                <p className="text-xs text-gray-500">
+                  Will generate <strong className="text-gray-800">{genQty}</strong> code{genQty > 1 ? "s" : ""} for{" "}
+                  <strong className={genPlan === "pro" ? "text-violet-700" : "text-blue-700"}>
+                    {genPlan.toUpperCase()}
+                  </strong>{" "}
+                  plan, valid for <strong className="text-gray-800">{genDays} days</strong>.
+                  {genDays === 3 && " (Trial)"}
+                  {genDays === 30 && " (1 Month)"}
+                  {genDays === 365 && " (1 Year)"}
+                </p>
+              </div>
+
+              <button
+                onClick={generateCodes}
+                disabled={genLoading}
+                className="inline-flex items-center gap-2 rounded-xl bg-[#0B3C5D] px-5 py-2.5 text-sm font-semibold text-white shadow transition hover:bg-[#0a3354] active:scale-[0.97] disabled:opacity-60"
+              >
+                {genLoading ? (
+                  <>
+                    <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                    </svg>
+                    Generating…
+                  </>
+                ) : (
+                  <>⚡ Generate {genQty > 1 ? `${genQty} Codes` : "Code"}</>
+                )}
+              </button>
+            </div>
+
+            {/* ── Results ── */}
+            {genResults.length > 0 && (
+              <div className="rounded-xl border border-emerald-200 bg-white shadow-sm overflow-hidden">
+                <div className="flex items-center justify-between px-5 py-3 bg-emerald-50 border-b border-emerald-200">
+                  <div className="flex items-center gap-2">
+                    <span className="text-emerald-600">✅</span>
+                    <p className="text-sm font-semibold text-emerald-800">
+                      {genResults.length} code{genResults.length > 1 ? "s" : ""} generated successfully
+                    </p>
+                  </div>
+                  <button
+                    onClick={copyAllCodes}
+                    className="rounded-lg border border-emerald-300 bg-white px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 transition"
+                  >
+                    📋 Copy All
+                  </button>
+                </div>
+
+                <div className="divide-y divide-gray-50">
+                  {genResults.map((c, i) => (
+                    <div key={i} className="flex items-center justify-between px-5 py-3">
+                      <div className="flex items-center gap-4">
+                        <code className="font-mono text-base font-bold text-[#0B3C5D] tracking-wider">
+                          {c.code}
+                        </code>
+                        <div className="flex items-center gap-2">
+                          <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${c.type === "pro" ? "bg-violet-100 text-violet-700" : "bg-blue-100 text-blue-700"}`}>
+                            {c.type?.toUpperCase()}
+                          </span>
+                          <span className="text-xs text-gray-400">{c.durationDays}d</span>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => copyCode(c.code)}
+                        className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 transition"
+                      >
+                        📋 Copy
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="px-5 py-3 bg-gray-50 border-t border-gray-100">
+                  <p className="text-xs text-gray-400">
+                    Codes saved to Firestore. Share them directly with your users.
+                    They'll appear in the Redeem Codes tab as "Active".
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
