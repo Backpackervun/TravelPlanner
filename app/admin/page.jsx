@@ -160,30 +160,121 @@ export default function AdminPage() {
 
   // ── Filtered + sorted users ────────────────────────────────────────────────
   const filteredUsers = useMemo(() => {
+
     const q = search.toLowerCase();
+
     let list = q
       ? users.filter(u =>
-          (u.name||"").toLowerCase().includes(q) ||
-          (u.email||"").toLowerCase().includes(q) ||
-          (u.phone||"").toLowerCase().includes(q) ||
-          (u.dreamDestination||"").toLowerCase().includes(q)
+          (u.name || "").toLowerCase().includes(q) ||
+          (u.email || "").toLowerCase().includes(q) ||
+          (u.phone || "").toLowerCase().includes(q) ||
+          (u.dreamDestination || "").toLowerCase().includes(q)
         )
       : [...users];
 
     list.sort((a, b) => {
+
       let va, vb;
-      if (sortBy === "name")    { va = (a.name||"").toLowerCase(); vb = (b.name||"").toLowerCase(); }
-      else if (sortBy === "plan")  { va = a.plan||"free"; vb = b.plan||"free"; }
-      else if (sortBy === "trips") { va = a.tripCount??0; vb = b.tripCount??0; }
-      else if (sortBy === "expires") {
-        try { va = a.expiresAt?.toDate?.() ?? new Date(a.expiresAt ?? 0); } catch { va = new Date(0); }
-        try { vb = b.expiresAt?.toDate?.() ?? new Date(b.expiresAt ?? 0); } catch { vb = new Date(0); }
+
+      if (sortBy === "name") {
+
+        va = (a.name || "").toLowerCase();
+        vb = (b.name || "").toLowerCase();
+
       }
-      if (va < vb) return sortDir === "asc" ? -1 : 1;
-      if (va > vb) return sortDir === "asc" ? 1 : -1;
+
+      else if (sortBy === "plan") {
+
+        va = a.plan || "free";
+        vb = b.plan || "free";
+
+      }
+
+      else if (sortBy === "trips") {
+
+        va = a.tripCount ?? 0;
+        vb = b.tripCount ?? 0;
+
+      }
+
+      else if (sortBy === "joined") {
+
+        try {
+
+          va =
+            a.createdAt?.toDate?.() ??
+            new Date(a.createdAt ?? 0);
+
+        } catch {
+
+          va = new Date(0);
+
+        }
+
+        try {
+
+          vb =
+            b.createdAt?.toDate?.() ??
+            new Date(b.createdAt ?? 0);
+
+        } catch {
+
+          vb = new Date(0);
+
+        }
+
+      }
+
+      else if (sortBy === "expires") {
+
+        try {
+
+          va =
+            a.expiresAt?.toDate?.() ??
+            new Date(a.expiresAt ?? 0);
+
+        } catch {
+
+          va = new Date(0);
+
+        }
+
+        try {
+
+          vb =
+            b.expiresAt?.toDate?.() ??
+            new Date(b.expiresAt ?? 0);
+
+        } catch {
+
+          vb = new Date(0);
+
+        }
+
+      }
+
+      if (va < vb) {
+
+        return sortDir === "asc"
+          ? -1
+          : 1;
+
+      }
+
+      if (va > vb) {
+
+        return sortDir === "asc"
+          ? 1
+          : -1;
+
+      }
+
       return 0;
+
     });
+
     return list;
+
   }, [users, search, sortBy, sortDir]);
 
   // ── Stats ──────────────────────────────────────────────────────────────────
@@ -310,7 +401,7 @@ export default function AdminPage() {
                         { key:"plan",    label:"PLAN" },
                         { key:"expires", label:"EXPIRES" },
                         { key:"trips",   label:"TRIPS" },
-                        { key:"joined",  label:"JOINED", noSort:true },
+                        { key:"joined",  label:"JOINED" },
                         { key:"actions", label:"ACTIONS", noSort:true },
                       ].map(({ key, label, noSort }) => (
                         <th key={key} onClick={noSort ? undefined : () => toggleSort(key)}
