@@ -1,164 +1,255 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { auth } from "@/lib/firebase";
-import { createUserProfile } from "@/lib/firestore";
+import { grantFreeTrial } from "@/lib/firestore";
 import { useT } from "@/context/TranslationContext";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
-import LoginHelpCard from "@/components/LoginHelpCard";
 
 export default function SignupPage() {
   const router = useRouter();
-  const { t }  = useT();
+  const { t } = useT();
 
-  const [form, setForm] = useState({
-    name: "", email: "", phone: "", dreamDestination: "",
-    password: "", confirm: "",
-  });
-  const [errors, setErrors]   = useState({});
-  const [loading, setLoading] = useState(false);
-  const [apiError, setApiError] = useState("");
+  const [name,            setName]            = useState("");
+  const [email,           setEmail]           = useState("");
+  const [phone,           setPhone]           = useState("");
+  const [dreamDest,       setDreamDest]       = useState("");
+  const [password,        setPassword]        = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [loading,         setLoading]         = useState(false);
+  const [error,           setError]           = useState("");
 
-  const set = (f) => (e) => setForm((p) => ({ ...p, [f]: e.target.value }));
+  // ── Validation ──────────────────────────────────────────────────────────────
+  function validate() {
+    if (!name.trim())                return t("validationNameRequired");
+    if (!/\S+@\S+\.\S+/.test(email)) return t("validationEmailInvalid");
+    if (!phone.trim())               return t("validationPhoneRequired");
+    if (password.length < 6)         return t("validationPasswordShort");
+    if (password !== confirmPassword) return t("validationPasswordMismatch");
+    return null;
+  }
 
-  const validate = () => {
-    const e = {};
-    if (!form.name.trim())                    e.name     = t("validationNameRequired");
-    if (!form.email.match(/^\S+@\S+\.\S+$/))  e.email    = t("validationEmailInvalid");
-    if (!form.phone.trim())                   e.phone    = t("validationPhoneRequired");
-    if (form.password.length < 6)             e.password = t("validationPasswordShort");
-    if (form.password !== form.confirm)       e.confirm  = t("validationPasswordMismatch");
-    return e;
-  };
+  // ── Firebase error map ──────────────────────────────────────────────────────
+  function mapFirebaseError(code) {
+    switch (code) {
+      case "auth/email-already-in-use":  return t("errorEmailInUse");
+      case "auth/invalid-email":         return t("errorInvalidEmail");
+      case "auth/weak-password":         return t("errorWeakPassword");
+      default:                           return t("errorGeneric");
+    }
+  }
 
-  const handleSubmit = async (ev) => {
-    ev.preventDefault();
-    setApiError("");
-    const e = validate();
-    if (Object.keys(e).length) { setErrors(e); return; }
-    setErrors({});
+  // ── Submit ──────────────────────────────────────────────────────────────────
+  async function handleSignup(e) {
+    e?.preventDefault();
+    const validationError = validate();
+    if (validationError) { setError(validationError); return; }
+
     setLoading(true);
+    setError("");
+
     try {
-      const cred = await createUserWithEmailAndPassword(auth, form.email.trim(), form.password);
-      await updateProfile(cred.user, { displayName: form.name.trim() });
-      await createUserProfile(cred.user.uid, {
-        name:             form.name.trim(),
-        email:            form.email.trim(),
-        phone:            form.phone.trim(),
-        dreamDestination: form.dreamDestination.trim(),
-      });
-      document.cookie = "token=true; path=/; SameSite=Lax";
-      router.push("/dashboard");
+      // 1. Create Firebase Auth account
+      const cred = await createUserWithEmailAndPassword(auth, email.trim(), password);
+      const { uid } = cred.user;
+
+      // 2. Set display name
+      await updateProfile(cred.user, { displayName: name.trim() });
+
+      // 3. Create user profile in Firestore + grant 7-day free trial
+      //    grantFreeTrial() also calls ensureUserDoc() internally
+      await grantFreeTrial(uid, email.trim());
+
+      // 4. Update additional profile fields (phone, dream destination)
+      //    Import setDoc/doc dynamically to avoid circular imports
+      const { doc, setDoc } = await import("firebase/firestore");
+      const { db } = await import("@/lib/firebase");
+      await setDoc(doc(db, "users", uid), {
+        name:             name.trim(),
+        email:            email.trim(),
+        phone:            phone.trim(),
+        dreamDestination: dreamDest.trim(),
+      }, { merge: true });
+
+      // 5. Redirect to dashboard
+      router.replace("/dashboard");
+
     } catch (err) {
-      const msgs = {
-        "auth/email-already-in-use": t("errorEmailInUse"),
-        "auth/invalid-email":        t("errorInvalidEmail"),
-        "auth/weak-password":        t("errorWeakPassword"),
-      };
-      setApiError(msgs[err.code] ?? t("errorGeneric"));
-    } finally { setLoading(false); }
-  };
+      setError(mapFirebaseError(err.code));
+    } finally {
+      setLoading(false);
+    }
+  }
 
+  // ── Render ──────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen paper-bg flex flex-col items-center justify-center gap-5 px-4 py-10">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
 
-      {/* Brand row: logo left, language switcher right */}
-      <div className="flex w-full max-w-md items-start justify-between gap-4">
-        <div>
-          <img src="/logo.png" alt="Backpackervun" className="h-9 w-auto" />
-          <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-ink-muted">
-            {t("appName")}
-          </p>
-        </div>
-        {/* Language switcher — top-right, separated from logo */}
+      {/* Header */}
+      <header className="border-b border-gray-200 bg-white px-4 py-3 flex items-center justify-between">
+        <Link href="/login" className="flex items-center gap-2.5">
+          <img src="/logo.png" alt="Backpackervun" className="h-7 w-auto" />
+          <span className="hidden sm:block text-[10px] font-semibold uppercase tracking-[0.2em] text-gray-400 border-l border-gray-200 pl-2.5">
+            Travel Planner
+          </span>
+        </Link>
         <LanguageSwitcher />
-      </div>
+      </header>
 
-      {/* Card */}
-      <div className="w-full max-w-md rounded-2xl border border-paper-line bg-white p-8 shadow-card">
-        <h1 className="text-xl font-semibold text-ink">{t("signUp")}</h1>
-        {/* ✅ FIX: was hardcoded English, now uses t() */}
-        <p className="mt-1 text-xs text-ink-muted">{t("signupSubtitle")}</p>
+      {/* Form */}
+      <main className="flex-1 flex items-start justify-center px-4 py-10">
+        <div className="w-full max-w-md">
 
-        <form onSubmit={handleSubmit} className="mt-6 space-y-3.5" noValidate>
-          <F label={t("fullName")} type="text" value={form.name} onChange={set("name")}
-            placeholder={t("fullNamePlaceholder")} error={errors.name} autoComplete="name" />
-
-          <F label={t("email")} type="email" value={form.email} onChange={set("email")}
-            placeholder={t("emailPlaceholder")} error={errors.email} autoComplete="email" />
-
-          <F label={t("phoneNumber")} type="tel" value={form.phone} onChange={set("phone")}
-            placeholder={t("phonePlaceholder")} error={errors.phone} autoComplete="tel" />
-
-          {/* Dream destination — optional */}
-          <div>
-            <label className="block text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-muted mb-1.5">
-              {t("dreamDestination")}
-              <span className="ml-1 text-[10px] font-normal normal-case text-ink-muted/60">
-                ({t("optional")})
-              </span>
-            </label>
-            <input
-              type="text" value={form.dreamDestination} onChange={set("dreamDestination")}
-              placeholder={t("dreamDestinationPlaceholder")}
-              className="w-full rounded-lg border border-paper-line bg-white px-3 py-2.5 text-sm font-medium text-ink outline-none transition placeholder:font-normal placeholder:text-ink-muted/60 hover:border-navy-200 focus:border-accent-300 focus:shadow-[0_0_0_3px_rgba(74,144,226,0.18)]"
-            />
-            <p className="mt-1 text-[10px] text-ink-muted">{t("dreamDestinationHint")}</p>
+          {/* Trial banner */}
+          <div className="mb-6 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3.5 flex items-start gap-3">
+            <span className="text-xl flex-shrink-0">🎁</span>
+            <div>
+              <p className="text-sm font-semibold text-emerald-800">
+                Free 7-day trial — no credit card needed
+              </p>
+              <p className="text-xs text-emerald-700 mt-0.5">
+                Create your account and get instant access to the full Lite planner for 7 days.
+              </p>
+            </div>
           </div>
 
-          <F label={t("password")} type="password" value={form.password} onChange={set("password")}
-            placeholder={t("passwordPlaceholder")} error={errors.password} autoComplete="new-password" />
-
-          <F label={t("confirmPassword")} type="password" value={form.confirm} onChange={set("confirm")}
-            placeholder={t("confirmPasswordPlaceholder")} error={errors.confirm} autoComplete="new-password" />
-
-          {apiError && (
-            <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-xs font-medium text-red-700">
-              {apiError}
+          <div className="rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
+            <div className="text-center mb-7">
+              <h1 className="text-2xl font-bold text-gray-900">{t("signUp")}</h1>
+              <p className="mt-1 text-sm text-gray-500">{t("signupSubtitle")}</p>
             </div>
-          )}
 
-          <button
-            type="submit" disabled={loading}
-            className="mt-1 w-full rounded-lg bg-navy-500 px-4 py-3 text-sm font-semibold text-white shadow-[0_2px_8px_rgba(11,60,93,0.28)] transition hover:bg-navy-600 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {loading ? t("creatingAccount") : t("signUp")}
-          </button>
-        </form>
+            <form onSubmit={handleSignup} className="space-y-4">
 
-        <p className="mt-5 text-center text-xs text-ink-muted">
-          {t("alreadyHaveAccount")}{" "}
-          <Link href="/login" className="font-semibold text-navy-500 hover:underline underline-offset-2">
-            {t("signIn")}
-          </Link>
-        </p>
-      </div>
+              {/* Full name */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-[0.12em] mb-1.5">
+                  {t("fullName")}
+                </label>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={e => { setName(e.target.value); setError(""); }}
+                  placeholder={t("fullNamePlaceholder")}
+                  className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 outline-none transition focus:border-[#0B3C5D] focus:bg-white focus:ring-1 focus:ring-[#0B3C5D]"
+                  autoComplete="name"
+                />
+              </div>
 
-      <LoginHelpCard />
-      <p className="text-xs text-ink-muted">{t("backpackervun")} {t("appName")}</p>
-    </div>
-  );
-}
+              {/* Email */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-[0.12em] mb-1.5">
+                  {t("email")}
+                </label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={e => { setEmail(e.target.value); setError(""); }}
+                  placeholder={t("emailPlaceholder")}
+                  className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 outline-none transition focus:border-[#0B3C5D] focus:bg-white focus:ring-1 focus:ring-[#0B3C5D]"
+                  autoComplete="email"
+                />
+              </div>
 
-function F({ label, type, value, onChange, placeholder, error, autoComplete }) {
-  return (
-    <div>
-      <label className="block text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-muted mb-1.5">
-        {label}
-      </label>
-      <input
-        type={type} value={value} onChange={onChange}
-        placeholder={placeholder} autoComplete={autoComplete} required
-        className={`w-full rounded-lg border px-3 py-2.5 text-sm font-medium text-ink outline-none transition placeholder:font-normal placeholder:text-ink-muted/60 ${
-          error
-            ? "border-red-300 bg-red-50 focus:border-red-400 focus:shadow-[0_0_0_3px_rgba(239,68,68,0.15)]"
-            : "border-paper-line bg-white hover:border-navy-200 focus:border-accent-300 focus:shadow-[0_0_0_3px_rgba(74,144,226,0.18)]"
-        }`}
-      />
-      {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
+              {/* Phone */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-[0.12em] mb-1.5">
+                  {t("phoneNumber")}
+                </label>
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={e => { setPhone(e.target.value); setError(""); }}
+                  placeholder={t("phonePlaceholder")}
+                  className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 outline-none transition focus:border-[#0B3C5D] focus:bg-white focus:ring-1 focus:ring-[#0B3C5D]"
+                  autoComplete="tel"
+                />
+              </div>
+
+              {/* Dream destination (optional) */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-[0.12em] mb-1.5">
+                  {t("dreamDestination")}
+                  <span className="ml-1.5 text-[10px] font-normal normal-case text-gray-400">({t("optional")})</span>
+                </label>
+                <input
+                  type="text"
+                  value={dreamDest}
+                  onChange={e => setDreamDest(e.target.value)}
+                  placeholder={t("dreamDestinationPlaceholder")}
+                  className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 outline-none transition focus:border-[#0B3C5D] focus:bg-white focus:ring-1 focus:ring-[#0B3C5D]"
+                />
+                <p className="mt-1 text-[11px] text-gray-400">{t("dreamDestinationHint")}</p>
+              </div>
+
+              {/* Password */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-[0.12em] mb-1.5">
+                  {t("password")}
+                </label>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={e => { setPassword(e.target.value); setError(""); }}
+                  placeholder={t("passwordPlaceholder")}
+                  className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 outline-none transition focus:border-[#0B3C5D] focus:bg-white focus:ring-1 focus:ring-[#0B3C5D]"
+                  autoComplete="new-password"
+                />
+              </div>
+
+              {/* Confirm password */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-[0.12em] mb-1.5">
+                  {t("confirmPassword")}
+                </label>
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={e => { setConfirmPassword(e.target.value); setError(""); }}
+                  placeholder={t("confirmPasswordPlaceholder")}
+                  className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 outline-none transition focus:border-[#0B3C5D] focus:bg-white focus:ring-1 focus:ring-[#0B3C5D]"
+                  autoComplete="new-password"
+                />
+              </div>
+
+              {/* Error message */}
+              {error && (
+                <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 text-center">
+                  {error}
+                </div>
+              )}
+
+              {/* Submit */}
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full rounded-xl bg-[#0B3C5D] py-3.5 text-sm font-semibold text-white shadow transition hover:bg-[#0a3354] active:scale-[0.98] disabled:opacity-60 mt-2"
+              >
+                {loading ? t("creatingAccount") : `${t("signUp")} — Start Free Trial 🎁`}
+              </button>
+            </form>
+
+            {/* Trial info */}
+            <div className="mt-5 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
+              <p className="text-[11px] text-gray-500 text-center">
+                By creating an account, you get a <strong className="text-gray-700">7-day free trial</strong> with
+                access to Lite plan features. No credit card required.
+              </p>
+            </div>
+
+            {/* Already have account */}
+            <p className="mt-5 text-center text-sm text-gray-500">
+              {t("alreadyHaveAccount")}{" "}
+              <Link href="/login" className="font-semibold text-[#0B3C5D] hover:underline">
+                {t("signIn")}
+              </Link>
+            </p>
+          </div>
+        </div>
+      </main>
     </div>
   );
 }
