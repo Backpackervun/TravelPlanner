@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useT } from "@/context/TranslationContext";
 import RedeemModal from "./RedeemModal";
 
 /**
@@ -8,6 +9,7 @@ import RedeemModal from "./RedeemModal";
  * Has two CTAs: Enter Redeem Code and Chat on WhatsApp.
  */
 export default function UpgradeModal({ open, onClose, reason }) {
+  const { t } = useT();
   const [showRedeem, setShowRedeem] = useState(false);
 
   useEffect(() => {
