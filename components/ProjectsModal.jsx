@@ -51,7 +51,7 @@ export default function ProjectsModal({ open, userId, onClose, onLoad }) {
     if (!window.confirm("Delete this trip? This cannot be undone.")) return;
     setDeleting(projectId);
     try {
-      await deleteProject(userId, projectId);
+      await deleteProject(projectId); // ✅ fix: hanya butuh projectId
       setProjects((prev) => prev.filter((p) => p.id !== projectId));
     } catch {
       alert("Could not delete. Try again.");
@@ -110,7 +110,12 @@ export default function ProjectsModal({ open, userId, onClose, onLoad }) {
                 const name = p.tripInfo?.clientName || p.tripInfo?.destinations || "Untitled trip";
                 const dest = p.tripInfo?.destinations || "—";
                 const date = p.updatedAt
-                  ? new Date(p.updatedAt).toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" })
+                  ? (() => {
+                      try {
+                        const d = p.updatedAt?.toDate ? p.updatedAt.toDate() : new Date(p.updatedAt);
+                        return d.toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" });
+                      } catch { return "—"; }
+                    })()
                   : "—";
                 return (
                   <li key={p.id}>
