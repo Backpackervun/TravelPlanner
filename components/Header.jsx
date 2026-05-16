@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { formatCurrency, formatIDR, getCurrency } from "@/lib/utils";
 import { useAuth } from "@/context/AuthProvider";
 import { useT } from "@/context/TranslationContext";
+import { getPlanFeatures, UPGRADE_REASONS } from "@/lib/plans";
 import LanguageSwitcher from "./LanguageSwitcher";
 import PlanBadge from "./PlanBadge";
 
@@ -12,18 +13,22 @@ import PlanBadge from "./PlanBadge";
 // ─────────────────────────────────────────────
 
 const REGIONS = [
-  { id: "Japan", flag: "🇯🇵" },
+  { id: "Japan",       flag: "🇯🇵" },
   { id: "South Korea", flag: "🇰🇷" },
-  { id: "Thailand", flag: "🇹🇭" },
-  { id: "Singapore", flag: "🇸🇬" },
-  { id: "Malaysia", flag: "🇲🇾" },
-  { id: "Europe", flag: "🇪🇺" },
-  { id: "Australia", flag: "🇦🇺" },
-  { id: "Indonesia", flag: "🇮🇩" },
-  { id: "Vietnam", flag: "🇻🇳" },
-  { id: "China", flag: "🇨🇳" },
-  { id: "USA", flag: "🇺🇸" },
+  { id: "Thailand",    flag: "🇹🇭" },
+  { id: "Singapore",   flag: "🇸🇬" },
+  { id: "Malaysia",    flag: "🇲🇾" },
+  { id: "Europe",      flag: "🇪🇺" },
+  { id: "Australia",   flag: "🇦🇺" },
+  { id: "Indonesia",   flag: "🇮🇩" },
+  { id: "Vietnam",     flag: "🇻🇳" },
+  { id: "China",       flag: "🇨🇳" },
+  { id: "USA",         flag: "🇺🇸" },
 ];
+
+// ─────────────────────────────────────────────
+// HEADER
+// ─────────────────────────────────────────────
 
 export default function Header({
   rate,
@@ -45,10 +50,12 @@ export default function Header({
   plan,
   currencyMode,
   onCurrencyModeChange,
-  // ✅ New: export/import/duplicate
+  // Export / Import / Duplicate
   onExportBvntrip,
   onImportOpen,
   onDuplicate,
+  // ✅ NEW: called when user hits a gated feature — shows UpgradeModal
+  onUpgradeNeeded,
 }) {
   const { logout, user, userProfile } = useAuth();
   const { t } = useT();
@@ -56,24 +63,20 @@ export default function Header({
   const currency = getCurrency(region);
   const isIDR = currency.code === "IDR";
 
-  const [menuOpen, setMenuOpen] = useState(false);
+  // ✅ Compute all feature flags from plan — single source of truth
+  const features = getPlanFeatures(plan);
+
+  const [menuOpen,   setMenuOpen]   = useState(false);
   const [regionOpen, setRegionOpen] = useState(false);
 
-  const menuRef = useRef(null);
+  const menuRef   = useRef(null);
   const regionRef = useRef(null);
 
-  // ─────────────────────────────────────────────
-  // CLOSE DROPDOWNS ON OUTSIDE CLICK / ESC
-  // ─────────────────────────────────────────────
-
+  // Close dropdowns on outside click / ESC
   useEffect(() => {
     const fn = (e) => {
-      if (menuRef.current && !menuRef.current.contains(e.target)) {
-        setMenuOpen(false);
-      }
-      if (regionRef.current && !regionRef.current.contains(e.target)) {
-        setRegionOpen(false);
-      }
+      if (menuRef.current   && !menuRef.current.contains(e.target))   setMenuOpen(false);
+      if (regionRef.current && !regionRef.current.contains(e.target)) setRegionOpen(false);
     };
     document.addEventListener("mousedown", fn);
     return () => document.removeEventListener("mousedown", fn);
@@ -81,18 +84,13 @@ export default function Header({
 
   useEffect(() => {
     const fn = (e) => {
-      if (e.key === "Escape") {
-        setMenuOpen(false);
-        setRegionOpen(false);
-      }
+      if (e.key === "Escape") { setMenuOpen(false); setRegionOpen(false); }
     };
     document.addEventListener("keydown", fn);
     return () => document.removeEventListener("keydown", fn);
   }, []);
 
-  // ─────────────────────────────────────────────
-  // HELPERS
-  // ─────────────────────────────────────────────
+  // ── Helpers ───────────────────────────────
 
   const firstName = (() => {
     const n = userProfile?.name || user?.displayName || "";
@@ -109,17 +107,45 @@ export default function Header({
       : "border-paper-line bg-white text-ink-soft hover:border-navy-200 hover:text-navy-500";
 
   const saveLabel =
-    saveStatus === "saving"
-      ? t("saving")
-      : saveStatus === "saved"
-      ? t("saved")
-      : saveStatus === "error"
-      ? t("saveRetry")
-      : t("save");
+    saveStatus === "saving" ? t("saving")    :
+    saveStatus === "saved"  ? t("saved")     :
+    saveStatus === "error"  ? t("saveRetry") :
+    t("save");
 
-  // ─────────────────────────────────────────────
-  // RENDER
-  // ─────────────────────────────────────────────
+  /**
+   * Creates a gated action handler.
+   * If the user has the feature → run the real handler.
+   * If not → call onUpgradeNeeded with the reason string.
+   */
+  const gate = (featureKey, handler) => () => {
+    if (features[featureKey]) {
+      handler?.();
+    } else {
+      onUpgradeNeeded?.(UPGRADE_REASONS[featureKey] ?? "Upgrade your plan to unlock this feature.");
+    }
+  };
+
+  // ── Gated handlers (used in both desktop & mobile menus) ─────────────────
+
+  const handleLoad         = gate("canLoad",          onLoadOpen);
+  const handleExportPDF    = gate("canExportPDF",     onPreview);       // Preview triggers PDF export flow
+  const handleExportBvn    = gate("canExportBvntrip", onExportBvntrip);
+  const handleImport       = gate("canImportBvntrip", onImportOpen);
+  const handleDuplicate    = gate("canDuplicate",     onDuplicate);
+
+  // ── Shared props for both menus ───────────────────────────────────────────
+
+  const sharedMenuProps = {
+    region, onRegionChange,
+    isIDR, currency, currencyMode, onCurrencyModeChange,
+    rate, onRateChange, rateSource,
+    saveLabel, onSave, onPreview,
+    handleLoad, handleExportPDF, handleExportBvn, handleImport, handleDuplicate,
+    onRedeemOpen, onHelp, onReset, logout, t,
+    features, plan,
+  };
+
+  // ── Render ────────────────────────────────
 
   return (
     <header className="page-header sticky top-0 z-30 border-b border-paper-line bg-white">
@@ -140,46 +166,16 @@ export default function Header({
           )}
         </div>
 
-        {/* ══════════════════════════════════════════
-            MOBILE SECTION (hidden on sm+)
-            Complete menu in a single hamburger dropdown
-        ══════════════════════════════════════════ */}
+        {/* ══ MOBILE (hidden on sm+) ══ */}
         <div className="ml-auto flex items-center gap-2 sm:hidden">
-
           {plan && <PlanBadge plan={plan} onClick={onRedeemOpen} />}
-
-          {/* Mobile hamburger — uses its own local ref */}
-          <MobileMenu
-            region={region}
-            onRegionChange={onRegionChange}
-            isIDR={isIDR}
-            currency={currency}
-            currencyMode={currencyMode}
-            onCurrencyModeChange={onCurrencyModeChange}
-            rate={rate}
-            onRateChange={onRateChange}
-            rateSource={rateSource}
-            saveLabel={saveLabel}
-            onSave={onSave}
-            onPreview={onPreview}
-            onLoadOpen={onLoadOpen}
-            onRedeemOpen={onRedeemOpen}
-            onHelp={onHelp}
-            onReset={onReset}
-            onExportBvntrip={onExportBvntrip}
-            onImportOpen={onImportOpen}
-            onDuplicate={onDuplicate}
-            logout={logout}
-            t={t}
-          />
+          <MobileMenu {...sharedMenuProps} />
         </div>
 
-        {/* ══════════════════════════════════════════
-            DESKTOP SECTION (hidden below sm)
-        ══════════════════════════════════════════ */}
+        {/* ══ DESKTOP (hidden below sm) ══ */}
         <div className="hidden flex-1 items-center justify-end gap-1.5 sm:flex">
 
-          {/* Region */}
+          {/* Region picker */}
           <div ref={regionRef} className="relative">
             <button
               onClick={() => setRegionOpen((v) => !v)}
@@ -202,123 +198,110 @@ export default function Header({
             </button>
 
             {regionOpen && (
-              <div className="absolute left-0 top-[calc(100%+6px)] z-50 w-52 animate-fade-in rounded-2xl border border-paper-line bg-white py-1.5 shadow-[0_12px_40px_rgba(11,60,93,0.14)]">
-                {REGIONS.map((r) => (
-                  <button
-                    key={r.id}
-                    onClick={() => { onRegionChange?.(r.id); setRegionOpen(false); }}
-                    className={`flex w-full items-center gap-3 px-4 py-2.5 text-sm transition hover:bg-paper-dim ${
-                      region === r.id ? "bg-navy-50 font-semibold text-navy-600" : "text-ink-soft"
-                    }`}
-                  >
-                    <span className="text-base leading-none">{r.flag}</span>
-                    {r.id}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Totals */}
-          <div className="flex items-center gap-2 rounded-xl border border-paper-line bg-white px-2.5 py-1.5 shadow-soft">
-            <div>
-              <p className="text-[9px] font-semibold uppercase tracking-[0.08em] text-ink-muted leading-none">
-                {currency.code}
-              </p>
-              <p className="mt-0.5 font-mono text-sm font-semibold tabular-nums text-ink">
-                {formatCurrency(totalLocal, currency)}
-              </p>
-            </div>
-            {!isIDR && (
-              <>
-                <div className="h-5 w-px bg-paper-line" />
-                <div>
-                  <p className="text-[9px] font-bold uppercase tracking-[0.08em] text-navy-400 leading-none">IDR</p>
-                  <p className="mt-0.5 font-mono text-sm font-bold tabular-nums text-navy-500">
-                    {formatIDR(totalIDR)}
-                  </p>
+              <div className="absolute right-0 top-[calc(100%+8px)] z-50 w-56 overflow-hidden rounded-2xl border border-paper-line bg-white shadow-[0_12px_40px_rgba(11,60,93,0.14)]">
+                <div className="p-3 grid grid-cols-2 gap-1.5">
+                  {REGIONS.map((r) => (
+                    <button
+                      key={r.id}
+                      onClick={() => { onRegionChange?.(r.id); setRegionOpen(false); }}
+                      className={`rounded-xl border px-2 py-2 text-xs font-semibold transition ${
+                        region === r.id
+                          ? "border-navy-300 bg-navy-50 text-navy-600"
+                          : "border-paper-line bg-white text-ink-soft hover:bg-paper-dim"
+                      }`}
+                    >
+                      {r.flag} {r.id}
+                    </button>
+                  ))}
                 </div>
-              </>
+              </div>
             )}
           </div>
 
           {/* Language */}
           <LanguageSwitcher />
 
-          {/* Plan */}
+          {/* Plan badge */}
           {plan && <PlanBadge plan={plan} onClick={onRedeemOpen} />}
 
           {/* Save */}
-          <div className="relative">
-            <button
-              onClick={onSave}
-              disabled={saveStatus === "saving"}
-              className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold transition disabled:opacity-60 ${saveBtnCls}`}
-            >
-              💾 <span>{saveLabel}</span>
-            </button>
-            {hasUnsavedChanges && saveStatus === "idle" && (
-              <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-amber-400 ring-2 ring-white" />
-            )}
-          </div>
+          <button
+            onClick={onSave}
+            className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-semibold transition ${saveBtnCls}`}
+          >
+            {saveStatus === "saving"
+              ? <svg className="h-3 w-3 animate-spin" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+              : <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+            }
+            {saveLabel}
+          </button>
 
-          {/* ══════════════════════════════════════
-              DESKTOP MENU — BUG FIX:
-              Dropdown panel is now HERE inside
-              the desktop div, not hidden inside
-              the mobile sm:hidden section.
-          ══════════════════════════════════════ */}
+          {/* Preview */}
+          <button
+            onClick={onPreview}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-paper-line bg-white px-3 py-2 text-xs font-semibold text-ink-soft transition hover:border-navy-200 hover:text-navy-500"
+          >
+            <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+            {t("preview")}
+          </button>
+
+          {/* Currency rate (non-IDR only) */}
+          {!isIDR && (
+            <div className="flex items-center gap-1.5 rounded-xl border border-paper-line bg-paper-dim/60 px-3 py-2">
+              <div className="flex gap-0.5 rounded-md border border-paper-line bg-white p-0.5">
+                <button
+                  onClick={() => onCurrencyModeChange?.("local")}
+                  className={`rounded px-2 py-0.5 text-[10px] font-bold transition ${currencyMode === "local" ? "bg-navy-500 text-white" : "text-ink-muted"}`}
+                >
+                  {currency.code}
+                </button>
+                <button
+                  onClick={() => onCurrencyModeChange?.("idr")}
+                  className={`rounded px-2 py-0.5 text-[10px] font-bold transition ${currencyMode === "idr" ? "bg-navy-500 text-white" : "text-ink-muted"}`}
+                >
+                  IDR
+                </button>
+              </div>
+              <input
+                type="number" value={rate}
+                onChange={(e) => onRateChange(Number(e.target.value))}
+                className="w-20 rounded-lg border border-paper-line bg-white px-2 py-1 text-right font-mono text-xs font-semibold outline-none focus:border-accent-300"
+              />
+              <span className="text-[10px] text-ink-muted">IDR</span>
+              {rateSource === "live" && (
+                <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[9px] font-bold text-emerald-700">LIVE</span>
+              )}
+            </div>
+          )}
+
+          {/* ⋯ Desktop hamburger menu */}
           <div ref={menuRef} className="relative">
             <button
               onClick={() => setMenuOpen((v) => !v)}
-              className="inline-flex items-center gap-2 rounded-xl bg-navy-500 px-3 py-1.5 text-xs font-semibold text-white shadow transition hover:bg-navy-600"
+              className="inline-flex items-center justify-center rounded-xl bg-navy-500 p-2.5 text-white shadow transition hover:bg-navy-600"
             >
-              ☰ {t("menu")}
+              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor"
+                strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="3" y1="6" x2="21" y2="6" />
+                <line x1="3" y1="12" x2="21" y2="12" />
+                <line x1="3" y1="18" x2="21" y2="18" />
+              </svg>
             </button>
 
             {menuOpen && (
-              <div className="absolute right-0 top-[calc(100%+8px)] z-50 w-60 animate-fade-in overflow-hidden rounded-2xl border border-paper-line bg-white shadow-[0_12px_40px_rgba(11,60,93,0.14)]">
-
-                {/* Currency mode + rate */}
-                {!isIDR && (
-                  <div className="border-b border-paper-line bg-paper-dim/40 p-4">
-                    <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-muted">
-                      {t("currencyMode")}
-                    </p>
-                    <div className="mb-3 flex gap-1 rounded-lg border border-paper-line bg-white p-1 w-fit">
-                      <button
-                        onClick={() => onCurrencyModeChange?.("local")}
-                        className={`rounded-md px-3 py-1 text-[10px] font-bold transition ${currencyMode === "local" ? "bg-navy-500 text-white" : "text-ink-muted"}`}
-                      >
-                        {currency.code}
-                      </button>
-                      <button
-                        onClick={() => onCurrencyModeChange?.("idr")}
-                        className={`rounded-md px-3 py-1 text-[10px] font-bold transition ${currencyMode === "idr" ? "bg-navy-500 text-white" : "text-ink-muted"}`}
-                      >
-                        IDR
-                      </button>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] text-ink-muted">1 {currency.code} =</span>
-                      <input
-                        type="number"
-                        value={rate}
-                        onChange={(e) => onRateChange(Number(e.target.value))}
-                        className="w-20 rounded-lg border border-paper-line bg-white px-2 py-1 text-right font-mono text-xs font-semibold outline-none"
-                      />
-                      <span className="text-[10px] text-ink-muted">IDR</span>
-                      {rateSource === "live" && (
-                        <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[9px] font-bold text-emerald-700">LIVE</span>
-                      )}
-                    </div>
-                  </div>
-                )}
+              <div className="absolute right-0 top-[calc(100%+8px)] z-50 w-56 overflow-hidden rounded-2xl border border-paper-line bg-white shadow-[0_12px_40px_rgba(11,60,93,0.14)]">
 
                 {/* View & manage */}
                 <div className="py-1.5">
-                  <MI icon="👁"  label={t("preview")}    onClick={() => { onPreview?.();    setMenuOpen(false); }} />
-                  <MI icon="📂"  label={t("loadTrip")}   onClick={() => { onLoadOpen?.();   setMenuOpen(false); }} />
+                  <MI icon="👁"  label={t("preview")}  onClick={() => { onPreview?.();  setMenuOpen(false); }} />
+                  <MI icon="📂"  label={t("loadTrip")}
+                    locked={!features.canLoad}
+                    lockLabel="Lite+"
+                    onClick={() => { handleLoad(); setMenuOpen(false); }}
+                  />
                 </div>
 
                 {/* Export */}
@@ -326,8 +309,16 @@ export default function Header({
                   <p className="px-4 pt-1 pb-0.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-ink-muted">
                     Export
                   </p>
-                  <MI icon="📄"  label="Export PDF"       onClick={() => { onPreview?.();          setMenuOpen(false); }} />
-                  <MI icon="📦"  label="Export .bvntrip"  onClick={() => { onExportBvntrip?.();   setMenuOpen(false); }} />
+                  <MI icon="📄" label="Export PDF"
+                    locked={!features.canExportPDF}
+                    lockLabel="Pro"
+                    onClick={() => { handleExportPDF(); setMenuOpen(false); }}
+                  />
+                  <MI icon="📦" label="Export .bvntrip"
+                    locked={!features.canExportBvntrip}
+                    lockLabel="Pro"
+                    onClick={() => { handleExportBvn(); setMenuOpen(false); }}
+                  />
                 </div>
 
                 {/* Import & Clone */}
@@ -335,8 +326,16 @@ export default function Header({
                   <p className="px-4 pt-1 pb-0.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-ink-muted">
                     Import & Clone
                   </p>
-                  <MI icon="📥"  label="Import .bvntrip"       onClick={() => { onImportOpen?.();  setMenuOpen(false); }} />
-                  <MI icon="⧉"   label="Duplicate itinerary"   onClick={() => { onDuplicate?.();   setMenuOpen(false); }} />
+                  <MI icon="📥" label="Import .bvntrip"
+                    locked={!features.canImportBvntrip}
+                    lockLabel="Pro"
+                    onClick={() => { handleImport(); setMenuOpen(false); }}
+                  />
+                  <MI icon="⧉"  label="Duplicate itinerary"
+                    locked={!features.canDuplicate}
+                    lockLabel="Pro"
+                    onClick={() => { handleDuplicate(); setMenuOpen(false); }}
+                  />
                 </div>
 
                 {/* Tools */}
@@ -362,16 +361,15 @@ export default function Header({
 
 // ─────────────────────────────────────────────
 // MOBILE MENU — self-contained with own state
-// Separated so it has its own ref, independent
-// from the desktop menuRef
 // ─────────────────────────────────────────────
 
 function MobileMenu({
   region, onRegionChange, isIDR, currency, currencyMode, onCurrencyModeChange,
   rate, onRateChange, rateSource,
-  saveLabel, onSave, onPreview, onLoadOpen, onRedeemOpen, onHelp, onReset,
-  onExportBvntrip, onImportOpen, onDuplicate,
-  logout, t,
+  saveLabel, onSave, onPreview,
+  handleLoad, handleExportPDF, handleExportBvn, handleImport, handleDuplicate,
+  onRedeemOpen, onHelp, onReset,
+  logout, t, features, plan,
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
@@ -460,26 +458,51 @@ function MobileMenu({
             </div>
           )}
 
-          {/* Actions */}
+          {/* Core actions */}
           <div className="py-2">
-            <MI icon="💾"  label={saveLabel}         onClick={() => { onSave?.();    setOpen(false); }} />
-            <MI icon="👁"  label={t("preview")}      onClick={() => { onPreview?.(); setOpen(false); }} />
-            <MI icon="📂"  label={t("loadTrip")}     onClick={() => { onLoadOpen?.(); setOpen(false); }} />
+            <MI icon="💾" label={saveLabel}    onClick={() => { onSave?.();    setOpen(false); }} />
+            <MI icon="👁" label={t("preview")} onClick={() => { onPreview?.(); setOpen(false); }} />
+            <MI
+              icon="📂" label={t("loadTrip")}
+              locked={!features.canLoad}
+              lockLabel="Lite+"
+              onClick={() => { handleLoad(); setOpen(false); }}
+            />
           </div>
 
           {/* Export / Import */}
           <div className="border-t border-paper-line/60 py-2">
             <p className="px-4 pt-1 pb-0.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-ink-muted">Export / Import</p>
-            <MI icon="📄"  label="Export PDF"             onClick={() => { onPreview?.();        setOpen(false); }} />
-            <MI icon="📦"  label="Export .bvntrip"        onClick={() => { onExportBvntrip?.(); setOpen(false); }} />
-            <MI icon="📥"  label="Import .bvntrip"        onClick={() => { onImportOpen?.();    setOpen(false); }} />
-            <MI icon="⧉"   label="Duplicate itinerary"    onClick={() => { onDuplicate?.();     setOpen(false); }} />
+            <MI
+              icon="📄" label="Export PDF"
+              locked={!features.canExportPDF}
+              lockLabel="Pro"
+              onClick={() => { handleExportPDF(); setOpen(false); }}
+            />
+            <MI
+              icon="📦" label="Export .bvntrip"
+              locked={!features.canExportBvntrip}
+              lockLabel="Pro"
+              onClick={() => { handleExportBvn(); setOpen(false); }}
+            />
+            <MI
+              icon="📥" label="Import .bvntrip"
+              locked={!features.canImportBvntrip}
+              lockLabel="Pro"
+              onClick={() => { handleImport(); setOpen(false); }}
+            />
+            <MI
+              icon="⧉" label="Duplicate itinerary"
+              locked={!features.canDuplicate}
+              lockLabel="Pro"
+              onClick={() => { handleDuplicate(); setOpen(false); }}
+            />
           </div>
 
           <div className="border-t border-paper-line/60 py-2">
-            <MI icon="🎟️" label={t("redeemCode")}   onClick={() => { onRedeemOpen?.(); setOpen(false); }} />
-            <MI icon="❓"  label={t("help")}         onClick={() => { onHelp?.();       setOpen(false); }} />
-            <MI icon="↺"   label={t("reset")}        onClick={() => { onReset?.();      setOpen(false); }} />
+            <MI icon="🎟️" label={t("redeemCode")} onClick={() => { onRedeemOpen?.(); setOpen(false); }} />
+            <MI icon="❓"  label={t("help")}       onClick={() => { onHelp?.();       setOpen(false); }} />
+            <MI icon="↺"   label={t("reset")}      onClick={() => { onReset?.();      setOpen(false); }} />
           </div>
 
           <div className="border-t border-paper-line py-2">
@@ -492,20 +515,39 @@ function MobileMenu({
 }
 
 // ─────────────────────────────────────────────
-// MENU ITEM
+// MENU ITEM — supports locked state
 // ─────────────────────────────────────────────
 
-function MI({ icon, label, onClick, danger }) {
+/**
+ * @param {string}  icon
+ * @param {string}  label
+ * @param {fn}      onClick
+ * @param {boolean} danger     — red text
+ * @param {boolean} locked     — shows 🔒 badge + muted style
+ * @param {string}  lockLabel  — badge text shown when locked, e.g. "Pro"
+ */
+function MI({ icon, label, onClick, danger, locked, lockLabel }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`flex w-full items-center gap-3 px-4 py-3 text-sm transition hover:bg-paper-dim ${
-        danger ? "font-semibold text-red-500 hover:bg-red-50" : "text-ink-soft"
+      className={`flex w-full items-center gap-3 px-4 py-3 text-sm transition ${
+        danger
+          ? "font-semibold text-red-500 hover:bg-red-50"
+          : locked
+          ? "text-ink-muted/60 hover:bg-paper-dim"
+          : "text-ink-soft hover:bg-paper-dim"
       }`}
     >
-      <span className="w-5 text-center text-base leading-none">{icon}</span>
-      {label}
+      <span className="w-5 text-center text-base leading-none">
+        {locked ? "🔒" : icon}
+      </span>
+      <span className={locked ? "line-through decoration-ink-muted/40" : ""}>{label}</span>
+      {locked && lockLabel && (
+        <span className="ml-auto rounded-full bg-violet-100 px-2 py-0.5 text-[9px] font-bold text-violet-600">
+          {lockLabel}
+        </span>
+      )}
     </button>
   );
 }

@@ -1,21 +1,5 @@
 "use client";
 
-/**
- * dashboard/page.jsx — patch: adds .bvntrip export/import/duplicate
- *
- * Changes from previous version:
- * 1. Import { exportBvntrip, generateFilename } from @/lib/itinerary-file
- * 2. Import ImportModal component
- * 3. Add importOpen state
- * 4. Add handleExportBvntrip() — one function, 3 lines
- * 5. Add handleImport(data) — replaces state from parsed file
- * 6. Add handleDuplicate() — clones current state with "(Copy)" suffix
- * 7. Pass onExportBvntrip, onImportOpen, onDuplicate to Header
- * 8. Render <ImportModal />
- *
- * Everything else is unchanged.
- */
-
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -23,7 +7,7 @@ import Header         from "@/components/Header";
 import HelpModal      from "@/components/HelpModal";
 import PreviewModal   from "@/components/PreviewModal";
 import ProjectsModal  from "@/components/ProjectsModal";
-import ImportModal    from "@/components/ImportModal";   // ← NEW
+import ImportModal    from "@/components/ImportModal";
 import SetupScreen    from "@/components/SetupScreen";
 import TripInfoPanel  from "@/components/TripInfoPanel";
 import ItineraryTable from "@/components/ItineraryTable";
@@ -40,7 +24,7 @@ import { usePlan }                        from "@/hooks/usePlan";
 import { saveProject, countUserTrips }    from "@/lib/firestore";
 import { fetchRateToIDR, invalidateRate } from "@/lib/exchangeRates";
 import { DEFAULT_RATE, generateId, getCurrency } from "@/lib/utils";
-import { exportBvntrip, generateFilename } from "@/lib/itinerary-file";  // ← NEW
+import { exportBvntrip }                  from "@/lib/itinerary-file";
 
 const STORAGE_KEY = "backpackervun-v9";
 const BLANK_TRIP  = { clientName:"", duration:"", destinations:"", travelDates:"", startDate:"", endDate:"" };
@@ -78,7 +62,7 @@ export default function DashboardPage() {
   const [hydrated, setHydrated]         = useState(false);
   const [view, setView]                 = useState("setup");
   const [previewOpen, setPreviewOpen]   = useState(false);
-  const [importOpen, setImportOpen]     = useState(false);          // ← NEW
+  const [importOpen, setImportOpen]     = useState(false);
   const [rows, setRows]                 = useState([]);
   const [tripInfo, setTripInfo]         = useState(BLANK_TRIP);
   const [rate, setRate]                 = useState(DEFAULT_RATE);
@@ -100,9 +84,21 @@ export default function DashboardPage() {
   const ratesFetched  = useRef(false);
   const initialChange = useRef(true);
 
+  // ── Auth guard ────────────────────────────────────────────────────────────
+
   useEffect(() => {
     if (!authLoading && !user) router.replace("/login");
   }, [authLoading, user, router]);
+
+  // ── Upgrade modal helper — single function used everywhere ────────────────
+  // ✅ ADDED: central handler so Header, PreviewModal, etc. can show UpgradeModal
+
+  const handleUpgradeNeeded = (reason) => {
+    setUpgradeReason(reason ?? "Upgrade your plan to unlock this feature.");
+    setUpgradeOpen(true);
+  };
+
+  // ── Exchange rate ─────────────────────────────────────────────────────────
 
   const applyLiveRate = useCallback(async (regionId) => {
     if (!regionId) return;
@@ -119,17 +115,19 @@ export default function DashboardPage() {
     } catch { setRateSource("error"); }
   }, []);
 
+  // ── LocalStorage hydration ────────────────────────────────────────────────
+
   useEffect(() => {
     try {
       const raw = window.localStorage.getItem(STORAGE_KEY);
       if (raw) {
         const p = JSON.parse(raw);
         const r = typeof p.rate === "number" && p.rate > 0 ? p.rate : DEFAULT_RATE;
-        if (Array.isArray(p.rows))   setRows(p.rows.map(row => normalizeRow(row, r)));
-        if (p.tripInfo)              setTripInfo({ ...BLANK_TRIP, ...p.tripInfo });
-        if (typeof p.region === "string") setRegion(p.region === "Korea" ? "South Korea" : p.region);
-        if (p.currencyMode) setCurrencyMode(p.currencyMode);
-        if (p.projectId)    setProjectId(p.projectId);
+        if (Array.isArray(p.rows))            setRows(p.rows.map(row => normalizeRow(row, r)));
+        if (p.tripInfo)                       setTripInfo({ ...BLANK_TRIP, ...p.tripInfo });
+        if (typeof p.region === "string")     setRegion(p.region === "Korea" ? "South Korea" : p.region);
+        if (p.currencyMode)                   setCurrencyMode(p.currencyMode);
+        if (p.projectId)                      setProjectId(p.projectId);
         setRate(r);
         if (p.view === "planner" || p.setupComplete === true) setView("planner");
       }
@@ -158,10 +156,14 @@ export default function DashboardPage() {
     setHasUnsaved(true);
   }, [rows, tripInfo, rate, region]); // eslint-disable-line
 
-  const totalIDR   = useMemo(() => rows.reduce((s,r) => s+(Number(r.budgetIDR)||0), 0), [rows]);
+  // ── Derived values ────────────────────────────────────────────────────────
+
+  const totalIDR   = useMemo(() => rows.reduce((s,r) => s+(Number(r.budgetIDR)||0),   0), [rows]);
   const totalLocal = useMemo(() => rows.reduce((s,r) => s+(Number(r.budgetLocal)||0), 0), [rows]);
   const dayMap     = useMemo(() => buildDayMap(rows), [rows]);
   const currency   = useMemo(() => getCurrency(region), [region]);
+
+  // ── Row operations ────────────────────────────────────────────────────────
 
   const updateRow = (id, field, value) => {
     setRows(prev => prev.map(r => {
@@ -185,6 +187,7 @@ export default function DashboardPage() {
 
   const addRow    = () => setRows(prev => [...prev, blankRow(prev[prev.length-1])]);
   const deleteRow = (id) => setRows(prev => prev.filter(r => r.id !== id));
+
   const insertAt  = (refId, pos) => {
     setRows(prev => {
       const i = prev.findIndex(r => r.id === refId);
@@ -193,6 +196,7 @@ export default function DashboardPage() {
       return n;
     });
   };
+
   const moveRow = (id, dir) => {
     setRows(prev => {
       const i = prev.findIndex(r => r.id === id);
@@ -202,23 +206,22 @@ export default function DashboardPage() {
     });
   };
 
-  // ══════════════════════════════════════════════════════════════════════════
-  // ✅ NEW: Export .bvntrip
-  // ══════════════════════════════════════════════════════════════════════════
+  // ── Export .bvntrip ───────────────────────────────────────────────────────
+  // Note: plan gating is handled inside Header.jsx via gate("canExportBvntrip")
+
   const handleExportBvntrip = () => {
     exportBvntrip({ tripInfo, rows, region, rate });
   };
 
-  // ══════════════════════════════════════════════════════════════════════════
-  // ✅ NEW: Import .bvntrip
-  // ══════════════════════════════════════════════════════════════════════════
+  // ── Import .bvntrip ───────────────────────────────────────────────────────
+
   const handleImport = (data) => {
     const lr = data.rate ?? DEFAULT_RATE;
     setRows((data.rows ?? []).map(r => normalizeRow(r, lr)));
     setTripInfo({ ...BLANK_TRIP, ...(data.tripInfo ?? {}) });
     setRate(lr); setRateSource("manual");
     setRegion(data.region ?? null);
-    setProjectId(null);             // imported file is a new project
+    setProjectId(null);
     setView("planner");
     setHasUnsaved(true);
     ratesFetched.current  = false;
@@ -229,12 +232,10 @@ export default function DashboardPage() {
     }
   };
 
-  // ══════════════════════════════════════════════════════════════════════════
-  // ✅ NEW: Duplicate / Clone current itinerary
-  // ══════════════════════════════════════════════════════════════════════════
+  // ── Duplicate itinerary ───────────────────────────────────────────────────
+
   const handleDuplicate = () => {
     if (!window.confirm("Duplicate current itinerary? A copy will be created as a new unsaved project.")) return;
-    // Give every row a fresh ID so the clone is fully independent
     const clonedRows = rows.map(r => ({ ...r, id: generateId() }));
     const clonedTrip = {
       ...tripInfo,
@@ -242,10 +243,12 @@ export default function DashboardPage() {
     };
     setRows(clonedRows);
     setTripInfo(clonedTrip);
-    setProjectId(null);    // treat as new unsaved project
+    setProjectId(null);
     setHasUnsaved(true);
     initialChange.current = true;
   };
+
+  // ── Reset ─────────────────────────────────────────────────────────────────
 
   const handleReset = () => {
     if (!window.confirm(t("resetConfirm"))) return;
@@ -253,6 +256,8 @@ export default function DashboardPage() {
     setRegion(null); setView("setup"); setProjectId(null); setHasUnsaved(false);
     ratesFetched.current=false; initialChange.current=true;
   };
+
+  // ── Region change ─────────────────────────────────────────────────────────
 
   const handleRegionChange = (r) => {
     setRegion(r); invalidateRate(getCurrency(r).code); ratesFetched.current=false;
@@ -262,13 +267,15 @@ export default function DashboardPage() {
     } else { applyLiveRate(r); }
   };
 
+  // ── Save ──────────────────────────────────────────────────────────────────
+
   const handleSave = async () => {
     if (!user) return;
-    if (!canSave) { setUpgradeReason(t("lockedBody")); setUpgradeOpen(true); return; }
+    if (!canSave) { handleUpgradeNeeded(t("lockedBody")); return; }
     try {
       const count = projectId ? 0 : await countUserTrips(user.uid);
       const { allowed, reason } = checkTrip(count);
-      if (!allowed) { setUpgradeReason(reason); setUpgradeOpen(true); return; }
+      if (!allowed) { handleUpgradeNeeded(reason); return; }
     } catch { /* proceed */ }
     setSaveStatus("saving");
     try {
@@ -283,6 +290,8 @@ export default function DashboardPage() {
     }
   };
 
+  // ── Load project ──────────────────────────────────────────────────────────
+
   const handleLoadProject = (p) => {
     const lr = p.rate ?? DEFAULT_RATE;
     setRows((p.rows??[]).map(r => normalizeRow(r, lr)));
@@ -294,12 +303,15 @@ export default function DashboardPage() {
     if (p.region) { invalidateRate(getCurrency(p.region).code); applyLiveRate(p.region); }
   };
 
+  // ── Preview ───────────────────────────────────────────────────────────────
+
   const handlePreview = () => {
-    if (isLocked) { setUpgradeReason(t("lockedBody")); setUpgradeOpen(true); return; }
+    if (isLocked) { handleUpgradeNeeded(t("lockedBody")); return; }
     setPreviewOpen(true);
   };
 
-  // ── Loading ────────────────────────────────────────────────────────────────
+  // ── Loading state ─────────────────────────────────────────────────────────
+
   if (authLoading || !hydrated) {
     return (
       <div className="min-h-screen paper-bg flex items-center justify-center">
@@ -311,7 +323,8 @@ export default function DashboardPage() {
     );
   }
 
-  // ── SETUP VIEW ─────────────────────────────────────────────────────────────
+  // ── SETUP VIEW ────────────────────────────────────────────────────────────
+
   if (view === "setup") {
     return (
       <div className="paper-bg min-h-screen flex flex-col">
@@ -369,14 +382,16 @@ export default function DashboardPage() {
         </div>
 
         <HelpModal   open={helpOpen}   initialTab={helpTab} onClose={() => setHelpOpen(false)} />
-        <RedeemModal open={redeemOpen} onClose={() => setRedeemOpen(false)} onSuccess={() => refreshPlan()} />
+        <RedeemModal open={redeemOpen} onClose={() => setRedeemOpen(false)} onSuccess={refreshPlan} />
       </div>
     );
   }
 
-  // ── PLANNER VIEW ───────────────────────────────────────────────────────────
+  // ── PLANNER VIEW ──────────────────────────────────────────────────────────
+
   return (
     <div className="paper-bg min-h-screen flex flex-col">
+
       <Header
         rate={rate}              onRateChange={handleRateChange}
         onReset={handleReset}    onPreview={handlePreview}
@@ -390,10 +405,10 @@ export default function DashboardPage() {
         plan={plan}
         currencyMode={currencyMode}
         onCurrencyModeChange={setCurrencyMode}
-        /* ✅ NEW props */
         onExportBvntrip={handleExportBvntrip}
         onImportOpen={() => setImportOpen(true)}
         onDuplicate={handleDuplicate}
+        onUpgradeNeeded={handleUpgradeNeeded}
       />
 
       <main className="flex-1 mx-auto w-full max-w-[1600px] px-4 py-6 sm:px-5 lg:py-8">
@@ -445,62 +460,61 @@ export default function DashboardPage() {
       </div>
       <Footer />
 
-{/* ── Modals ── */}
+      {/* ── Modals ─────────────────────────────────────────────────────────── */}
 
-<PreviewModal
-  open={previewOpen}
-  onClose={() => setPreviewOpen(false)}
-  tripInfo={tripInfo}
-  rows={rows}
-  dayMap={dayMap}
-  region={region}
-  rate={rate}
-  totalLocal={totalLocal}
-  totalIDR={totalIDR}
-  canExportPDF={canExportPDF}
-  onUpgradeNeeded={(reason) => {
-    setPreviewOpen(false);
-    setUpgradeReason(reason);
-    setUpgradeOpen(true);
-  }}
-/>
+      <PreviewModal
+        open={previewOpen}
+        onClose={() => setPreviewOpen(false)}
+        tripInfo={tripInfo}
+        rows={rows}
+        dayMap={dayMap}
+        region={region}
+        rate={rate}
+        totalLocal={totalLocal}
+        totalIDR={totalIDR}
+        canExportPDF={canExportPDF}
+        onUpgradeNeeded={(reason) => {
+          setPreviewOpen(false);
+          handleUpgradeNeeded(reason);
+        }}
+      />
 
-{/* ── Import Modal ── */}
-<ImportModal
-  open={importOpen}
-  onClose={() => setImportOpen(false)}
-  onImport={handleImport}
-/>
+      <ImportModal
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        onImport={handleImport}
+      />
 
-<HelpModal
-  open={helpOpen}
-  initialTab={helpTab}
-  onClose={() => setHelpOpen(false)}
-/>
+      <HelpModal
+        open={helpOpen}
+        initialTab={helpTab}
+        onClose={() => setHelpOpen(false)}
+      />
 
-<ProjectsModal
-  open={projectsOpen}
-  userId={user?.uid}
-  onClose={() => setProjectsOpen(false)}
-  onLoad={handleLoadProject}
-/>
+      <ProjectsModal
+        open={projectsOpen}
+        userId={user?.uid}
+        onClose={() => setProjectsOpen(false)}
+        onLoad={handleLoadProject}
+      />
 
-<RedeemModal
-  open={redeemOpen}
-  onClose={() => setRedeemOpen(false)}
-  onSuccess={() => refreshPlan()}
-/>
+      <RedeemModal
+        open={redeemOpen}
+        onClose={() => setRedeemOpen(false)}
+        onSuccess={refreshPlan}
+      />
 
-<UpgradeModal
-  open={upgradeOpen}
-  onClose={() => setUpgradeOpen(false)}
-  reason={upgradeReason}
-/>
+      <UpgradeModal
+        open={upgradeOpen}
+        onClose={() => setUpgradeOpen(false)}
+        reason={upgradeReason}
+      />
 
-<ContactModal
-  open={contactOpen}
-  onClose={() => setContactOpen(false)}
-/>
+      <ContactModal
+        open={contactOpen}
+        onClose={() => setContactOpen(false)}
+      />
+
     </div>
   );
 }
