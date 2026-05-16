@@ -128,10 +128,9 @@ export default function Header({
   // ── Gated handlers (used in both desktop & mobile menus) ─────────────────
 
   const handleLoad         = gate("canLoad",          onLoadOpen);
-  const handleExportPDF    = gate("canExportPDF",     onPreview);       // Preview triggers PDF export flow
+  const handleExportPDF    = gate("canExportPDF",     onPreview);
   const handleExportBvn    = gate("canExportBvntrip", onExportBvntrip);
   const handleImport       = gate("canImportBvntrip", onImportOpen);
-  const handleDuplicate    = gate("canDuplicate",     onDuplicate);
 
   // ── Shared props for both menus ───────────────────────────────────────────
 
@@ -140,7 +139,7 @@ export default function Header({
     isIDR, currency, currencyMode, onCurrencyModeChange,
     rate, onRateChange, rateSource,
     saveLabel, onSave, onPreview,
-    handleLoad, handleExportPDF, handleExportBvn, handleImport, handleDuplicate,
+    handleLoad, handleExportPDF, handleExportBvn, handleImport,
     onRedeemOpen, onHelp, onReset, logout, t,
     features, plan,
   };
@@ -236,18 +235,6 @@ export default function Header({
             {saveLabel}
           </button>
 
-          {/* Preview */}
-          <button
-            onClick={onPreview}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-paper-line bg-white px-3 py-2 text-xs font-semibold text-ink-soft transition hover:border-navy-200 hover:text-navy-500"
-          >
-            <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-              <circle cx="12" cy="12" r="3"/>
-            </svg>
-            {t("preview")}
-          </button>
-
           {/* Currency rate (non-IDR only) */}
           {!isIDR && (
             <div className="flex items-center gap-1.5 rounded-xl border border-paper-line bg-paper-dim/60 px-3 py-2">
@@ -324,17 +311,12 @@ export default function Header({
                 {/* Import & Clone */}
                 <div className="border-t border-paper-line/60 py-1.5">
                   <p className="px-4 pt-1 pb-0.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-ink-muted">
-                    Import & Clone
+                    Import
                   </p>
                   <MI icon="📥" label="Import .bvntrip"
                     locked={!features.canImportBvntrip}
                     lockLabel="Pro"
                     onClick={() => { handleImport(); setMenuOpen(false); }}
-                  />
-                  <MI icon="⧉"  label="Duplicate itinerary"
-                    locked={!features.canDuplicate}
-                    lockLabel="Pro"
-                    onClick={() => { handleDuplicate(); setMenuOpen(false); }}
                   />
                 </div>
 
@@ -367,7 +349,7 @@ function MobileMenu({
   region, onRegionChange, isIDR, currency, currencyMode, onCurrencyModeChange,
   rate, onRateChange, rateSource,
   saveLabel, onSave, onPreview,
-  handleLoad, handleExportPDF, handleExportBvn, handleImport, handleDuplicate,
+  handleLoad, handleExportPDF, handleExportBvn, handleImport,
   onRedeemOpen, onHelp, onReset,
   logout, t, features, plan,
 }) {
@@ -490,12 +472,6 @@ function MobileMenu({
               locked={!features.canImportBvntrip}
               lockLabel="Pro"
               onClick={() => { handleImport(); setOpen(false); }}
-            />
-            <MI
-              icon="⧉" label="Duplicate itinerary"
-              locked={!features.canDuplicate}
-              lockLabel="Pro"
-              onClick={() => { handleDuplicate(); setOpen(false); }}
             />
           </div>
 

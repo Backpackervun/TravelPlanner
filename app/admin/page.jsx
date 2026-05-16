@@ -1,23 +1,10 @@
 "use client";
 
-/**
- * app/admin/page.jsx — Admin Panel v2
- *
- * NEW features (additive, no existing logic changed):
- * 1. Summary stats cards — Total users, Free, Lite, Pro, Expired
- * 2. Full user data — name, email, phone, dreamDestination, plan, planStatus, expiresAt, createdAt, tripCount
- * 3. Search — filter by name, email, phone, dreamDestination
- * 4. Expandable row — click a user to see full details + dream destination
- * 5. Trip count per user — reads from trips/{uid} subcollection count
- * 6. CSV export — download all user data as CSV
- * 7. Sort by column — name, plan, expires, trips
- * 8. Plan status badge — Active / Expired / Free / —
- */
-
 import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
-  collection, getDocs, doc, updateDoc, setDoc, query, where, getCountFromServer,
+  collection, getDocs, doc, updateDoc, setDoc, deleteDoc,
+  query, where, getCountFromServer,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/context/AuthProvider";
@@ -33,7 +20,8 @@ function fmtDate(ts) {
 }
 
 function isPlanActive(u) {
-  if (!u.plan || u.plan === "free") return null; // free has no expiry
+  const plan = (u.plan || "").toLowerCase();
+  if (!plan || plan === "free") return null;
   if (!u.expiresAt) return null;
   try {
     const exp = u.expiresAt?.toDate ? u.expiresAt.toDate() : new Date(u.expiresAt);
@@ -42,11 +30,21 @@ function isPlanActive(u) {
 }
 
 function PlanBadge({ user }) {
-  const { plan, planStatus } = user;
-  if (!plan || plan === "free") return <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold text-gray-600">Free</span>;
+  const plan = (user.plan || "").toLowerCase();
+  if (!plan || plan === "free") return (
+    <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold text-gray-600">Free</span>
+  );
   const active = isPlanActive(user);
-  if (plan === "pro") return <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold ${active !== false ? "bg-violet-100 text-violet-700" : "bg-red-100 text-red-600"}`}>PRO {active === false ? "⚠" : "✓"}</span>;
-  return <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold ${active !== false ? "bg-blue-100 text-blue-700" : "bg-red-100 text-red-600"}`}>Lite {active === false ? "⚠" : "✓"}</span>;
+  if (plan === "pro") return (
+    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold ${active !== false ? "bg-violet-100 text-violet-700" : "bg-red-100 text-red-600"}`}>
+      PRO {active === false ? "⚠" : "✓"}
+    </span>
+  );
+  return (
+    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold ${active !== false ? "bg-blue-100 text-blue-700" : "bg-red-100 text-red-600"}`}>
+      Lite {active === false ? "⚠" : "✓"}
+    </span>
+  );
 }
 
 // ── main ──────────────────────────────────────────────────────────────────────
@@ -55,17 +53,17 @@ export default function AdminPage() {
   const { user, userProfile, loading: authLoading } = useAuth();
   const router = useRouter();
 
-  const [tab, setTab]         = useState("users");
-  const [users, setUsers]     = useState([]);
-  const [codes, setCodes]     = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch]   = useState("");
-  const [sortBy, setSortBy]   = useState("name");
-  const [sortDir, setSortDir] = useState("asc");
+  const [tab, setTab]           = useState("users");
+  const [users, setUsers]       = useState([]);
+  const [codes, setCodes]       = useState([]);
+  const [loading, setLoading]   = useState(true);
+  const [search, setSearch]     = useState("");
+  const [sortBy, setSortBy]     = useState("name");
+  const [sortDir, setSortDir]   = useState("asc");
   const [expanded, setExpanded] = useState(null);
   const [actionLoading, setActionLoading] = useState(null);
 
-  // ── Generate codes state ───────────────────────────────────────────────────
+  // Generate codes state
   const [genPlan,    setGenPlan]    = useState("lite");
   const [genDays,    setGenDays]    = useState(30);
   const [genQty,     setGenQty]     = useState(1);
@@ -88,11 +86,9 @@ export default function AdminPage() {
   async function loadAll() {
     setLoading(true);
     try {
-      // Load all users
       const snap = await getDocs(collection(db, "users"));
       const rawUsers = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-      // Load trip counts for each user in parallel
       const usersWithCounts = await Promise.all(
         rawUsers.map(async (u) => {
           try {
@@ -108,7 +104,6 @@ export default function AdminPage() {
 
       setUsers(usersWithCounts);
 
-      // Load redeem codes
       const codeSnap = await getDocs(collection(db, "redeemCodes"));
       setCodes(codeSnap.docs.map(d => ({ id: d.id, ...d.data() })));
     } catch (e) {
@@ -126,7 +121,7 @@ export default function AdminPage() {
       const expiresAt = new Date();
       expiresAt.setDate(expiresAt.getDate() + days);
       await updateDoc(doc(db, "users", userId), {
-        plan,
+        plan:       plan.toUpperCase(), // ✅ store uppercase for consistency
         planStatus: "active",
         expiresAt,
       });
@@ -142,6 +137,56 @@ export default function AdminPage() {
     }
   }
 
+  // ── ✅ NEW: Set user to FREE ───────────────────────────────────────────────
+  async function handleSetFree(userId, name) {
+    if (actionLoading) return;
+    if (!window.confirm(`Set ${name} back to FREE plan? This removes their Lite/Pro access.`)) return;
+    setActionLoading(userId + "free");
+    try {
+      await updateDoc(doc(db, "users", userId), {
+        plan:       "FREE",
+        planStatus: "free",
+        expiresAt:  null,
+      });
+      setUsers(prev => prev.map(u => u.id === userId
+        ? { ...u, plan: "free", planStatus: "free", expiresAt: null }
+        : u
+      ));
+    } catch (e) {
+      console.error("[admin] setFree error", e);
+      alert("Failed to set plan to Free.");
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
+  // ── ✅ NEW: Delete user ────────────────────────────────────────────────────
+  async function handleDeleteUser(userId, name) {
+    if (actionLoading) return;
+    if (!window.confirm(`Delete ${name}? This removes all their trips and Firestore profile.\n\nNote: Firebase Auth account must be deleted separately from Firebase Console.`)) return;
+    if (!window.confirm(`⚠️ FINAL WARNING: Are you sure? This cannot be undone.`)) return;
+    setActionLoading(userId + "delete");
+    try {
+      // Delete all trips belonging to this user
+      const tripsSnap = await getDocs(
+        query(collection(db, "trips"), where("userId", "==", userId))
+      );
+      await Promise.all(tripsSnap.docs.map(d => deleteDoc(d.ref)));
+
+      // Delete user document
+      await deleteDoc(doc(db, "users", userId));
+
+      // Remove from local state
+      setUsers(prev => prev.filter(u => u.id !== userId));
+      if (expanded === userId) setExpanded(null);
+    } catch (e) {
+      console.error("[admin] deleteUser error", e);
+      alert("Failed to delete user: " + e.message);
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
   // ── Generate redeem codes ──────────────────────────────────────────────────
   async function generateCodes() {
     if (genLoading || genQty < 1 || genQty > 50) return;
@@ -150,7 +195,6 @@ export default function AdminPage() {
     const newCodes = [];
     try {
       for (let i = 0; i < genQty; i++) {
-        // Format: BE-XXXXXXXX (8 random uppercase chars)
         const rand = Math.random().toString(36).slice(2,6).toUpperCase() +
                      Math.random().toString(36).slice(2,6).toUpperCase();
         const code = `BE-${rand}`;
@@ -168,7 +212,6 @@ export default function AdminPage() {
         newCodes.push(codeDoc);
       }
       setGenResults(newCodes);
-      // Refresh codes list
       setCodes(prev => [...newCodes, ...prev]);
     } catch (e) {
       console.error("[admin] generateCodes error", e);
@@ -225,8 +268,8 @@ export default function AdminPage() {
     list.sort((a, b) => {
       let va, vb;
       if (sortBy === "name")    { va = (a.name||"").toLowerCase(); vb = (b.name||"").toLowerCase(); }
-      else if (sortBy === "plan")  { va = a.plan||"free"; vb = b.plan||"free"; }
-      else if (sortBy === "trips") { va = a.tripCount??0; vb = b.tripCount??0; }
+      else if (sortBy === "plan")   { va = a.plan||"free"; vb = b.plan||"free"; }
+      else if (sortBy === "trips")  { va = a.tripCount??0; vb = b.tripCount??0; }
       else if (sortBy === "joined") {
         try { va = a.createdAt?.toDate?.() ?? new Date(a.createdAt ?? 0); } catch { va = new Date(0); }
         try { vb = b.createdAt?.toDate?.() ?? new Date(b.createdAt ?? 0); } catch { vb = new Date(0); }
@@ -245,10 +288,10 @@ export default function AdminPage() {
   // ── Stats ──────────────────────────────────────────────────────────────────
   const stats = useMemo(() => {
     const total = users.length;
-    const free  = users.filter(u => !u.plan || u.plan === "free").length;
-    const lite  = users.filter(u => u.plan === "lite" && isPlanActive(u) !== false).length;
-    const pro   = users.filter(u => u.plan === "pro"  && isPlanActive(u) !== false).length;
-    const exp   = users.filter(u => u.plan && u.plan !== "free" && isPlanActive(u) === false).length;
+    const free  = users.filter(u => !u.plan || (u.plan||"").toLowerCase() === "free").length;
+    const lite  = users.filter(u => (u.plan||"").toLowerCase() === "lite" && isPlanActive(u) !== false).length;
+    const pro   = users.filter(u => (u.plan||"").toLowerCase() === "pro"  && isPlanActive(u) !== false).length;
+    const exp   = users.filter(u => u.plan && (u.plan||"").toLowerCase() !== "free" && isPlanActive(u) === false).length;
     const trips = users.reduce((s, u) => s + (u.tripCount ?? 0), 0);
     return { total, free, lite, pro, exp, trips };
   }, [users]);
@@ -257,11 +300,13 @@ export default function AdminPage() {
     if (sortBy === col) setSortDir(d => d === "asc" ? "desc" : "asc");
     else { setSortBy(col); setSortDir("asc"); }
   };
-  const SortIcon = ({ col }) => sortBy !== col ? <span className="opacity-20">↕</span> : sortDir === "asc" ? <span>↑</span> : <span>↓</span>;
+  const SortIcon = ({ col }) => sortBy !== col
+    ? <span className="opacity-20">↕</span>
+    : sortDir === "asc" ? <span>↑</span> : <span>↓</span>;
 
-  // ── Redeem codes tab ───────────────────────────────────────────────────────
   const activeCodesCount = codes.filter(c => c.active && !c.used).length;
 
+  // ── Loading ────────────────────────────────────────────────────────────────
   if (authLoading || loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -303,12 +348,12 @@ export default function AdminPage() {
         {/* ── STATS CARDS ── */}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6 mb-6">
           {[
-            { label:"Total Users",   val: stats.total,  color:"text-[#0B3C5D]", bg:"bg-blue-50" },
-            { label:"Free",          val: stats.free,   color:"text-gray-600",  bg:"bg-gray-50" },
-            { label:"Lite Active",   val: stats.lite,   color:"text-blue-700",  bg:"bg-blue-50" },
-            { label:"Pro Active",    val: stats.pro,    color:"text-violet-700",bg:"bg-violet-50" },
-            { label:"Expired",       val: stats.exp,    color:"text-red-600",   bg:"bg-red-50" },
-            { label:"Total Trips",   val: stats.trips,  color:"text-emerald-700",bg:"bg-emerald-50" },
+            { label:"Total Users",  val: stats.total, color:"text-[#0B3C5D]",   bg:"bg-blue-50" },
+            { label:"Free",         val: stats.free,  color:"text-gray-600",    bg:"bg-gray-50" },
+            { label:"Lite Active",  val: stats.lite,  color:"text-blue-700",    bg:"bg-blue-50" },
+            { label:"Pro Active",   val: stats.pro,   color:"text-violet-700",  bg:"bg-violet-50" },
+            { label:"Expired",      val: stats.exp,   color:"text-red-600",     bg:"bg-red-50" },
+            { label:"Total Trips",  val: stats.trips, color:"text-emerald-700", bg:"bg-emerald-50" },
           ].map(({ label, val, color, bg }) => (
             <div key={label} className={`rounded-xl border border-white/60 ${bg} p-4 shadow-sm`}>
               <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-gray-400">{label}</p>
@@ -320,8 +365,8 @@ export default function AdminPage() {
         {/* ── TABS ── */}
         <div className="flex gap-1 border-b border-gray-200 mb-4">
           {[
-            { id:"users",  label:`👥 Users (${users.length})` },
-            { id:"codes",  label:`🎟️ Redeem Codes (${activeCodesCount} active)` },
+            { id:"users",    label:`👥 Users (${users.length})` },
+            { id:"codes",    label:`🎟️ Redeem Codes (${activeCodesCount} active)` },
             { id:"generate", label:"⚡ Generate Codes" },
           ].map(({ id, label }) => (
             <button key={id} onClick={() => setTab(id)}
@@ -362,8 +407,8 @@ export default function AdminPage() {
                     <tr className="border-b border-gray-100 bg-gray-50 text-left">
                       {[
                         { key:"name",    label:"NAME" },
-                        { key:"email",   label:"EMAIL", noSort:true },
-                        { key:"phone",   label:"PHONE", noSort:true },
+                        { key:"email",   label:"EMAIL",   noSort:true },
+                        { key:"phone",   label:"PHONE",   noSort:true },
                         { key:"plan",    label:"PLAN" },
                         { key:"expires", label:"EXPIRES" },
                         { key:"trips",   label:"TRIPS" },
@@ -388,6 +433,8 @@ export default function AdminPage() {
                     {filteredUsers.map(u => {
                       const isExp = expanded === u.id;
                       const active = isPlanActive(u);
+                      const planLower = (u.plan || "").toLowerCase();
+                      const isPaid = planLower === "lite" || planLower === "pro";
                       return (
                         <>
                           <tr key={u.id}
@@ -411,7 +458,7 @@ export default function AdminPage() {
                             <td className="px-4 py-3"><PlanBadge user={u} /></td>
                             {/* Expires */}
                             <td className="px-4 py-3 whitespace-nowrap">
-                              {(!u.plan || u.plan==="free") ? <span className="text-gray-300">—</span> : (
+                              {!isPaid ? <span className="text-gray-300">—</span> : (
                                 <span className={active === false ? "text-red-500 font-semibold" : "text-gray-600"}>
                                   {fmtDate(u.expiresAt)}
                                 </span>
@@ -427,9 +474,12 @@ export default function AdminPage() {
                             <td className="px-4 py-3 whitespace-nowrap text-gray-400 text-xs">
                               {fmtDate(u.createdAt)}
                             </td>
-                            {/* Actions */}
+
+                            {/* ── ACTIONS ── */}
                             <td className="px-4 py-3 whitespace-nowrap" onClick={e => e.stopPropagation()}>
-                              <div className="flex items-center gap-1.5">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+
+                                {/* Upgrade buttons */}
                                 <button
                                   disabled={!!actionLoading}
                                   onClick={() => grantPlan(u.id, "lite", 30)}
@@ -444,6 +494,28 @@ export default function AdminPage() {
                                 >
                                   {actionLoading === u.id+"pro" ? "…" : "→Pro 365d"}
                                 </button>
+
+                                {/* ✅ NEW: Set Free — only show if user has paid plan */}
+                                {isPaid && (
+                                  <button
+                                    disabled={!!actionLoading}
+                                    onClick={() => handleSetFree(u.id, u.name || u.email)}
+                                    className="rounded-lg bg-amber-50 px-2.5 py-1 text-[10px] font-bold text-amber-700 hover:bg-amber-100 transition disabled:opacity-50"
+                                  >
+                                    {actionLoading === u.id+"free" ? "…" : "→Free"}
+                                  </button>
+                                )}
+
+                                {/* ✅ NEW: Delete user */}
+                                <button
+                                  disabled={!!actionLoading}
+                                  onClick={() => handleDeleteUser(u.id, u.name || u.email)}
+                                  className="rounded-lg bg-red-50 px-2.5 py-1 text-[10px] font-bold text-red-600 hover:bg-red-100 transition disabled:opacity-50"
+                                  title="Delete user from Firestore (Auth must be deleted separately)"
+                                >
+                                  {actionLoading === u.id+"delete" ? "…" : "🗑"}
+                                </button>
+
                               </div>
                             </td>
                           </tr>
@@ -456,8 +528,8 @@ export default function AdminPage() {
                                   <Detail label="UID" value={u.uid || u.id} mono />
                                   <Detail label="Dream Destination" value={u.dreamDestination} highlight />
                                   <Detail label="Plan Status" value={
-                                    !u.plan||u.plan==="free" ? "Free" :
-                                    active === true ? "✓ Active" :
+                                    !u.plan || planLower==="free" ? "Free" :
+                                    active === true  ? "✓ Active" :
                                     active === false ? "⚠ Expired" : "—"
                                   } />
                                   <Detail label="Joined" value={fmtDate(u.createdAt)} />
@@ -526,7 +598,6 @@ export default function AdminPage() {
         {tab === "generate" && (
           <div className="space-y-5">
 
-            {/* ── Generator form ── */}
             <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
               <h3 className="text-sm font-bold text-gray-800 mb-5">⚡ Generate New Redeem Codes</h3>
 
@@ -622,7 +693,7 @@ export default function AdminPage() {
               </button>
             </div>
 
-            {/* ── Results ── */}
+            {/* Results */}
             {genResults.length > 0 && (
               <div className="rounded-xl border border-emerald-200 bg-white shadow-sm overflow-hidden">
                 <div className="flex items-center justify-between px-5 py-3 bg-emerald-50 border-b border-emerald-200">
@@ -667,7 +738,6 @@ export default function AdminPage() {
                 <div className="px-5 py-3 bg-gray-50 border-t border-gray-100">
                   <p className="text-xs text-gray-400">
                     Codes saved to Firestore. Share them directly with your users.
-                    They'll appear in the Redeem Codes tab as "Active".
                   </p>
                 </div>
               </div>
@@ -680,7 +750,7 @@ export default function AdminPage() {
   );
 }
 
-// ── Small detail cell ─────────────────────────────────────────────────────────
+// ── Detail cell ───────────────────────────────────────────────────────────────
 function Detail({ label, value, mono, highlight }) {
   return (
     <div>

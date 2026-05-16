@@ -21,6 +21,7 @@ import UpgradeModal   from "@/components/UpgradeModal";
 import { useAuth }                        from "@/context/AuthProvider";
 import { useT }                           from "@/context/TranslationContext";
 import { usePlan }                        from "@/hooks/usePlan";
+import { getPlanFeatures }                from "@/lib/plans";
 import { saveProject, countUserTrips }    from "@/lib/firestore";
 import { fetchRateToIDR, invalidateRate } from "@/lib/exchangeRates";
 import { DEFAULT_RATE, generateId, getCurrency } from "@/lib/utils";
@@ -57,6 +58,7 @@ export default function DashboardPage() {
   const router = useRouter();
   const { user, loading: authLoading, logout, refreshPlan } = useAuth();
   const { plan, canSave, canExportPDF, checkTrip, isLocked } = usePlan();
+  const features = getPlanFeatures(plan); // ✅ row/trip limits from live plan
   const { t } = useT();
 
   const [hydrated, setHydrated]         = useState(false);
@@ -185,7 +187,16 @@ export default function DashboardPage() {
     setRows(prev => prev.map(r => r._lastEdited==="idr" ? r : syncIDR(r, n)));
   };
 
-  const addRow    = () => setRows(prev => [...prev, blankRow(prev[prev.length-1])]);
+  // ── Row operations ────────────────────────────────────────────────────────
+
+  const addRow = () => {
+    // LITE: max 25 rows per trip
+    if (Number.isFinite(features.maxRows) && rows.length >= features.maxRows) {
+      handleUpgradeNeeded(`LITE plan is limited to ${features.maxRows} rows per trip. Upgrade to Pro for unlimited rows.`);
+      return;
+    }
+    setRows(prev => [...prev, blankRow(prev[prev.length-1])]);
+  };
   const deleteRow = (id) => setRows(prev => prev.filter(r => r.id !== id));
 
   const insertAt  = (refId, pos) => {
@@ -207,7 +218,6 @@ export default function DashboardPage() {
   };
 
   // ── Export .bvntrip ───────────────────────────────────────────────────────
-  // Note: plan gating is handled inside Header.jsx via gate("canExportBvntrip")
 
   const handleExportBvntrip = () => {
     exportBvntrip({ tripInfo, rows, region, rate });
@@ -230,22 +240,6 @@ export default function DashboardPage() {
       invalidateRate(getCurrency(data.region).code);
       applyLiveRate(data.region);
     }
-  };
-
-  // ── Duplicate itinerary ───────────────────────────────────────────────────
-
-  const handleDuplicate = () => {
-    if (!window.confirm("Duplicate current itinerary? A copy will be created as a new unsaved project.")) return;
-    const clonedRows = rows.map(r => ({ ...r, id: generateId() }));
-    const clonedTrip = {
-      ...tripInfo,
-      clientName: tripInfo.clientName ? `${tripInfo.clientName} (Copy)` : "Copy",
-    };
-    setRows(clonedRows);
-    setTripInfo(clonedTrip);
-    setProjectId(null);
-    setHasUnsaved(true);
-    initialChange.current = true;
   };
 
   // ── Reset ─────────────────────────────────────────────────────────────────
@@ -407,7 +401,6 @@ export default function DashboardPage() {
         onCurrencyModeChange={setCurrencyMode}
         onExportBvntrip={handleExportBvntrip}
         onImportOpen={() => setImportOpen(true)}
-        onDuplicate={handleDuplicate}
         onUpgradeNeeded={handleUpgradeNeeded}
       />
 
