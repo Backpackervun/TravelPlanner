@@ -21,7 +21,6 @@ import UpgradeModal   from "@/components/UpgradeModal";
 import { useAuth }                        from "@/context/AuthProvider";
 import { useT }                           from "@/context/TranslationContext";
 import { usePlan }                        from "@/hooks/usePlan";
-import { getPlanFeatures }                from "@/lib/plans";
 import { saveProject, countUserTrips }    from "@/lib/firestore";
 import { fetchRateToIDR, invalidateRate } from "@/lib/exchangeRates";
 import { DEFAULT_RATE, generateId, getCurrency } from "@/lib/utils";
@@ -57,8 +56,7 @@ function buildDayMap(rows) {
 export default function DashboardPage() {
   const router = useRouter();
   const { user, loading: authLoading, logout, refreshPlan } = useAuth();
-  const { plan, canSave, canExportPDF, checkTrip, isLocked } = usePlan();
-  const features = getPlanFeatures(plan); // ✅ row/trip limits from live plan
+  const { plan, canSave, canExportPDF, checkTrip, isLocked, features, trialDaysLeft } = usePlan();
   const { t } = useT();
 
   const [hydrated, setHydrated]         = useState(false);
@@ -405,6 +403,21 @@ export default function DashboardPage() {
       />
 
       <main className="flex-1 mx-auto w-full max-w-[1600px] px-4 py-6 sm:px-5 lg:py-8">
+
+        {/* FREE trial expiry banner */}
+        {plan === "FREE" && trialDaysLeft !== null && trialDaysLeft <= 3 && !isLocked && (
+          <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+            <span className="text-sm text-amber-800">
+              ⏳ Free trial expires in <strong>{trialDaysLeft} day{trialDaysLeft !== 1 ? "s" : ""}</strong>.
+              Upgrade to keep full access.
+            </span>
+            <button onClick={() => setRedeemOpen(true)}
+              className="flex-shrink-0 rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-bold text-white hover:bg-amber-600">
+              Upgrade Now
+            </button>
+          </div>
+        )}
+
         <TripInfoPanel tripInfo={tripInfo} onChange={setTripInfo} />
 
         <div className="mt-6 grid gap-6 items-start lg:grid-cols-[minmax(0,1fr)_320px] xl:grid-cols-[minmax(0,1fr)_360px]">
