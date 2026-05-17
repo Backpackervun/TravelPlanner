@@ -191,6 +191,7 @@ const en = {
   yourPlan: "Your Plan", free: "Free", lite: "Lite", pro: "Pro",
   upgradeToPro: "Upgrade to Pro",
   redeemCode: "Enter redeem code", redeemApply: "Apply Code",
+  redeemSubtitle: "Activate Lite or Pro plan instantly.",
   redeemPlaceholder: "e.g. BE-3DAYSTRIAL", redeemChecking: "Checking…",
   redeemSuccess: "Plan activated successfully!",
   redeemError: "Invalid or expired code.",

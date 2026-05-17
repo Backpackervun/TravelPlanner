@@ -172,6 +172,7 @@ const ja = {
   yourPlan: "プラン", free: "無料", lite: "ライト", pro: "プロ",
   upgradeToPro: "Proにアップグレード",
   redeemCode: "引き換えコードを入力", redeemApply: "コードを適用",
+  redeemSubtitle: "LiteまたはProプランを今すぐ有効化。",
   redeemPlaceholder: "例：BE-3DAYSTRIAL", redeemChecking: "確認中…",
   redeemSuccess: "プランが正常に有効化されました！",
   redeemError: "無効または期限切れのコードです。",

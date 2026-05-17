@@ -172,6 +172,7 @@ const zh = {
   yourPlan: "您的套餐", free: "免费", lite: "基础版", pro: "专业版",
   upgradeToPro: "升级到专业版",
   redeemCode: "输入兑换码", redeemApply: "兑换",
+  redeemSubtitle: "立即激活 Lite 或 Pro 套餐。",
   redeemPlaceholder: "例：BE-3DAYSTRIAL", redeemChecking: "验证中…",
   redeemSuccess: "套餐已成功激活！",
   redeemError: "无效或已过期的兑换码。",

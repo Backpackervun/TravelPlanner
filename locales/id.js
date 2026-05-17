@@ -191,6 +191,7 @@ const id = {
   yourPlan: "Paket Anda", free: "Gratis", lite: "Lite", pro: "Pro",
   upgradeToPro: "Upgrade ke Pro",
   redeemCode: "Masukkan kode redeem", redeemApply: "Gunakan Kode",
+  redeemSubtitle: "Aktifkan paket Lite atau Pro sekarang.",
   redeemPlaceholder: "mis. BE-3DAYSTRIAL", redeemChecking: "Memeriksa…",
   redeemSuccess: "Paket berhasil diaktifkan!",
   redeemError: "Kode tidak valid atau sudah kadaluarsa.",

@@ -123,7 +123,7 @@ export default function RedeemModal({ open, onClose, onSuccess }) {
         <div className="text-center mb-6">
           <span className="text-4xl">🎟️</span>
           <h2 className="mt-3 text-xl font-semibold text-ink">{t("redeemCode")}</h2>
-          <p className="mt-1 text-sm text-ink-muted">Activate Lite or Pro plan instantly.</p>
+          <p className="mt-1 text-sm text-ink-muted">{t("redeemSubtitle") || "Activate Lite or Pro plan instantly."}</p>
         </div>
 
         <div className="space-y-3">
@@ -155,9 +155,9 @@ export default function RedeemModal({ open, onClose, onSuccess }) {
         {/* Plan comparison */}
         <div className="mt-5 grid grid-cols-3 gap-2 text-center">
           {[
-            { name: t("free") || "Free", desc: "Trial 7 days",      badge: "bg-gray-100 text-gray-500" },
-            { name: t("lite") || "Lite", desc: "3 trips · 25 rows", badge: "bg-blue-100 text-blue-700" },
-            { name: t("pro")  || "Pro",  desc: "Unlimited",          badge: "bg-violet-100 text-violet-700" },
+            { name: t("free") || "Free", desc: t("planFreeDesc") || "Trial 7 days",      badge: "bg-gray-100 text-gray-500" },
+            { name: t("lite") || "Lite", desc: t("planLiteDesc") || "3 trips · 25 rows", badge: "bg-blue-100 text-blue-700" },
+            { name: t("pro")  || "Pro",  desc: t("planProDesc")  || "Unlimited",          badge: "bg-violet-100 text-violet-700" },
           ].map((p) => (
             <div key={p.name} className="rounded-xl border border-paper-line p-2.5">
               <span className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-bold ${p.badge}`}>{p.name}</span>

@@ -172,6 +172,7 @@ const ko = {
   yourPlan: "내 플랜", free: "무료", lite: "라이트", pro: "프로",
   upgradeToPro: "Pro로 업그레이드",
   redeemCode: "리딤 코드 입력", redeemApply: "코드 적용",
+  redeemSubtitle: "Lite 또는 Pro 플랜을 즉시 활성화하세요.",
   redeemPlaceholder: "예: BE-3DAYSTRIAL", redeemChecking: "확인 중…",
   redeemSuccess: "플랜이 성공적으로 활성화되었습니다!",
   redeemError: "유효하지 않거나 만료된 코드입니다.",
