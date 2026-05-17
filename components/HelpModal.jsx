@@ -67,18 +67,7 @@ export default function HelpModal({ open, onClose, initialTab = "how" }) {
               <div>
                 <h3 className="text-sm font-semibold text-ink mb-3">{t("helpStepsTitle") || "Step-by-step guide"}</h3>
                 <ol className="space-y-2.5">
-                  {(t("helpSteps") || [
-                    "Enter trip details: client name, destination, and dates.",
-                    "Select a travel region carefully — it sets the local currency.",
-                    "Click 'Start Planning' to open the itinerary editor.",
-                    "Add itinerary rows one by one using '+ Add row'.",
-                    "Enter destinations EXACTLY as shown on Google Maps.",
-                    "Fill From → To when a row involves moving between locations.",
-                    "Select the transport type from the dropdown.",
-                    "Click Map or Route to verify locations on Google Maps.",
-                    "Enter the actual budget manually — costs are not auto-estimated.",
-                    "Click Preview then Export PDF to save your itinerary.",
-                  ]).map((step, i) => (
+                  {(t("helpSteps") || []).map((step, i) => (
                     <li key={i} className="flex items-start gap-3 text-sm text-ink-soft">
                       <span className="flex-shrink-0 mt-0.5 h-5 w-5 rounded-full bg-navy-100 text-navy-600 text-[10px] font-bold flex items-center justify-center">
                         {i + 1}
@@ -87,6 +76,49 @@ export default function HelpModal({ open, onClose, initialTab = "how" }) {
                     </li>
                   ))}
                 </ol>
+              </div>
+
+              {/* Plans & Access */}
+              <div className="rounded-xl border border-paper-line bg-paper-dim/40 p-4">
+                <h3 className="text-sm font-semibold text-ink mb-2 flex items-center gap-2">
+                  <span>🎟️</span>
+                  {t("helpPlansTitle") || "Plans & access"}
+                </h3>
+                <p className="text-xs text-ink-muted mb-2">{t("helpPlansDesc") || "Three plan tiers:"}</p>
+                <ul className="space-y-1.5">
+                  {[
+                    t("helpPlanFreeRow") || "Free — 7-day trial. Save & preview. No PDF export.",
+                    t("helpPlanLiteRow") || "Lite — 3 trips · 25 rows. Load saved trips. No PDF export.",
+                    t("helpPlanProRow")  || "Pro — Unlimited. PDF export. .bvntrip export & import.",
+                  ].map((row, i) => (
+                    <li key={i} className="text-xs text-ink-soft flex items-start gap-1.5">
+                      <span className="flex-shrink-0 text-navy-400">·</span>{row}
+                    </li>
+                  ))}
+                </ul>
+                <p className="mt-2 text-xs text-ink-muted italic">{t("helpRedeemHint") || "Menu → Enter Redeem Code to upgrade."}</p>
+              </div>
+
+              {/* Currency */}
+              <div className="rounded-xl border border-paper-line bg-paper-dim/40 p-4">
+                <h3 className="text-sm font-semibold text-ink mb-2 flex items-center gap-2">
+                  <span>💱</span>
+                  {t("helpCurrencyTitle") || "Currency & exchange rate"}
+                </h3>
+                <p className="text-xs text-ink-muted leading-relaxed">
+                  {t("helpCurrencyDesc") || "Each region has its own currency. The live rate to IDR is fetched automatically. You can edit it manually in the header."}
+                </p>
+              </div>
+
+              {/* Save & Load */}
+              <div className="rounded-xl border border-paper-line bg-paper-dim/40 p-4">
+                <h3 className="text-sm font-semibold text-ink mb-2 flex items-center gap-2">
+                  <span>☁️</span>
+                  {t("helpSaveLoadTitle") || "Save & load trips"}
+                </h3>
+                <p className="text-xs text-ink-muted leading-relaxed">
+                  {t("helpSaveLoadDesc") || "Click Save in the header to save to the cloud. Load a saved trip from Menu → Load Trip (Lite/Pro required)."}
+                </p>
               </div>
 
               {/* ✅ .bvntrip Export/Import guide */}

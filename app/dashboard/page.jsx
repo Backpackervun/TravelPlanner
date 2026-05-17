@@ -365,6 +365,7 @@ export default function DashboardPage() {
             tripInfo={tripInfo} region={region}
             onTripInfoChange={setTripInfo}
             onRegionChange={handleRegionChange}
+            onLoadOpen={() => setProjectsOpen(true)}
             onStart={() => {
               if (isLocked) { setRedeemOpen(true); return; }
               setView("planner");

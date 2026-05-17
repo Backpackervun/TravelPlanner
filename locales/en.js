@@ -54,8 +54,25 @@ const en = {
   helpTabHow: "📖 How to Use",
   helpTabContact: "💬 Contact",
   helpWhatTitle: "What is this app?",
-  helpWhatDesc: "This app helps you plan travel itineraries in a structured and professional way. Enter details, pick a region, and build a day-by-day plan you can export as a premium PDF.",
-  helpWhatBody: "This app helps you plan travel itineraries in a structured and professional way. Enter details, pick a region, and build a day-by-day plan you can export as a premium PDF.",
+  helpWhatDesc: "Backpackervun Travel Planner helps you create structured, professional travel itineraries day-by-day. Enter trip details, pick a region (which sets the local currency), add stops, and export a premium PDF to share with clients.",
+  helpWhatBody: "Backpackervun Travel Planner helps you create structured, professional travel itineraries day-by-day. Enter trip details, pick a region (which sets the local currency), add stops, and export a premium PDF to share with clients.",
+
+  // Plans section in help
+  helpPlansTitle: "Plans & access",
+  helpPlansDesc: "Three plan tiers control what you can do:",
+  helpPlanFreeRow: "Free — 7-day trial. Full access to save and preview. No PDF export.",
+  helpPlanLiteRow: "Lite — Save up to 3 trips, up to 25 rows per trip. Load saved trips. No PDF export.",
+  helpPlanProRow: "Pro — Unlimited trips, rows, PDF export, .bvntrip export & import.",
+  helpRedeemHint: "To upgrade, click Menu → Enter Redeem Code and enter your code.",
+
+  // Currency section in help
+  helpCurrencyTitle: "Currency & exchange rate",
+  helpCurrencyDesc: "Each region has its own local currency (JPY for Japan, KRW for Korea, THB for Thailand, SGD for Singapore, MYR for Malaysia, EUR for Europe, AUD for Australia, IDR for Indonesia, VND for Vietnam, CNY for China, USD for USA, SAR for Saudi Arabia). The live exchange rate to IDR is fetched automatically. You can edit the rate manually in the header.",
+
+  // Save & Load section in help
+  helpSaveLoadTitle: "Save & load trips",
+  helpSaveLoadDesc: "Click Save (cloud) in the header to save your current trip to the cloud. To reload a saved trip, click Menu → Load Trip (requires Lite or Pro plan). Your last session is also auto-saved locally in your browser.",
+
   helpStepsTitle: "Step-by-step guide",
   helpGuideTitle: "Step-by-step guide",
   helpSteps: [
@@ -125,6 +142,8 @@ const en = {
   setupTitle: "Plan a new trip",
   setupSubtitle: "Fill in the basic info, pick a region, then start planning.",
   setupStep: "Setup",
+  setupLoadTrip: "Load saved trip",
+  setupLoadTripHint: "Already have a saved trip? Load it here.",
   tripDetailsSection: "Trip details",
   tripDetailsSubtitle: "These appear at the top of every printed itinerary.",
   clientName: "Client Name", clientNamePlaceholder: "e.g. Aiko Tanaka & Family",
@@ -179,12 +198,19 @@ const en = {
   lockedTitle: "Unlock the Planner",
   lockedBody: "Enter a redeem code or upgrade your plan to start building itineraries.",
   enterCode: "Enter Redeem Code", startPlanningBtn: "Start Planning →",
-  planFeatLite1: "Up to 3 itineraries", planFeatLite2: "Up to 20 rows per trip",
+  planFeatLite1: "Up to 3 saved trips", planFeatLite2: "Up to 25 rows per trip",
   planFeatLite3: "PDF export enabled", planFeatLite4: "Cloud save enabled",
   planFeatPro1: "Unlimited itineraries", planFeatPro2: "Unlimited rows",
   planFeatPro3: "Premium PDF export", planFeatPro4: "All analytics & charts",
   planFeatPro5: "Priority support",
   planActivatedUntil: "Active until {date}",
+  // Plan descriptions (used in modals)
+  planFreeDesc: "Trial 7 days",
+  planLiteDesc: "3 trips · 25 rows",
+  planProDesc: "Unlimited",
+  upgradeTitle: "Unlock the Planner",
+  upgradeSubtitle: "Enter a redeem code or upgrade your plan to start creating itineraries.",
+  contactBackpackervun: "Contact Backpackervun",
 
   // ── CTA ───────────────────────────────────────────────────────────────────
   needHelp: "Need help arranging this trip?",

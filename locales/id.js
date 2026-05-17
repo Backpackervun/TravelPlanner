@@ -54,8 +54,25 @@ const id = {
   helpTabHow: "📖 Cara Pakai",
   helpTabContact: "💬 Kontak",
   helpWhatTitle: "Apa itu aplikasi ini?",
-  helpWhatDesc: "Aplikasi ini membantu kamu merencanakan itinerary perjalanan secara terstruktur dan profesional. Isi detail, pilih wilayah, dan buat rencana harian yang bisa diekspor sebagai PDF premium.",
-  helpWhatBody: "Aplikasi ini membantu kamu merencanakan itinerary perjalanan secara terstruktur dan profesional. Isi detail, pilih wilayah, dan buat rencana harian yang bisa diekspor sebagai PDF premium.",
+  helpWhatDesc: "Backpackervun Travel Planner membantu kamu membuat itinerary perjalanan yang terstruktur dan profesional. Isi detail perjalanan, pilih wilayah (yang menentukan mata uang lokal), tambahkan pemberhentian, dan ekspor PDF premium untuk dibagikan ke klien.",
+  helpWhatBody: "Backpackervun Travel Planner membantu kamu membuat itinerary perjalanan yang terstruktur dan profesional.",
+
+  // Plans section in help
+  helpPlansTitle: "Paket & akses",
+  helpPlansDesc: "Ada tiga tingkatan paket yang mengatur apa yang bisa kamu lakukan:",
+  helpPlanFreeRow: "Gratis — Trial 7 hari. Akses penuh untuk menyimpan dan pratinjau. Tidak bisa ekspor PDF.",
+  helpPlanLiteRow: "Lite — Simpan hingga 3 perjalanan, hingga 25 baris per perjalanan. Muat perjalanan tersimpan. Tidak bisa ekspor PDF.",
+  helpPlanProRow: "Pro — Perjalanan & baris tak terbatas, ekspor PDF, ekspor & impor .bvntrip.",
+  helpRedeemHint: "Untuk upgrade, klik Menu → Masukkan Kode Redeem dan masukkan kode kamu.",
+
+  // Currency section in help
+  helpCurrencyTitle: "Mata uang & kurs",
+  helpCurrencyDesc: "Setiap wilayah memiliki mata uang lokal sendiri (JPY untuk Jepang, KRW untuk Korea, THB untuk Thailand, SGD untuk Singapura, MYR untuk Malaysia, EUR untuk Eropa, AUD untuk Australia, IDR untuk Indonesia, VND untuk Vietnam, CNY untuk China, USD untuk USA, SAR untuk Arab Saudi). Kurs ke IDR diambil otomatis secara live. Kamu bisa mengubah kurs secara manual di header.",
+
+  // Save & Load section in help
+  helpSaveLoadTitle: "Simpan & muat perjalanan",
+  helpSaveLoadDesc: "Klik Simpan (ikon cloud) di header untuk menyimpan perjalanan saat ini ke cloud. Untuk memuat perjalanan yang tersimpan, klik Menu → Muat Perjalanan (membutuhkan paket Lite atau Pro). Sesi terakhir juga disimpan otomatis secara lokal di browser.",
+
   helpStepsTitle: "Panduan langkah demi langkah",
   helpGuideTitle: "Panduan langkah demi langkah",
   helpSteps: [
@@ -125,6 +142,8 @@ const id = {
   setupTitle: "Rencanakan perjalanan baru",
   setupSubtitle: "Isi informasi dasar, pilih wilayah, lalu mulai merencanakan.",
   setupStep: "Pengaturan",
+  setupLoadTrip: "Muat perjalanan tersimpan",
+  setupLoadTripHint: "Sudah punya perjalanan tersimpan? Muat di sini.",
   tripDetailsSection: "Detail perjalanan",
   tripDetailsSubtitle: "Ini akan muncul di bagian atas setiap itinerary yang dicetak.",
   clientName: "Nama Klien", clientNamePlaceholder: "mis. Aiko Tanaka & Keluarga",
@@ -179,12 +198,18 @@ const id = {
   lockedTitle: "Aktifkan Perencana",
   lockedBody: "Masukkan kode redeem atau upgrade paket untuk mulai membuat itinerary.",
   enterCode: "Masukkan Kode Redeem", startPlanningBtn: "Mulai Merencanakan →",
-  planFeatLite1: "Hingga 3 itinerary", planFeatLite2: "Hingga 20 baris per perjalanan",
+  planFeatLite1: "Hingga 3 perjalanan tersimpan", planFeatLite2: "Hingga 25 baris per perjalanan",
   planFeatLite3: "Ekspor PDF aktif", planFeatLite4: "Simpan cloud aktif",
   planFeatPro1: "Itinerary tak terbatas", planFeatPro2: "Baris tak terbatas",
   planFeatPro3: "Ekspor PDF premium", planFeatPro4: "Semua analitik & grafik",
   planFeatPro5: "Dukungan prioritas",
   planActivatedUntil: "Berlaku hingga {date}",
+  planFreeDesc: "Trial 7 hari",
+  planLiteDesc: "3 perjalanan · 25 baris",
+  planProDesc: "Tak terbatas",
+  upgradeTitle: "Aktifkan Perencana",
+  upgradeSubtitle: "Masukkan kode redeem atau upgrade paket untuk mulai membuat itinerary.",
+  contactBackpackervun: "Hubungi Backpackervun",
 
   // ── CTA ───────────────────────────────────────────────────────────────────
   needHelp: "Butuh bantuan mengatur perjalanan ini?",

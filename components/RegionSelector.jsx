@@ -24,7 +24,7 @@ const REGIONS = [
   { id: "Australia",    flag: "🇦🇺", cities: "Sydney · Melbourne · Bali" },
   { id: "Indonesia",    flag: "🇮🇩", cities: "Bali · Jakarta · Lombok" },
   { id: "Vietnam",      flag: "🇻🇳", cities: "Hanoi · Ho Chi Minh · Da Nang" },
-  { id: "Taiwan",       flag: "🇹🇼", cities: "Taipei · Kaohsiung · Taichung" },
+  { id: "Saudi Arabia", flag: "🇸🇦", cities: "Riyadh · Jeddah · Makkah" },
   { id: "China",        flag: "🇨🇳", cities: "Beijing · Shanghai · Xi'an" },
   { id: "USA",          flag: "🇺🇸", cities: "New York · LA · Las Vegas" },
 ];

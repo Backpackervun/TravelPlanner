@@ -17,7 +17,7 @@ import RegionSelector from "./RegionSelector";
  */
 export default function SetupScreen({
   tripInfo, region,
-  onTripInfoChange, onRegionChange, onStart,
+  onTripInfoChange, onRegionChange, onStart, onLoadOpen,
 }) {
   const { t } = useT();
 
@@ -161,6 +161,17 @@ export default function SetupScreen({
         >
           {!canStart ? t("pickRegionFirst") : t("startPlanning")}
         </button>
+
+        {/* ── Load saved trip ── */}
+        {onLoadOpen && (
+          <button
+            type="button"
+            onClick={onLoadOpen}
+            className="w-full rounded-2xl border border-paper-line bg-white py-3.5 text-sm font-semibold text-ink-soft shadow-soft transition hover:border-navy-200 hover:text-navy-500 active:scale-[0.99]"
+          >
+            📂 {t("setupLoadTrip") || "Load saved trip"}
+          </button>
+        )}
 
       </div>
     </div>
