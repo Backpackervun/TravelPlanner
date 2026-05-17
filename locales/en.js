@@ -191,7 +191,6 @@ const en = {
   yourPlan: "Your Plan", free: "Free", lite: "Lite", pro: "Pro",
   upgradeToPro: "Upgrade to Pro",
   redeemCode: "Enter redeem code", redeemApply: "Apply Code",
-  redeemSubtitle: "Activate Lite or Pro plan instantly.",
   redeemPlaceholder: "e.g. BE-3DAYSTRIAL", redeemChecking: "Checking…",
   redeemSuccess: "Plan activated successfully!",
   redeemError: "Invalid or expired code.",
@@ -206,8 +205,8 @@ const en = {
   planFeatPro5: "Priority support",
   planActivatedUntil: "Active until {date}",
   // Plan descriptions (used in modals)
-  planFreeDesc: "Trial 7 days",
-  planLiteDesc: "3 trips · 25 rows",
+  planFreeDesc: "15 rows · No expiry",
+  planLiteDesc: "3 trips · 25 rows · 7d trial",
   planProDesc: "Unlimited",
   upgradeTitle: "Unlock the Planner",
   upgradeSubtitle: "Enter a redeem code or upgrade your plan to start creating itineraries.",

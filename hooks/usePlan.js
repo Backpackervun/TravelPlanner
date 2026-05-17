@@ -6,60 +6,46 @@ import { PLAN_LIMITS, getPlanFeatures, canCreateTrip } from "@/lib/plans";
 /**
  * usePlan — convenient access to the current user's plan limits.
  *
+ * PLAN FLOW:
+ *   New user → LITE (7d trial) → expires → FREE (permanent, never locked)
+ *   FREE = always accessible, just limited (15 rows, no load, no export)
+ *
  * Returns:
- *   plan          — "FREE" | "LITE" | "PRO"
- *   limits        — PLAN_LIMITS[plan]
- *   features      — getPlanFeatures(plan) — full feature flags incl. maxRows
- *   canSave       — boolean
- *   canExportPDF  — boolean
- *   checkTrip(count) — returns { allowed, reason }
- *   isLocked      — true ONLY when FREE plan AND trial has expired
- *   trialDaysLeft — number | null (days remaining for FREE trial)
+ *   plan           — "FREE" | "LITE" | "PRO"
+ *   features       — full feature flags from getPlanFeatures(plan)
+ *   canSave        — boolean
+ *   canExportPDF   — boolean
+ *   checkTrip(n)   — { allowed, reason }
+ *   isLocked       — always false (FREE is never locked)
+ *   liteDaysLeft   — number | null (only for LITE plan, shows trial days left)
  */
 export function usePlan() {
   const { activePlan, userProfile } = useAuth();
   const limits   = PLAN_LIMITS[activePlan] ?? PLAN_LIMITS.FREE;
   const features = getPlanFeatures(activePlan);
 
-  // ── FREE trial expiry check ──────────────────────────────────────────────
-  // FREE users get 7 days of full access from account creation.
-  // isLocked = true only when FREE AND trial window has ended.
+  // ── LITE trial countdown ──────────────────────────────────────────────────
+  // Show how many days are left in the LITE trial so user knows to upgrade.
 
-  let trialDaysLeft = null;
-  let isTrialExpired = false;
-
-  if (activePlan === "FREE" && userProfile?.expiresAt) {
+  let liteDaysLeft = null;
+  if (activePlan === "LITE" && userProfile?.expiresAt) {
     try {
       const expiry = userProfile.expiresAt?.toDate
         ? userProfile.expiresAt.toDate()
         : new Date(userProfile.expiresAt);
       const msLeft = expiry.getTime() - Date.now();
-      isTrialExpired = msLeft <= 0;
-      trialDaysLeft  = isTrialExpired ? 0 : Math.ceil(msLeft / (1000 * 60 * 60 * 24));
-    } catch {
-      isTrialExpired = false;
-    }
-  } else if (activePlan === "FREE" && !userProfile?.expiresAt) {
-    // No expiry set → brand new user, trial not started yet, allow access
-    isTrialExpired = false;
+      liteDaysLeft = msLeft > 0 ? Math.ceil(msLeft / (1000 * 60 * 60 * 24)) : 0;
+    } catch { liteDaysLeft = null; }
   }
 
-  // isLocked: FREE AND trial expired (or never had trial)
-  const isLocked = activePlan === "FREE" && isTrialExpired;
-
-  // ── Trip count check ─────────────────────────────────────────────────────
+  // ── Trip count check ──────────────────────────────────────────────────────
 
   const checkTrip = (currentCount) => {
-    // FREE trial: unlimited saves during trial
-    if (activePlan === "FREE" && !isTrialExpired) return { allowed: true, reason: null };
-
     const allowed = canCreateTrip(activePlan, currentCount);
     return {
       allowed,
       reason: allowed ? null :
-        activePlan === "LITE"
-          ? `LITE plan is limited to ${limits.maxItineraries} saved trips. Upgrade to Pro for unlimited.`
-          : `Upgrade your plan to save trips.`,
+        `LITE plan is limited to ${limits.maxItineraries} saved trips. Upgrade to Pro for unlimited.`,
     };
   };
 
@@ -70,8 +56,7 @@ export function usePlan() {
     canSave:       limits.save,
     canExportPDF:  limits.pdfExport,
     checkTrip,
-    isLocked,
-    trialDaysLeft,
-    isTrialExpired,
+    isLocked:      false,        // ✅ FREE is NEVER locked
+    liteDaysLeft,                // null unless on LITE trial
   };
 }
