@@ -123,7 +123,7 @@ export default function RedeemModal({ open, onClose, onSuccess }) {
         <div className="text-center mb-6">
           <span className="text-4xl">🎟️</span>
           <h2 className="mt-3 text-xl font-semibold text-ink">{t("redeemCode")}</h2>
-          <p className="mt-1 text-sm text-ink-muted">{t("redeemSubtitle") || "Activate Lite or Pro plan instantly."}</p>
+          <p className="mt-1 text-sm text-ink-muted">Activate Lite or Pro plan instantly.</p>
         </div>
 
         <div className="space-y-3">

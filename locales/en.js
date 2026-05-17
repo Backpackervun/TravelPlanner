@@ -205,8 +205,8 @@ const en = {
   planFeatPro5: "Priority support",
   planActivatedUntil: "Active until {date}",
   // Plan descriptions (used in modals)
-  planFreeDesc: "15 rows · No expiry",
-  planLiteDesc: "3 trips · 25 rows · 7d trial",
+  planFreeDesc: "Trial 7 days",
+  planLiteDesc: "3 trips · 25 rows",
   planProDesc: "Unlimited",
   upgradeTitle: "Unlock the Planner",
   upgradeSubtitle: "Enter a redeem code or upgrade your plan to start creating itineraries.",
