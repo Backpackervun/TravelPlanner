@@ -188,9 +188,9 @@ export default function DashboardPage() {
   // ── Row operations ────────────────────────────────────────────────────────
 
   const addRow = () => {
-    // LITE: max 25 rows per trip
     if (Number.isFinite(features.maxRows) && rows.length >= features.maxRows) {
-      handleUpgradeNeeded(`LITE plan is limited to ${features.maxRows} rows per trip. Upgrade to Pro for unlimited rows.`);
+      const planName = plan === "FREE" ? "Free trial" : "LITE";
+      handleUpgradeNeeded(`${planName} plan is limited to ${features.maxRows} rows per trip. Upgrade to Pro for unlimited rows.`);
       return;
     }
     setRows(prev => [...prev, blankRow(prev[prev.length-1])]);
@@ -388,6 +388,17 @@ export default function DashboardPage() {
 
         <HelpModal   open={helpOpen}   initialTab={helpTab} onClose={() => setHelpOpen(false)} />
         <RedeemModal open={redeemOpen} onClose={() => setRedeemOpen(false)} onSuccess={refreshPlan} />
+        <ProjectsModal
+          open={projectsOpen}
+          userId={user?.uid}
+          onClose={() => setProjectsOpen(false)}
+          onLoad={handleLoadProject}
+        />
+        <UpgradeModal
+          open={upgradeOpen}
+          onClose={() => setUpgradeOpen(false)}
+          reason={upgradeReason}
+        />
       </div>
     );
   }

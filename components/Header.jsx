@@ -287,7 +287,7 @@ export default function Header({
                   <MI icon="👁"  label={t("preview")}  onClick={() => { onPreview?.();  setMenuOpen(false); }} />
                   <MI icon="📂"  label={t("loadTrip")}
                     locked={!features.canLoad}
-                    lockLabel="Lite+"
+                    lockLabel="Lite"
                     onClick={() => { handleLoad(); setMenuOpen(false); }}
                   />
                 </div>
@@ -448,7 +448,7 @@ function MobileMenu({
             <MI
               icon="📂" label={t("loadTrip")}
               locked={!features.canLoad}
-              lockLabel="Lite+"
+              lockLabel="Lite"
               onClick={() => { handleLoad(); setOpen(false); }}
             />
           </div>

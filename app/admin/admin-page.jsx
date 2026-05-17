@@ -345,7 +345,7 @@ export default function AdminPage() {
 
       <div className="mx-auto max-w-7xl px-6 py-6">
 
-        {/* ── STATS CARDS ── */}
+        {/* ── Stats Cards ── */}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6 mb-6">
           {[
             { label:"Total Users",  val: stats.total, color:"text-[#0B3C5D]",   bg:"bg-blue-50" },
@@ -355,9 +355,9 @@ export default function AdminPage() {
             { label:"Expired",      val: stats.exp,   color:"text-red-600",     bg:"bg-red-50" },
             { label:"Total Trips",  val: stats.trips, color:"text-emerald-700", bg:"bg-emerald-50" },
           ].map(({ label, val, color, bg }) => (
-            <div key={label} className={`rounded-xl border border-white/60 ${bg} p-4 shadow-sm`}>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-gray-400">{label}</p>
-              <p className={`mt-1 text-2xl font-bold ${color}`}>{val}</p>
+            <div key={label} className={`rounded-xl border border-white/60 ${bg} p-3 shadow-sm`}>
+              <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-gray-400 truncate">{label}</p>
+              <p className={`mt-1 text-xl font-bold ${color}`}>{val}</p>
             </div>
           ))}
         </div>
@@ -399,16 +399,17 @@ export default function AdminPage() {
               </button>
             </div>
 
-            {/* Table */}
+            {/* Table — scrollable on all screen sizes, cards on mobile */}
             <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-              <div className="overflow-x-auto">
+
+              {/* Desktop table */}
+              <div className="hidden sm:block overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-gray-100 bg-gray-50 text-left">
                       {[
                         { key:"name",    label:"NAME" },
                         { key:"email",   label:"EMAIL",   noSort:true },
-                        { key:"phone",   label:"PHONE",   noSort:true },
                         { key:"plan",    label:"PLAN" },
                         { key:"expires", label:"EXPIRES" },
                         { key:"trips",   label:"TRIPS" },
@@ -424,119 +425,77 @@ export default function AdminPage() {
                   </thead>
                   <tbody className="divide-y divide-gray-50">
                     {filteredUsers.length === 0 && (
-                      <tr>
-                        <td colSpan={8} className="px-4 py-12 text-center text-sm text-gray-400">
-                          {search ? "No users match your search." : "No users yet."}
-                        </td>
-                      </tr>
+                      <tr><td colSpan={7} className="px-4 py-12 text-center text-sm text-gray-400">
+                        {search ? "No users match your search." : "No users yet."}
+                      </td></tr>
                     )}
                     {filteredUsers.map(u => {
-                      const isExp = expanded === u.id;
-                      const active = isPlanActive(u);
+                      const isExp    = expanded === u.id;
+                      const active   = isPlanActive(u);
                       const planLower = (u.plan || "").toLowerCase();
-                      const isPaid = planLower === "lite" || planLower === "pro";
+                      const isPaid   = planLower === "lite" || planLower === "pro";
                       return (
                         <>
-                          <tr key={u.id}
-                            onClick={() => setExpanded(isExp ? null : u.id)}
-                            className={`cursor-pointer transition hover:bg-blue-50/40 ${isExp ? "bg-blue-50/60" : ""}`}
-                          >
-                            {/* Name */}
-                            <td className="px-4 py-3 font-semibold text-gray-800 whitespace-nowrap">
+                          <tr key={u.id} onClick={() => setExpanded(isExp ? null : u.id)}
+                            className={`cursor-pointer transition hover:bg-blue-50/40 ${isExp ? "bg-blue-50/60" : ""}`}>
+                            <td className="px-4 py-3 whitespace-nowrap">
                               <div className="flex items-center gap-2">
                                 <div className="h-7 w-7 flex-shrink-0 rounded-full bg-[#0B3C5D]/10 flex items-center justify-center text-xs font-bold text-[#0B3C5D]">
                                   {(u.name||"?").charAt(0).toUpperCase()}
                                 </div>
-                                {u.name || <span className="text-gray-400">—</span>}
+                                <span className="font-semibold text-gray-800">{u.name || "—"}</span>
                               </div>
                             </td>
-                            {/* Email */}
-                            <td className="px-4 py-3 text-gray-600 max-w-[200px] truncate">{u.email || "—"}</td>
-                            {/* Phone */}
-                            <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{u.phone || "—"}</td>
-                            {/* Plan */}
+                            <td className="px-4 py-3 text-gray-600 max-w-[180px] truncate">{u.email || "—"}</td>
                             <td className="px-4 py-3"><PlanBadge user={u} /></td>
-                            {/* Expires */}
                             <td className="px-4 py-3 whitespace-nowrap">
-                              {!isPaid ? <span className="text-gray-300">—</span> : (
+                              {!isPaid ? <span className="text-gray-300">—</span> :
                                 <span className={active === false ? "text-red-500 font-semibold" : "text-gray-600"}>
                                   {fmtDate(u.expiresAt)}
-                                </span>
-                              )}
+                                </span>}
                             </td>
-                            {/* Trips */}
-                            <td className="px-4 py-3 text-center">
-                              <span className={`font-mono font-semibold ${u.tripCount > 0 ? "text-[#0B3C5D]" : "text-gray-300"}`}>
-                                {u.tripCount ?? "—"}
-                              </span>
+                            <td className="px-4 py-3 text-center font-mono font-semibold">
+                              <span className={u.tripCount > 0 ? "text-[#0B3C5D]" : "text-gray-300"}>{u.tripCount ?? "—"}</span>
                             </td>
-                            {/* Joined */}
-                            <td className="px-4 py-3 whitespace-nowrap text-gray-400 text-xs">
-                              {fmtDate(u.createdAt)}
-                            </td>
-
-                            {/* ── ACTIONS ── */}
+                            <td className="px-4 py-3 whitespace-nowrap text-gray-400 text-xs">{fmtDate(u.createdAt)}</td>
                             <td className="px-4 py-3 whitespace-nowrap" onClick={e => e.stopPropagation()}>
                               <div className="flex items-center gap-1.5 flex-wrap">
-
-                                {/* Upgrade buttons */}
-                                <button
-                                  disabled={!!actionLoading}
-                                  onClick={() => grantPlan(u.id, "lite", 30)}
-                                  className="rounded-lg bg-blue-50 px-2.5 py-1 text-[10px] font-bold text-blue-700 hover:bg-blue-100 transition disabled:opacity-50"
-                                >
+                                <button disabled={!!actionLoading} onClick={() => grantPlan(u.id, "lite", 30)}
+                                  className="rounded-lg bg-blue-50 px-2.5 py-1 text-[10px] font-bold text-blue-700 hover:bg-blue-100 transition">
                                   {actionLoading === u.id+"lite" ? "…" : "→Lite 30d"}
                                 </button>
-                                <button
-                                  disabled={!!actionLoading}
-                                  onClick={() => grantPlan(u.id, "pro", 365)}
-                                  className="rounded-lg bg-violet-50 px-2.5 py-1 text-[10px] font-bold text-violet-700 hover:bg-violet-100 transition disabled:opacity-50"
-                                >
+                                <button disabled={!!actionLoading} onClick={() => grantPlan(u.id, "pro", 365)}
+                                  className="rounded-lg bg-violet-50 px-2.5 py-1 text-[10px] font-bold text-violet-700 hover:bg-violet-100 transition">
                                   {actionLoading === u.id+"pro" ? "…" : "→Pro 365d"}
                                 </button>
-
-                                {/* ✅ NEW: Set Free — only show if user has paid plan */}
                                 {isPaid && (
-                                  <button
-                                    disabled={!!actionLoading}
-                                    onClick={() => handleSetFree(u.id, u.name || u.email)}
-                                    className="rounded-lg bg-amber-50 px-2.5 py-1 text-[10px] font-bold text-amber-700 hover:bg-amber-100 transition disabled:opacity-50"
-                                  >
+                                  <button disabled={!!actionLoading} onClick={() => handleSetFree(u.id, u.name || u.email)}
+                                    className="rounded-lg bg-amber-50 px-2.5 py-1 text-[10px] font-bold text-amber-700 hover:bg-amber-100 transition">
                                     {actionLoading === u.id+"free" ? "…" : "→Free"}
                                   </button>
                                 )}
-
-                                {/* ✅ NEW: Delete user */}
-                                <button
-                                  disabled={!!actionLoading}
-                                  onClick={() => handleDeleteUser(u.id, u.name || u.email)}
-                                  className="rounded-lg bg-red-50 px-2.5 py-1 text-[10px] font-bold text-red-600 hover:bg-red-100 transition disabled:opacity-50"
-                                  title="Delete user from Firestore (Auth must be deleted separately)"
-                                >
+                                <button disabled={!!actionLoading} onClick={() => handleDeleteUser(u.id, u.name || u.email)}
+                                  className="rounded-lg bg-red-50 px-2.5 py-1 text-[10px] font-bold text-red-600 hover:bg-red-100 transition">
                                   {actionLoading === u.id+"delete" ? "…" : "🗑"}
                                 </button>
-
                               </div>
                             </td>
                           </tr>
-
-                          {/* ── Expanded detail row ── */}
                           {isExp && (
-                            <tr key={u.id + "-detail"} className="bg-blue-50/40">
-                              <td colSpan={8} className="px-6 py-4">
-                                <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+                            <tr key={u.id+"-d"} className="bg-blue-50/40">
+                              <td colSpan={7} className="px-6 py-4">
+                                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                                   <Detail label="UID" value={u.uid || u.id} mono />
                                   <Detail label="Dream Destination" value={u.dreamDestination} highlight />
+                                  <Detail label="Phone" value={u.phone} />
+                                  <Detail label="Role" value={u.role || "user"} />
                                   <Detail label="Plan Status" value={
                                     !u.plan || planLower==="free" ? "Free" :
-                                    active === true  ? "✓ Active" :
-                                    active === false ? "⚠ Expired" : "—"
+                                    active === true ? "✓ Active" : active === false ? "⚠ Expired" : "—"
                                   } />
-                                  <Detail label="Joined" value={fmtDate(u.createdAt)} />
-                                  <Detail label="Full Email" value={u.email} />
-                                  <Detail label="Full Phone" value={u.phone} />
                                   <Detail label="Saved Trips" value={`${u.tripCount ?? 0} trips`} />
-                                  <Detail label="Role" value={u.role || "user"} />
+                                  <Detail label="Full Email" value={u.email} />
+                                  <Detail label="Joined" value={fmtDate(u.createdAt)} />
                                 </div>
                               </td>
                             </tr>
@@ -546,6 +505,73 @@ export default function AdminPage() {
                     })}
                   </tbody>
                 </table>
+              </div>
+
+              {/* Mobile cards */}
+              <div className="sm:hidden divide-y divide-gray-100">
+                {filteredUsers.length === 0 && (
+                  <p className="py-10 text-center text-sm text-gray-400">
+                    {search ? "No users match." : "No users yet."}
+                  </p>
+                )}
+                {filteredUsers.map(u => {
+                  const active   = isPlanActive(u);
+                  const planLower = (u.plan || "").toLowerCase();
+                  const isPaid   = planLower === "lite" || planLower === "pro";
+                  return (
+                    <div key={u.id} className="p-4 space-y-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="h-10 w-10 flex-shrink-0 rounded-full bg-[#0B3C5D]/10 flex items-center justify-center text-sm font-bold text-[#0B3C5D]">
+                            {(u.name||"?").charAt(0).toUpperCase()}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-semibold text-sm text-gray-800 truncate">{u.name || "—"}</p>
+                            <p className="text-xs text-gray-400 truncate">{u.email || "—"}</p>
+                            <p className="text-xs text-gray-400">{u.phone || ""}</p>
+                          </div>
+                        </div>
+                        <PlanBadge user={u} />
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 text-xs bg-gray-50 rounded-lg p-2.5">
+                        <div className="text-center">
+                          <p className="text-gray-400 text-[10px] uppercase">Trips</p>
+                          <p className="font-bold text-[#0B3C5D]">{u.tripCount ?? 0}</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-gray-400 text-[10px] uppercase">Expires</p>
+                          <p className={`font-semibold text-[10px] ${active === false ? "text-red-500" : "text-gray-700"}`}>
+                            {isPaid ? fmtDate(u.expiresAt) : "—"}
+                          </p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-gray-400 text-[10px] uppercase">Joined</p>
+                          <p className="text-gray-700 text-[10px]">{fmtDate(u.createdAt)}</p>
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <button disabled={!!actionLoading} onClick={() => grantPlan(u.id, "lite", 30)}
+                          className="rounded-lg bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-700 hover:bg-blue-100 transition flex-1 text-center">
+                          →Lite 30d
+                        </button>
+                        <button disabled={!!actionLoading} onClick={() => grantPlan(u.id, "pro", 365)}
+                          className="rounded-lg bg-violet-50 px-3 py-1.5 text-xs font-bold text-violet-700 hover:bg-violet-100 transition flex-1 text-center">
+                          →Pro 365d
+                        </button>
+                        {isPaid && (
+                          <button disabled={!!actionLoading} onClick={() => handleSetFree(u.id, u.name || u.email)}
+                            className="rounded-lg bg-amber-50 px-3 py-1.5 text-xs font-bold text-amber-700 hover:bg-amber-100 transition">
+                            →Free
+                          </button>
+                        )}
+                        <button disabled={!!actionLoading} onClick={() => handleDeleteUser(u.id, u.name || u.email)}
+                          className="rounded-lg bg-red-50 px-3 py-1.5 text-xs font-bold text-red-600 hover:bg-red-100 transition">
+                          🗑
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </>
