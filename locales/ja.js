@@ -185,7 +185,7 @@ const ja = {
   planFeatPro3: "プレミアムPDF出力", planFeatPro4: "全分析とグラフ",
   planFeatPro5: "優先サポート",
   planActivatedUntil: "{date}まで有効",
-  planFreeDesc: "7日間トライアル",
+  planFreeDesc: "15行 · 無期限",
   planLiteDesc: "3件・25行まで",
   planProDesc: "無制限",
   upgradeTitle: "プランナーを解除する",

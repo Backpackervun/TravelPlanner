@@ -185,7 +185,7 @@ const ko = {
   planFeatPro3: "프리미엄 PDF 내보내기", planFeatPro4: "모든 분석 및 차트",
   planFeatPro5: "우선 지원",
   planActivatedUntil: "{date}까지 유효",
-  planFreeDesc: "7일 체험",
+  planFreeDesc: "15행 · 무기한",
   planLiteDesc: "3개 여행 · 25행",
   planProDesc: "무제한",
   upgradeTitle: "플래너 잠금 해제",

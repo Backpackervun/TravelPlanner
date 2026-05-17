@@ -205,7 +205,7 @@ const en = {
   planFeatPro5: "Priority support",
   planActivatedUntil: "Active until {date}",
   // Plan descriptions (used in modals)
-  planFreeDesc: "Trial 7 days",
+  planFreeDesc: "15 rows · No expiry",
   planLiteDesc: "3 trips · 25 rows",
   planProDesc: "Unlimited",
   upgradeTitle: "Unlock the Planner",

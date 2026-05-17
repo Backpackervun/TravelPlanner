@@ -185,7 +185,7 @@ const zh = {
   planFeatPro3: "高级PDF导出", planFeatPro4: "所有分析和图表",
   planFeatPro5: "优先支持",
   planActivatedUntil: "有效期至{date}",
-  planFreeDesc: "7天试用",
+  planFreeDesc: "15行 · 无期限",
   planLiteDesc: "3次行程 · 25行",
   planProDesc: "无限制",
   upgradeTitle: "解锁计划助手",

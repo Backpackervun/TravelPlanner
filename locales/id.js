@@ -204,7 +204,7 @@ const id = {
   planFeatPro3: "Ekspor PDF premium", planFeatPro4: "Semua analitik & grafik",
   planFeatPro5: "Dukungan prioritas",
   planActivatedUntil: "Berlaku hingga {date}",
-  planFreeDesc: "Trial 7 hari",
+  planFreeDesc: "15 baris · Gratis",
   planLiteDesc: "3 perjalanan · 25 baris",
   planProDesc: "Tak terbatas",
   upgradeTitle: "Aktifkan Perencana",
