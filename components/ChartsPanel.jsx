@@ -42,8 +42,9 @@ const tooltipStyle = {
   boxShadow: "0 4px 12px rgba(11, 60, 93, 0.08)",
 };
 
-export default function ChartsPanel({ rows, rate, totalLocal, totalIDR }) {
+export default function ChartsPanel({ rows, rate, totalLocal, totalIDR, currency }) {
   const { t } = useT();
+  const currencyCode = currency?.code ?? "local";
   const transportData  = aggregateTransport(rows);
   const categoryData   = aggregateCategoryBudget(rows, rate);
   const transportLegs  = transportData.reduce((s, d) => s + d.value, 0);
@@ -72,7 +73,7 @@ export default function ChartsPanel({ rows, rate, totalLocal, totalIDR }) {
             {formatIDR(totalIDR)}
           </p>
           <p className="mt-1 font-mono text-xs tabular-nums text-ink-muted">
-            ≈ {formatLocal(totalLocal)} (local) · 1 = {rate} IDR
+            ≈ {formatLocal(totalLocal)} {currencyCode} · 1 {currencyCode} = {rate} IDR
           </p>
         </div>
       </div>

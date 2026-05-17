@@ -13,17 +13,18 @@ import PlanBadge from "./PlanBadge";
 // ─────────────────────────────────────────────
 
 const REGIONS = [
-  { id: "Japan",       flag: "🇯🇵" },
-  { id: "South Korea", flag: "🇰🇷" },
-  { id: "Thailand",    flag: "🇹🇭" },
-  { id: "Singapore",   flag: "🇸🇬" },
-  { id: "Malaysia",    flag: "🇲🇾" },
-  { id: "Europe",      flag: "🇪🇺" },
-  { id: "Australia",   flag: "🇦🇺" },
-  { id: "Indonesia",   flag: "🇮🇩" },
-  { id: "Vietnam",     flag: "🇻🇳" },
-  { id: "China",       flag: "🇨🇳" },
-  { id: "USA",         flag: "🇺🇸" },
+  { id: "Japan",        flag: "🇯🇵" },
+  { id: "South Korea",  flag: "🇰🇷" },
+  { id: "Thailand",     flag: "🇹🇭" },
+  { id: "Singapore",    flag: "🇸🇬" },
+  { id: "Malaysia",     flag: "🇲🇾" },
+  { id: "Europe",       flag: "🇪🇺" },
+  { id: "Australia",    flag: "🇦🇺" },
+  { id: "Indonesia",    flag: "🇮🇩" },
+  { id: "Vietnam",      flag: "🇻🇳" },
+  { id: "China",        flag: "🇨🇳" },
+  { id: "USA",          flag: "🇺🇸" },
+  { id: "Saudi Arabia", flag: "🇸🇦" },
 ];
 
 // ─────────────────────────────────────────────

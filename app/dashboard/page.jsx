@@ -290,9 +290,21 @@ export default function DashboardPage() {
     setTripInfo({ ...BLANK_TRIP, ...(p.tripInfo??{}) });
     setRate(lr); setRateSource("manual");
     setRegion(p.region??null); setProjectId(p.id);
+    // ✅ Always go to planner after load — bypasses region selection requirement
     setView("planner"); setHasUnsaved(false);
     ratesFetched.current=false; initialChange.current=true;
     if (p.region) { invalidateRate(getCurrency(p.region).code); applyLiveRate(p.region); }
+  };
+
+  // ── Open ProjectsModal — gated by canLoad ────────────────────────────────
+  // Called from BOTH setup screen and header menu.
+
+  const handleOpenProjects = () => {
+    if (!features.canLoad) {
+      handleUpgradeNeeded("Loading saved trips requires a Lite or Pro plan.");
+      return;
+    }
+    setProjectsOpen(true);
   };
 
   // ── Preview ───────────────────────────────────────────────────────────────
@@ -365,7 +377,7 @@ export default function DashboardPage() {
             tripInfo={tripInfo} region={region}
             onTripInfoChange={setTripInfo}
             onRegionChange={handleRegionChange}
-            onLoadOpen={() => setProjectsOpen(true)}
+            onLoadOpen={handleOpenProjects}
             onStart={() => {
               if (isLocked) { setRedeemOpen(true); return; }
               setView("planner");
@@ -389,7 +401,7 @@ export default function DashboardPage() {
         rate={rate}              onRateChange={handleRateChange}
         onReset={handleReset}    onPreview={handlePreview}
         onHelp={() => { setHelpTab("how"); setHelpOpen(true); }}
-        onSave={handleSave}      onLoadOpen={() => setProjectsOpen(true)}
+        onSave={handleSave}      onLoadOpen={handleOpenProjects}
         saveStatus={saveStatus}  hasUnsavedChanges={hasUnsaved}
         totalLocal={totalLocal}  totalIDR={totalIDR}
         region={region}          onRegionChange={handleRegionChange}
@@ -453,7 +465,7 @@ export default function DashboardPage() {
           </div>
 
           <aside className="min-w-0 flex flex-col gap-4 lg:self-start lg:sticky lg:top-[56px]">
-            <ChartsPanel rows={rows} rate={rate} totalLocal={totalLocal} totalIDR={totalIDR} />
+            <ChartsPanel rows={rows} rate={rate} totalLocal={totalLocal} totalIDR={totalIDR} currency={currency} />
             <div className="hidden md:block">
               <CTACard tripInfo={tripInfo} totalLocal={totalLocal} currency={currency} totalIDR={totalIDR}
                 onContact={() => setContactOpen(true)} />
