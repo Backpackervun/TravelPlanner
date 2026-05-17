@@ -105,7 +105,13 @@ export default function PrintLayout({ tripInfo, rows, dayMap, region, rate, tota
   const travelDatesFormatted = fmtTravelDates(tripInfo?.travelDates, tripInfo?.startDate, tripInfo?.endDate);
 
   return (
-    <div className="itinerary-pdf bg-white" style={{ fontFamily: "'Montserrat','Inter',-apple-system,sans-serif" }}>
+    <div className="itinerary-pdf bg-white" style={{
+      fontFamily: "'Montserrat','Inter',-apple-system,sans-serif",
+      width: "100%",
+      maxWidth: "100%",
+      overflowX: "hidden",
+      boxSizing: "border-box",
+    }}>
 
       {/* ── Trip info ── */}
       <div className="px-6 pt-5 pb-4 sm:px-8 sm:pt-6">
@@ -149,17 +155,8 @@ export default function PrintLayout({ tripInfo, rows, dayMap, region, rate, tota
           <div className="space-y-4">
             {byDay.map(([dateKey, dayRows]) => {
               const dayNum  = dateKey !== "__nodate__" ? (dayMap[dateKey] ?? null) : null;
+              const city    = dayRows[0]?.city || "";
               const dateStr = dateKey !== "__nodate__" ? fmtDateReadable(dateKey) : "";
-
-              // ✅ Collect all unique cities in order of first appearance
-              const seen = new Set();
-              const cities = [];
-              for (const r of dayRows) {
-                const c = (r.city || "").trim();
-                if (c && !seen.has(c)) { seen.add(c); cities.push(c); }
-              }
-              const cityLabel = cities.join(" · "); // e.g. "Uji · Kyoto"
-
               return (
                 <div key={dateKey} className="day-block rounded-xl overflow-hidden border border-[#E8EDF3]">
                   <div className="flex items-center gap-3 px-4 py-3" style={{ background: "#0B3C5D" }}>
@@ -170,7 +167,7 @@ export default function PrintLayout({ tripInfo, rows, dayMap, region, rate, tota
                     )}
                     <div>
                       <p className="text-sm font-bold text-white leading-snug">
-                        {t("day")} {dayNum ?? "—"}{cityLabel ? ` — ${cityLabel}` : ""}
+                        {t("day")} {dayNum ?? "—"}{city ? ` — ${city}` : ""}
                       </p>
                       {dateStr && <p className="text-xs" style={{ color:"rgba(255,255,255,0.65)" }}>{dateStr}</p>}
                     </div>

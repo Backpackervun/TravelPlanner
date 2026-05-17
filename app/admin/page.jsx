@@ -21,7 +21,6 @@ function fmtDate(ts) {
 
 function isPlanActive(u) {
   const plan = (u.plan || "").toLowerCase();
-  if (!plan || plan === "free") return null;
   if (!u.expiresAt) return null;
   try {
     const exp = u.expiresAt?.toDate ? u.expiresAt.toDate() : new Date(u.expiresAt);
@@ -449,10 +448,13 @@ export default function AdminPage() {
                             <td className="px-4 py-3 text-gray-600 max-w-[180px] truncate">{u.email || "—"}</td>
                             <td className="px-4 py-3"><PlanBadge user={u} /></td>
                             <td className="px-4 py-3 whitespace-nowrap">
-                              {!isPaid ? <span className="text-gray-300">—</span> :
-                                <span className={active === false ? "text-red-500 font-semibold" : "text-gray-600"}>
-                                  {fmtDate(u.expiresAt)}
-                                </span>}
+                              {!u.expiresAt
+                                ? <span className="text-gray-300">—</span>
+                                : <span className={active === false ? "text-red-500 font-semibold text-xs" : "text-gray-600 text-xs"}>
+                                    {fmtDate(u.expiresAt)}
+                                    {!isPaid && <span className="ml-1 text-[9px] text-gray-400">(trial)</span>}
+                                  </span>
+                              }
                             </td>
                             <td className="px-4 py-3 text-center font-mono font-semibold">
                               <span className={u.tripCount > 0 ? "text-[#0B3C5D]" : "text-gray-300"}>{u.tripCount ?? "—"}</span>
@@ -541,7 +543,10 @@ export default function AdminPage() {
                         <div className="text-center">
                           <p className="text-gray-400 text-[10px] uppercase">Expires</p>
                           <p className={`font-semibold text-[10px] ${active === false ? "text-red-500" : "text-gray-700"}`}>
-                            {isPaid ? fmtDate(u.expiresAt) : "—"}
+                            {u.expiresAt
+                              ? <>{fmtDate(u.expiresAt)}{!isPaid && <span className="text-[9px] text-gray-400 ml-0.5">(trial)</span>}</>
+                              : "—"
+                            }
                           </p>
                         </div>
                         <div className="text-center">

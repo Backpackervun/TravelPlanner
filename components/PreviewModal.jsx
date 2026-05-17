@@ -157,7 +157,8 @@ export default function PreviewModal({
   // ── MOBILE ─────────────────────────────────────────────────────────────────
   if (isMobile) {
     return (
-      <div className="fixed inset-0 z-[500] flex flex-col bg-white" role="dialog" aria-modal="true">
+      <div className="fixed inset-0 z-[500] flex flex-col bg-white" role="dialog" aria-modal="true"
+        style={{ width: "100vw", maxWidth: "100vw", overflowX: "hidden" }}>
         <div className="flex-shrink-0 sticky top-0 z-10">
           <TopBar />
           {error && (
@@ -167,8 +168,14 @@ export default function PreviewModal({
             </div>
           )}
         </div>
-        <div className="flex-1 overflow-y-auto overflow-x-hidden bg-white">
-          <div className="preview-paper w-full max-w-full bg-white overflow-x-hidden" style={{ fontFamily: "'Montserrat',-apple-system,sans-serif" }}>
+        <div className="flex-1 overflow-y-auto overflow-x-hidden bg-white" style={{ maxWidth: "100vw" }}>
+          <div style={{
+            fontFamily: "'Montserrat',-apple-system,sans-serif",
+            width: "100%",
+            maxWidth: "100vw",
+            overflowX: "hidden",
+            boxSizing: "border-box",
+          }}>
             <PaperContent />
           </div>
           <div className="py-6 text-center text-xs" style={{ color: "#CBD5E1", borderTop: "1px solid #F1F5F9", marginTop: "12px" }}>
