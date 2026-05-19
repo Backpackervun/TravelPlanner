@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useT } from "@/context/TranslationContext";
+import { useAuth } from "@/context/AuthProvider";
+import { verifyPlanServer } from "@/lib/verifyPlanServer";
 import PrintHeader from "./PrintHeader";
 import PrintLayout from "./PrintLayout";
 
@@ -25,6 +27,7 @@ export default function PreviewModal({
   onUpgradeNeeded,    // (reason: string) => void
 }) {
   const { t } = useT();
+  const { user } = useAuth();
   const [exporting, setExporting] = useState(false);
   const [error,     setError]     = useState(null);
   const [isMobile,  setIsMobile]  = useState(false);
@@ -52,11 +55,18 @@ export default function PreviewModal({
 
   if (!open) return null;
 
-  const handleExport = () => {
+  const handleExport = async () => {
     if (exporting) return;
 
-    // ✅ Gate: only PRO can export PDF
+    // Client-side fast check
     if (!canExportPDF) {
+      onUpgradeNeeded?.("PDF export requires a Pro plan.");
+      return;
+    }
+
+    // ✅ Server-side check — cannot be bypassed via browser console
+    const allowed = await verifyPlanServer(user?.uid, "PRO");
+    if (!allowed) {
       onUpgradeNeeded?.("PDF export requires a Pro plan.");
       return;
     }

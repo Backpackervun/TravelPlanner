@@ -155,8 +155,16 @@ export default function PrintLayout({ tripInfo, rows, dayMap, region, rate, tota
           <div className="space-y-4">
             {byDay.map(([dateKey, dayRows]) => {
               const dayNum  = dateKey !== "__nodate__" ? (dayMap[dateKey] ?? null) : null;
-              const city    = dayRows[0]?.city || "";
               const dateStr = dateKey !== "__nodate__" ? fmtDateReadable(dateKey) : "";
+
+              // ✅ Collect all unique cities in order of first appearance
+              const seenCities = new Set();
+              const cities = [];
+              for (const r of dayRows) {
+                const c = (r.city || "").trim();
+                if (c && !seenCities.has(c)) { seenCities.add(c); cities.push(c); }
+              }
+              const cityLabel = cities.join(" · ");
               return (
                 <div key={dateKey} className="day-block rounded-xl overflow-hidden border border-[#E8EDF3]">
                   <div className="flex items-center gap-3 px-4 py-3" style={{ background: "#0B3C5D" }}>
@@ -167,7 +175,7 @@ export default function PrintLayout({ tripInfo, rows, dayMap, region, rate, tota
                     )}
                     <div>
                       <p className="text-sm font-bold text-white leading-snug">
-                        {t("day")} {dayNum ?? "—"}{city ? ` — ${city}` : ""}
+                        {t("day")} {dayNum ?? "—"}{cityLabel ? ` — ${cityLabel}` : ""}
                       </p>
                       {dateStr && <p className="text-xs" style={{ color:"rgba(255,255,255,0.65)" }}>{dateStr}</p>}
                     </div>
@@ -185,11 +193,9 @@ export default function PrintLayout({ tripInfo, rows, dayMap, region, rate, tota
       </div>
 
       {/* ═══════════════════════════════════════════════════════════════════
-          TRIP SUMMARY (was "Budget at a Glance")
-          ✅ Renamed from t("budgetAtAGlance") → t("tripSummary")
-          ✅ Old "Trip Summary" table REMOVED — data was identical
+          TRIP SUMMARY
       ═══════════════════════════════════════════════════════════════════ */}
-      <div className="px-6 pb-4 sm:px-8">
+      <div className="px-6 pb-4 sm:px-8" style={{ breakBefore: "auto", breakInside: "avoid" }}>
         <h2 className="flex items-center gap-3 text-lg font-semibold text-[#1E293B] mb-3 sm:text-xl sm:mb-4">
           <span className="block h-0.5 w-5 flex-shrink-0" style={{ background: "#0B3C5D" }} />
           {t("tripSummary")}
@@ -339,8 +345,11 @@ function PrintRow({ row, currency, isIDR, t }) {
   return (
     <div className="px-4 py-3.5">
       <div className="flex items-start gap-3">
-        <div className="flex-shrink-0 w-14 text-right">
+        <div className="flex-shrink-0 w-16 text-right">
           <p className="text-xs font-semibold text-[#94A3B8] font-mono tabular-nums">{fmtTime(row.time) || "—"}</p>
+          {row.timeEnd && (
+            <p className="text-[10px] text-[#CBD5E1] font-mono tabular-nums">↓ {fmtTime(row.timeEnd)}</p>
+          )}
         </div>
         <div className="flex-1 min-w-0">
           {badge && (

@@ -143,7 +143,7 @@ export default function ItineraryTable({
             <tr className="border-b border-paper-line bg-paper-dim/60">
               <th className="px-3 py-2.5" />
               {[
-                t("date"), t("time"), t("city"), t("destination"),
+                t("date"), t("time"), "End", t("city"), t("destination"),
                 `${t("from")} / ${t("to")}`,
                 t("transport"), t("category"), t("notes"),
                 ...(isIDR ? ["IDR"] : [`${currency.code}`, "IDR"]),
@@ -197,6 +197,9 @@ export default function ItineraryTable({
                     </td>
                     <td className="px-2 py-2.5">
                       <input type="time" value={row.time||""} onChange={(e)=>onUpdate(row.id,"time",e.target.value)} className={CI} />
+                    </td>
+                    <td className="px-2 py-2.5">
+                      <input type="time" value={row.timeEnd||""} onChange={(e)=>onUpdate(row.id,"timeEnd",e.target.value)} className={`${CI} text-ink-muted`} placeholder="—" />
                     </td>
                     <td className="px-2 py-2.5">
                       <input type="text" value={row.city||""} placeholder={t("city")} onChange={(e)=>onUpdate(row.id,"city",e.target.value)} className={CI} />
@@ -270,7 +273,7 @@ export default function ItineraryTable({
       </div>
 
       {/* Mobile cards */}
-      <div className="lg:hidden divide-y-0 space-y-0">
+      <div className="lg:hidden divide-y divide-paper-line/60">
         {rows.length === 0 ? (
           <p className="px-5 py-12 text-center text-sm text-ink-muted">{t("noStops")}</p>
         ) : rows.map((row, idx) => {
@@ -282,20 +285,18 @@ export default function ItineraryTable({
           return (
             <Fragment key={row.id}>
               {showSep && (
-                <div className="bg-navy-500 py-2 px-4 flex items-center gap-2">
-                  <div className="h-px flex-1 bg-white/20" />
-                  <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-white">{t("day")} {dayMap[thisDate]??"?"}</span>
-                  <div className="h-px flex-1 bg-white/20" />
+                <div className="bg-paper-dim/60 py-1.5 px-4 flex items-center gap-2">
+                  <div className="h-px flex-1 bg-navy-100" />
+                  <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-navy-400">{t("day")} {dayMap[thisDate]??"?"}</span>
+                  <div className="h-px flex-1 bg-navy-100" />
                 </div>
               )}
-              <div className="mx-3 my-2 rounded-xl border border-paper-line bg-white shadow-soft overflow-hidden">
-                <MobileCard row={row} idx={idx} total={rows.length} dayNum={dayNum}
+              <MobileCard row={row} idx={idx} total={rows.length} dayNum={dayNum}
                 currency={currency} isIDR={isIDR} localDisabled={localDisabled} idrDisabled={idrDisabled}
                 transportOpts={transportOpts} links={links} onUpdate={onUpdate}
                 onMoveUp={()=>onMoveUp?.(row.id)} onMoveDown={()=>onMoveDown?.(row.id)}
                 onInsertAbove={()=>onInsertAbove?.(row.id)} onInsertBelow={()=>onInsertBelow?.(row.id)}
                 onDelete={()=>onDelete?.(row.id)} t={t} />
-              </div>
             </Fragment>
           );
         })}
@@ -318,120 +319,56 @@ export default function ItineraryTable({
 // ── Mobile card ───────────────────────────────────────────────────────────────
 function MobileCard({ row, idx, total, dayNum, currency, isIDR, localDisabled, idrDisabled,
   transportOpts, links, onUpdate, onMoveUp, onMoveDown, onInsertAbove, onInsertBelow, onDelete, t }) {
-  const inp = "w-full rounded-lg border border-paper-line bg-white px-3 py-2.5 text-sm text-ink outline-none focus:border-accent-300 focus:ring-1 focus:ring-accent-300/20";
+  const inp = "w-full rounded-lg border border-paper-line bg-white px-2.5 py-2 text-xs text-ink outline-none focus:border-accent-300";
   return (
-    <div className="divide-y divide-paper-line">
-      {/* Header: destination + city + controls */}
-      <div className="px-4 py-3 flex items-start gap-2.5">
-        {dayNum!==null && (
-          <span className="flex-shrink-0 flex h-7 w-7 items-center justify-center rounded-full bg-navy-500 text-[10px] font-bold text-white mt-0.5">
-            {dayNum}
-          </span>
-        )}
+    <div className="px-4 py-4 space-y-3">
+      <div className="flex items-start gap-2.5">
+        {dayNum!==null&&<span className="flex-shrink-0 flex h-7 w-7 items-center justify-center rounded-full bg-navy-500 text-[10px] font-bold text-white mt-0.5">{dayNum}</span>}
         <div className="flex-1 min-w-0">
-          <input type="text" value={row.destination||""} placeholder={t("destinationPlaceholder")}
-            onChange={(e)=>onUpdate(row.id,"destination",e.target.value)}
-            className="w-full rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-sm font-semibold text-ink outline-none hover:border-paper-line focus:border-accent-300 focus:bg-white" />
-          <input type="text" value={row.city||""} placeholder={t("city")}
-            onChange={(e)=>onUpdate(row.id,"city",e.target.value)}
-            className="w-full mt-0.5 rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-xs text-ink-muted outline-none hover:border-paper-line focus:border-accent-300 focus:bg-white" />
+          <input type="text" value={row.destination||""} placeholder={t("destinationPlaceholder")} onChange={(e)=>onUpdate(row.id,"destination",e.target.value)} className="w-full rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-sm font-semibold text-ink outline-none hover:border-paper-line focus:border-accent-300 focus:bg-white" />
+          <input type="text" value={row.city||""} placeholder={t("city")} onChange={(e)=>onUpdate(row.id,"city",e.target.value)} className="w-full mt-0.5 rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-xs text-ink-muted outline-none hover:border-paper-line focus:border-accent-300 focus:bg-white" />
         </div>
-        <div className="flex items-center gap-1 flex-shrink-0">
+        <div className="flex items-center gap-1">
           <MoveBtn onClick={onMoveUp} disabled={idx===0} dir="up" />
           <MoveBtn onClick={onMoveDown} disabled={idx===total-1} dir="down" />
           <RowActions onInsertAbove={onInsertAbove} onInsertBelow={onInsertBelow} onDelete={onDelete} t={t} />
         </div>
       </div>
-
-      {/* Date & Time */}
-      <div className="px-4 py-3 bg-paper-dim/30">
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <p className="mlab">{t("date")}</p>
-            <input type="date" value={row.date||""} onChange={(e)=>onUpdate(row.id,"date",e.target.value)} className={inp} />
-          </div>
-          <div>
-            <p className="mlab">{t("time")}</p>
-            <input type="time" value={row.time||""} onChange={(e)=>onUpdate(row.id,"time",e.target.value)} className={inp} />
-          </div>
+      <div className="grid grid-cols-3 gap-2">
+        <div><p className="mlab">{t("date")}</p><input type="date" value={row.date||""} onChange={(e)=>onUpdate(row.id,"date",e.target.value)} className={inp} /></div>
+        <div><p className="mlab">{t("time")}</p><input type="time" value={row.time||""} onChange={(e)=>onUpdate(row.id,"time",e.target.value)} className={inp} /></div>
+        <div><p className="mlab">End</p><input type="time" value={row.timeEnd||""} onChange={(e)=>onUpdate(row.id,"timeEnd",e.target.value)} className={`${inp} text-ink-muted`} /></div>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <div><p className="mlab">{t("from")}</p><input type="text" value={row.from||""} placeholder="—" onChange={(e)=>onUpdate(row.id,"from",e.target.value)} className={inp} /></div>
+        <div><p className="mlab">{t("to")}</p><input type="text" value={row.to||""} placeholder="—" onChange={(e)=>onUpdate(row.id,"to",e.target.value)} className={inp} /></div>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <div><p className="mlab">{t("transport")}</p>
+          <select value={row.transport||""} onChange={(e)=>onUpdate(row.id,"transport",e.target.value)} className={inp}>
+            <option value="">—</option>
+            {transportOpts.map(o=><option key={o} value={o}>{o}</option>)}
+          </select>
+        </div>
+        <div><p className="mlab">{t("category")}</p>
+          <select value={row.category||""} onChange={(e)=>onUpdate(row.id,"category",e.target.value)} className={inp}>
+            <option value="">—</option>
+            {(CATEGORY_OPTIONS??["Hotel","Food","Attraction","Activity","Transport"]).map(o=><option key={o} value={o}>{o}</option>)}
+          </select>
         </div>
       </div>
-
-      {/* From & To */}
-      <div className="px-4 py-3">
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <p className="mlab">{t("from")}</p>
-            <input type="text" value={row.from||""} placeholder="—" onChange={(e)=>onUpdate(row.id,"from",e.target.value)} className={inp} />
-          </div>
-          <div>
-            <p className="mlab">{t("to")}</p>
-            <input type="text" value={row.to||""} placeholder="—" onChange={(e)=>onUpdate(row.id,"to",e.target.value)} className={inp} />
-          </div>
-        </div>
+      <div><p className="mlab">{t("notes")}</p><input type="text" value={row.notes||""} placeholder="—" onChange={(e)=>onUpdate(row.id,"notes",e.target.value)} className={inp} /></div>
+      <div className="grid grid-cols-2 gap-2">
+        {!isIDR&&<div><p className="mlab">{currency.code}{localDisabled?" (auto)":""}</p><input type="number" value={row.budgetLocal||0} readOnly={localDisabled} onChange={(e)=>!localDisabled&&onUpdate(row.id,"budgetLocal",Number(e.target.value))} className={`${inp} text-right font-mono ${localDisabled?"bg-paper-dim/60 opacity-60 cursor-not-allowed":""}`} /></div>}
+        <div><p className="mlab">IDR{idrDisabled&&!isIDR?" (auto)":""}</p><input type="number" value={row.budgetIDR||0} readOnly={idrDisabled&&!isIDR} onChange={(e)=>(isIDR||!idrDisabled)&&onUpdate(row.id,"budgetIDR",Number(e.target.value))} className={`${inp} text-right font-mono font-semibold text-navy-500 ${idrDisabled&&!isIDR?"bg-paper-dim/60 opacity-60 cursor-not-allowed":""}`} /></div>
       </div>
-
-      {/* Transport & Category */}
-      <div className="px-4 py-3 bg-paper-dim/30">
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <p className="mlab">{t("transport")}</p>
-            <select value={row.transport||""} onChange={(e)=>onUpdate(row.id,"transport",e.target.value)} className={inp}>
-              <option value="">—</option>
-              {transportOpts.map(o=><option key={o} value={o}>{o}</option>)}
-            </select>
-          </div>
-          <div>
-            <p className="mlab">{t("category")}</p>
-            <select value={row.category||""} onChange={(e)=>onUpdate(row.id,"category",e.target.value)} className={inp}>
-              <option value="">—</option>
-              {(CATEGORY_OPTIONS??["Hotel","Food","Attraction","Activity","Transport"]).map(o=><option key={o} value={o}>{o}</option>)}
-            </select>
-          </div>
-        </div>
+      <div className="flex flex-wrap gap-1.5">
+        {links.mapUrl&&<Chip href={links.mapUrl} icon="📍" label="Map" />}
+        {links.routeUrl&&<Chip href={links.routeUrl} icon="🗺" label="Route" />}
+        {links.flightUrl&&<Chip href={links.flightUrl} icon="✈️" label="Flights" />}
+        {links.bookUrl&&<Chip href={links.bookUrl} icon="🎫" label="Book" />}
+        {links.hotelUrl&&<Chip href={links.hotelUrl} icon="🏨" label="Hotel" />}
       </div>
-
-      {/* Notes */}
-      <div className="px-4 py-3">
-        <p className="mlab">{t("notes")}</p>
-        <input type="text" value={row.notes||""} placeholder="—"
-          onChange={(e)=>onUpdate(row.id,"notes",e.target.value)} className={inp} />
-      </div>
-
-      {/* Budget */}
-      <div className="px-4 py-3 bg-paper-dim/30">
-        <div className="grid grid-cols-2 gap-3">
-          {!isIDR && (
-            <div>
-              <p className="mlab">{currency.code}{localDisabled?" (auto)":""}</p>
-              <input type="number" value={row.budgetLocal||0}
-                readOnly={localDisabled}
-                onChange={(e)=>!localDisabled&&onUpdate(row.id,"budgetLocal",Number(e.target.value))}
-                className={`${inp} text-right font-mono ${localDisabled?"bg-paper-dim opacity-60 cursor-not-allowed":""}`} />
-            </div>
-          )}
-          <div className={isIDR ? "col-span-2" : ""}>
-            <p className="mlab">IDR{idrDisabled&&!isIDR?" (auto)":""}</p>
-            <input type="number" value={row.budgetIDR||0}
-              readOnly={idrDisabled&&!isIDR}
-              onChange={(e)=>(isIDR||!idrDisabled)&&onUpdate(row.id,"budgetIDR",Number(e.target.value))}
-              className={`${inp} text-right font-mono font-semibold text-navy-500 ${idrDisabled&&!isIDR?"bg-paper-dim opacity-60 cursor-not-allowed":""}`} />
-          </div>
-        </div>
-      </div>
-
-      {/* Links */}
-      {(links.mapUrl||links.routeUrl||links.flightUrl||links.bookUrl||links.hotelUrl) && (
-        <div className="px-4 py-3">
-          <div className="flex flex-wrap gap-2">
-            {links.mapUrl&&<Chip href={links.mapUrl} icon="📍" label="Map" />}
-            {links.routeUrl&&<Chip href={links.routeUrl} icon="🗺" label="Route" />}
-            {links.flightUrl&&<Chip href={links.flightUrl} icon="✈️" label="Flights" />}
-            {links.bookUrl&&<Chip href={links.bookUrl} icon="🎫" label="Book" />}
-            {links.hotelUrl&&<Chip href={links.hotelUrl} icon="🏨" label="Hotel" />}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
