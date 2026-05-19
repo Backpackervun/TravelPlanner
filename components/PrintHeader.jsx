@@ -24,16 +24,43 @@ export default function PrintHeader({ tripInfo, region, totalLocal, totalIDR }) 
     >
       {/* ── Brand ── */}
       <div style={{ flexShrink: 0, marginRight: "16px" }}>
-        <div style={{
-          fontSize: "20px", fontWeight: 700, color: "white",
-          lineHeight: 1, letterSpacing: "-0.3px",
-        }}>
-          Backpackervun
+        {/* Logo image — white version for dark navy background */}
+        <img
+          src="/logo-white.png"
+          alt="Backpackervun"
+          style={{
+            height: "28px",
+            width: "auto",
+            display: "block",
+            objectFit: "contain",
+          }}
+          onError={(e) => {
+            // Fallback to text if image fails to load
+            e.target.style.display = "none";
+            e.target.nextSibling.style.display = "block";
+          }}
+        />
+        {/* Text fallback (hidden by default) */}
+        <div style={{ display: "none" }}>
+          <div style={{
+            fontSize: "20px", fontWeight: 700, color: "white",
+            lineHeight: 1, letterSpacing: "-0.3px",
+          }}>
+            Backpackervun
+          </div>
+          <div style={{
+            fontSize: "9px", fontWeight: 600,
+            color: "rgba(255,255,255,0.6)",
+            letterSpacing: "0.24em", textTransform: "uppercase", marginTop: "4px",
+          }}>
+            Travel Planner
+          </div>
         </div>
+        {/* Subtitle always shown below logo */}
         <div style={{
           fontSize: "9px", fontWeight: 600,
           color: "rgba(255,255,255,0.6)",
-          letterSpacing: "0.24em", textTransform: "uppercase", marginTop: "4px",
+          letterSpacing: "0.24em", textTransform: "uppercase", marginTop: "5px",
         }}>
           Travel Planner
         </div>
