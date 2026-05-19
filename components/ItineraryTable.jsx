@@ -143,7 +143,7 @@ export default function ItineraryTable({
             <tr className="border-b border-paper-line bg-paper-dim/60">
               <th className="px-3 py-2.5" />
               {[
-                t("date"), t("time"), "End", t("city"), t("destination"),
+                t("date"), t("time"), t("city"), t("destination"),
                 `${t("from")} / ${t("to")}`,
                 t("transport"), t("category"), t("notes"),
                 ...(isIDR ? ["IDR"] : [`${currency.code}`, "IDR"]),
@@ -197,9 +197,11 @@ export default function ItineraryTable({
                     </td>
                     <td className="px-2 py-2.5">
                       <input type="time" value={row.time||""} onChange={(e)=>onUpdate(row.id,"time",e.target.value)} className={CI} />
-                    </td>
-                    <td className="px-2 py-2.5">
-                      <input type="time" value={row.timeEnd||""} onChange={(e)=>onUpdate(row.id,"timeEnd",e.target.value)} className={`${CI} text-ink-muted`} placeholder="—" />
+                      {/* End time stacked below start time */}
+                      <input type="time" value={row.timeEnd||""} onChange={(e)=>onUpdate(row.id,"timeEnd",e.target.value)}
+                        className={`${CI} mt-1 text-ink-muted`}
+                        title="End time (optional)"
+                      />
                     </td>
                     <td className="px-2 py-2.5">
                       <input type="text" value={row.city||""} placeholder={t("city")} onChange={(e)=>onUpdate(row.id,"city",e.target.value)} className={CI} />
@@ -334,10 +336,13 @@ function MobileCard({ row, idx, total, dayNum, currency, isIDR, localDisabled, i
           <RowActions onInsertAbove={onInsertAbove} onInsertBelow={onInsertBelow} onDelete={onDelete} t={t} />
         </div>
       </div>
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 gap-2">
         <div><p className="mlab">{t("date")}</p><input type="date" value={row.date||""} onChange={(e)=>onUpdate(row.id,"date",e.target.value)} className={inp} /></div>
-        <div><p className="mlab">{t("time")}</p><input type="time" value={row.time||""} onChange={(e)=>onUpdate(row.id,"time",e.target.value)} className={inp} /></div>
-        <div><p className="mlab">End</p><input type="time" value={row.timeEnd||""} onChange={(e)=>onUpdate(row.id,"timeEnd",e.target.value)} className={`${inp} text-ink-muted`} /></div>
+        <div>
+          <p className="mlab">{t("time")}</p>
+          <input type="time" value={row.time||""} onChange={(e)=>onUpdate(row.id,"time",e.target.value)} className={inp} />
+          <input type="time" value={row.timeEnd||""} onChange={(e)=>onUpdate(row.id,"timeEnd",e.target.value)} className={`${inp} mt-1 text-ink-muted`} title="End time (optional)" />
+        </div>
       </div>
       <div className="grid grid-cols-2 gap-2">
         <div><p className="mlab">{t("from")}</p><input type="text" value={row.from||""} placeholder="—" onChange={(e)=>onUpdate(row.id,"from",e.target.value)} className={inp} /></div>

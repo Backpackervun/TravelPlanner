@@ -25,7 +25,6 @@ import { saveProject, countUserTrips }    from "@/lib/firestore";
 import { fetchRateToIDR, invalidateRate } from "@/lib/exchangeRates";
 import { DEFAULT_RATE, generateId, getCurrency } from "@/lib/utils";
 import { exportBvntrip }                  from "@/lib/itinerary-file";
-import { verifyPlanServer }               from "@/lib/verifyPlanServer";
 
 const STORAGE_KEY = "backpackervun-v9";
 const BLANK_TRIP  = { clientName:"", duration:"", destinations:"", travelDates:"", startDate:"", endDate:"" };
@@ -42,7 +41,7 @@ function normalizeRow(row, rate) {
 }
 function blankRow(s) {
   return {
-    id: generateId(), date: s?.date ?? "", time: "", city: s?.city ?? "",
+    id: generateId(), date: s?.date ?? "", time: "", timeEnd: "", city: s?.city ?? "",
     destination:"", from:"", to:"", transport:"", notes:"", category:"",
     budgetLocal:0, budgetIDR:0, _lastEdited:"local",
   };
@@ -218,13 +217,7 @@ export default function DashboardPage() {
 
   // ── Export .bvntrip ───────────────────────────────────────────────────────
 
-  const handleExportBvntrip = async () => {
-    // ✅ Server-side check — cannot be bypassed via browser console
-    const allowed = await verifyPlanServer(user?.uid, "PRO");
-    if (!allowed) {
-      handleUpgradeNeeded("Exporting .bvntrip files requires a Pro plan.");
-      return;
-    }
+  const handleExportBvntrip = () => {
     exportBvntrip({ tripInfo, rows, region, rate });
   };
 

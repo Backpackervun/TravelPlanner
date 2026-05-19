@@ -346,9 +346,13 @@ function PrintRow({ row, currency, isIDR, t }) {
     <div className="px-4 py-3.5">
       <div className="flex items-start gap-3">
         <div className="flex-shrink-0 w-16 text-right">
-          <p className="text-xs font-semibold text-[#94A3B8] font-mono tabular-nums">{fmtTime(row.time) || "—"}</p>
+          <p className="text-xs font-semibold text-[#94A3B8] font-mono tabular-nums leading-tight">
+            {fmtTime(row.time) || "—"}
+          </p>
           {row.timeEnd && (
-            <p className="text-[10px] text-[#CBD5E1] font-mono tabular-nums">↓ {fmtTime(row.timeEnd)}</p>
+            <p className="text-[10px] text-[#CBD5E1] font-mono tabular-nums leading-tight">
+              ↓ {fmtTime(row.timeEnd)}
+            </p>
           )}
         </div>
         <div className="flex-1 min-w-0">
